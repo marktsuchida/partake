@@ -1,0 +1,229 @@
+namespace partake;
+
+// There is no root_type; Request and Response are our root types, and we
+// always know which to expect.
+
+// Additional rules not expressed by the FlatBuffers schema:
+// - The wire format always prefixes each Request/Response with a 32-bit size
+//   field, using the standard FlatBuffers-generated methods.
+// - The maximum size of a single request or response (including the size
+//   prefix) should be kept below 64 KiB for efficient processing (but larger
+//   messages will be handled correctly, as long as memory is not too low).
+
+
+table Request {
+    seqno: uint64;
+    request: RequestType;
+}
+
+table Response {
+    seqno: uint64;
+    status: Status = OK;
+    response: ResponseType;
+}
+
+union RequestType {
+    GetSegmentsRequest,
+    AllocRequest,
+    ReallocRequest,
+    AcquireRequest,
+    ReleaseRequest,
+    SealRequest,
+    UnsealRequest,
+}
+
+union ResponseType {
+    GetSegmentsResponse,
+    AllocResponse,
+    ReallocResponse,
+    AcquireResponse,
+    ReleaseResponse,
+    SealResponse,
+    UnsealResponse,
+}
+
+enum Status : int32 {
+    OK,
+    INVALID_REQUEST, // Malformed
+    OUT_OF_MEMORY,
+    NO_SUCH_SEGMENT,
+    NO_SUCH_OBJECT, // Token does not exist (in the correct state)
+    OBJECT_BUSY, // Cannot acquire unsealed, or unseal non-uniquely-held object
+    OBJECT_RESERVED, // Cannot unseal because other unseal request pending
+}
+
+table SegmentSpec {
+    size: uint64;
+    spec: SegmentMappingSpec;
+}
+
+union SegmentMappingSpec {
+    PosixMmapSpec,
+    SystemVSharedMemorySpec,
+    Win32FileMappingSpec,
+}
+
+table PosixMmapSpec {
+    // shm_open() or open() and mmap()
+    name: string (required);
+    use_shm_open: bool = true; // Otherwise use open()
+}
+
+table SystemVSharedMemorySpec {
+    // shmget()
+    key: int32;
+    flags: int32;
+}
+
+table Win32FileMappingSpec {
+    // OpenFileMapping() and MapViewOfFile()
+    name: string (required);
+    use_large_pages: bool = false; // FILE_MAP_LARGE_PAGES
+}
+
+struct Mapping {
+    token: uint64;
+    segment: uint32;
+    offset: uint64;
+    size: uint64;
+}
+
+table GetSegmentsRequest {
+    segments: [uint32];
+
+    /*
+     * Segment numbers must be those that appear in Mapping records returned by
+     * previous Alloc/Realloc/Acquire. If any of the segment numbers are
+     * unknown, status is NO_SUCH_SEGMENT. Otherwise, segment specifications
+     * are returned in order.
+     */
+}
+
+table GetSegmentsResponse {
+    segments: [SegmentSpec];
+}
+
+table AllocRequest {
+    count: uint32;
+    sizes: [uint64]; // Length = 1 or count
+
+    /*
+     * Objects of the specified count and (uniform or variable) sizes are
+     * allocated. If not all objects could be allocated, none are allocated and
+     * status is OUT_OF_MEMORY. Allocated objects need to be released when done
+     * with, whether or not they are sealed.
+     */
+}
+
+table AllocResponse {
+    objects: [Mapping]; // On success, length equals requested count
+}
+
+table ReallocRequest {
+    tokens: [uint64];
+    sizes: [uint64]; // Length = 1 or len(tokens)
+
+    /*
+     * All tokens must exist, be unsealed, and be owned by this connection, or
+     * else status is NO_SUCH_OBJECT and no realloc takes place. Otherwise each
+     * object has its buffer reallocated to the requested size, preserving the
+     * contents. If any reallocation fails, status is OUT_OF_MEMORY but some of
+     * the objects may have moved and need to be remapped by the client.
+     */
+}
+
+table ReallocResponse {
+    // Contains all objects whose mapping has changed; may also contain objects
+    // whose mapping has not changed.
+    objects: [Mapping];
+}
+
+table AcquireRequest {
+    tokens: [uint64];
+    wait: bool = true;
+
+    /*
+     * All tokens must exist, or else status is NO_SUCH_OBJECT. If all objects
+     * are sealed, they are returned; otherwise status is OBJECT_BUSY. Acquired
+     * objects need to be released when done with.
+     *
+     * If 'wait' is true, requests that would return OBJECT_BUSY instead wait
+     * for the objects to become sealed before responding. No wait takes place
+     * for nonexistent objects. A NO_SUCH_OBJECT response may be returned after
+     * waiting if one or more of the objects are released without ever being
+     * sealed; in this case any acquired subset is released and not returned.
+     *
+     * In all cases, either all requested objects are acquired, or none are.
+     * Use individual requests if partial results are desired.
+     */
+}
+
+table AcquireResponse {
+    objects: [Mapping];
+}
+
+table ReleaseRequest {
+    tokens: [uint64];
+
+    /*
+     * All tokens must exist and be referenced by this connection, or else
+     * status is NO_SUCH_OBJECT; objects that do exist are released even in
+     * this case.
+     *
+     * References to objects (obtained by allocating or acquiring) are counted,
+     * and objects remain in the shared memory until all references are
+     * released.
+     *
+     * Objects must be released the same number of times as they have been
+     * allocated or acquired by this connection. Unreleased objects of a
+     * connection are automatically released upon disconnecting, and it is safe
+     * (and reasonable) to rely upon this behavior for cleanup (e.g. by using
+     * a throw-away connection for each batch of processing).
+     */
+}
+
+table ReleaseResponse {
+}
+
+table SealRequest {
+    tokens: [uint64];
+
+    /*
+     * All tokens must exist, be unsealed, and be owned by this connection, or
+     * else status is NO_SUCH_OBJECT and no operation takes place. Otherwise
+     * each object is marked sealed, meaning that they can be acquired by this
+     * and other connections for read-only access. The reference held by the
+     * sealer also becomes read-only.
+     */
+}
+
+table SealResponse {
+}
+
+table UnsealRequest {
+    tokens: [uint64];
+    wait: bool = true;
+
+    /*
+     * All tokens must exist, be sealed, and be held by this connection, or
+     * else status is NO_SUCH_OBJECT. No other references to the objects may by
+     * held (by this or other connections), or else status is OBJECT_BUSY.
+     * Also, no other Unseal requests may be panding on the objects, or else
+     * status is OBJECT_RESERVED. Otherwise, the objects are marked unsealed,
+     * meaning that they can be mutated, and new tokens are assigned to each
+     * object (so that the same token never refers to more than one version of
+     * shared object content).
+     *
+     * If 'wait' is true, requests that would return OBJECT_BUSY instead wait
+     * for other references to the object to be released before responding. No
+     * wait takes place if any of the objects are missing or already have a
+     * pending Unseal request.
+     *
+     * In all cases, either all of the tokens are unsealed, or none are. If
+     * partial results are desired, use individual requests.
+     */
+}
+
+table UnsealResponse {
+    tokens: [uint64]; // In same order as request
+}
