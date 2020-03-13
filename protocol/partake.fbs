@@ -106,12 +106,15 @@ table GetSegmentsResponse {
 table AllocRequest {
     count: uint32;
     sizes: [uint64]; // Length = 1 or count
+    clear: bool = false;
 
     /*
      * Objects of the specified count and (uniform or variable) sizes are
      * allocated. If not all objects could be allocated, none are allocated and
      * status is OUT_OF_MEMORY. Allocated objects need to be released when done
      * with, whether or not they are published.
+     *
+     * If 'clear' is true, the object buffer is zeroed.
      */
 }
 
@@ -205,6 +208,7 @@ table PublishResponse {
 table UnpublishRequest {
     tokens: [uint64];
     wait: bool = true;
+    clear: bool = false;
 
     /*
      * All tokens must exist, be published, and be held by this connection, or
@@ -223,6 +227,8 @@ table UnpublishRequest {
      *
      * In all cases, either all of the tokens are unpublished, or none are. If
      * partial results are desired, use individual requests.
+     *
+     * If 'clear' is true, the object buffer is zeroed.
      */
 }
 
