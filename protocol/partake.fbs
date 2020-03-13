@@ -28,8 +28,8 @@ union RequestType {
     ReallocRequest,
     AcquireRequest,
     ReleaseRequest,
-    SealRequest,
-    UnsealRequest,
+    PublishRequest,
+    UnpublishRequest,
 }
 
 union ResponseType {
@@ -38,8 +38,8 @@ union ResponseType {
     ReallocResponse,
     AcquireResponse,
     ReleaseResponse,
-    SealResponse,
-    UnsealResponse,
+    PublishResponse,
+    UnpublishResponse,
 }
 
 enum Status : int32 {
@@ -48,8 +48,8 @@ enum Status : int32 {
     OUT_OF_MEMORY,
     NO_SUCH_SEGMENT,
     NO_SUCH_OBJECT, // Token does not exist (in the correct state)
-    OBJECT_BUSY, // Cannot acquire unsealed, or unseal non-uniquely-held object
-    OBJECT_RESERVED, // Cannot unseal because other unseal request pending
+    OBJECT_BUSY, // Cannot acquire unpublished; cannot unpublish shared
+    OBJECT_RESERVED, // Unpublish request already pending
 }
 
 table SegmentSpec {
@@ -111,7 +111,7 @@ table AllocRequest {
      * Objects of the specified count and (uniform or variable) sizes are
      * allocated. If not all objects could be allocated, none are allocated and
      * status is OUT_OF_MEMORY. Allocated objects need to be released when done
-     * with, whether or not they are sealed.
+     * with, whether or not they are published.
      */
 }
 
@@ -124,11 +124,12 @@ table ReallocRequest {
     sizes: [uint64]; // Length = 1 or len(tokens)
 
     /*
-     * All tokens must exist, be unsealed, and be owned by this connection, or
-     * else status is NO_SUCH_OBJECT and no realloc takes place. Otherwise each
-     * object has its buffer reallocated to the requested size, preserving the
-     * contents. If any reallocation fails, status is OUT_OF_MEMORY but some of
-     * the objects may have moved and need to be remapped by the client.
+     * All tokens must exist, be unpublished, and be owned by this connection,
+     * or else status is NO_SUCH_OBJECT and no realloc takes place. Otherwise
+     * each object has its buffer reallocated to the requested size, preserving
+     * the contents. If any reallocation fails, status is OUT_OF_MEMORY but
+     * some of the objects may have moved and need to be remapped by the
+     * client.
      */
 }
 
@@ -144,14 +145,15 @@ table AcquireRequest {
 
     /*
      * All tokens must exist, or else status is NO_SUCH_OBJECT. If all objects
-     * are sealed, they are returned; otherwise status is OBJECT_BUSY. Acquired
-     * objects need to be released when done with.
+     * are published, they are returned; otherwise status is OBJECT_BUSY.
+     * Acquired objects need to be released when done with.
      *
      * If 'wait' is true, requests that would return OBJECT_BUSY instead wait
-     * for the objects to become sealed before responding. No wait takes place
-     * for nonexistent objects. A NO_SUCH_OBJECT response may be returned after
-     * waiting if one or more of the objects are released without ever being
-     * sealed; in this case any acquired subset is released and not returned.
+     * for the objects to become published before responding. No wait takes
+     * place for nonexistent objects. A NO_SUCH_OBJECT response may be returned
+     * after waiting if one or more of the objects are released without ever
+     * being published; in this case any acquired subset is released and not
+     * returned.
      *
      * In all cases, either all requested objects are acquired, or none are.
      * Use individual requests if partial results are desired.
@@ -185,45 +187,45 @@ table ReleaseRequest {
 table ReleaseResponse {
 }
 
-table SealRequest {
+table PublishRequest {
     tokens: [uint64];
 
     /*
-     * All tokens must exist, be unsealed, and be owned by this connection, or
-     * else status is NO_SUCH_OBJECT and no operation takes place. Otherwise
-     * each object is marked sealed, meaning that they can be acquired by this
-     * and other connections for read-only access. The reference held by the
-     * sealer also becomes read-only.
+     * All tokens must exist, be unpublished, and be owned by this connection,
+     * or else status is NO_SUCH_OBJECT and no operation takes place. Otherwise
+     * each object is marked published, meaning that they can be acquired by
+     * this and other connections for read-only access. The reference held by
+     * the publisher also becomes read-only.
      */
 }
 
-table SealResponse {
+table PublishResponse {
 }
 
-table UnsealRequest {
+table UnpublishRequest {
     tokens: [uint64];
     wait: bool = true;
 
     /*
-     * All tokens must exist, be sealed, and be held by this connection, or
+     * All tokens must exist, be published, and be held by this connection, or
      * else status is NO_SUCH_OBJECT. No other references to the objects may by
      * held (by this or other connections), or else status is OBJECT_BUSY.
-     * Also, no other Unseal requests may be panding on the objects, or else
-     * status is OBJECT_RESERVED. Otherwise, the objects are marked unsealed,
-     * meaning that they can be mutated, and new tokens are assigned to each
-     * object (so that the same token never refers to more than one version of
-     * shared object content).
+     * Also, no other Unpublish requests may be pending on the objects, or else
+     * status is OBJECT_RESERVED. Otherwise, the objects are marked
+     * unpublished, and new tokens are assigned to each object (so that the
+     * same token never refers to more than one version of published object
+     * content).
      *
      * If 'wait' is true, requests that would return OBJECT_BUSY instead wait
      * for other references to the object to be released before responding. No
      * wait takes place if any of the objects are missing or already have a
-     * pending Unseal request.
+     * pending Unpublish request.
      *
-     * In all cases, either all of the tokens are unsealed, or none are. If
+     * In all cases, either all of the tokens are unpublished, or none are. If
      * partial results are desired, use individual requests.
      */
 }
 
-table UnsealResponse {
+table UnpublishResponse {
     tokens: [uint64]; // In same order as request
 }
