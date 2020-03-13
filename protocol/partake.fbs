@@ -107,6 +107,7 @@ table AllocRequest {
     count: uint32;
     sizes: [uint64]; // Length = 1 or count
     clear: bool = false;
+    share_mutable: bool = false;
 
     /*
      * Objects of the specified count and (uniform or variable) sizes are
@@ -115,6 +116,13 @@ table AllocRequest {
      * with, whether or not they are published.
      *
      * If 'clear' is true, the object buffer is zeroed.
+     *
+     * If 'share_mutable' is true, the objects can be immediately acquired by
+     * (this or) other connections; user code is fully responsible for
+     * synchronizing reads and writes. Such objects cannot be published or
+     * unpublished; Realloc and Acquire can be performed at any time. This is
+     * intended for simple use cases, for example when all clients are
+     * controlled from a single, synchronous procedure.
      */
 }
 
