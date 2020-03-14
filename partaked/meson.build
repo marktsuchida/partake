@@ -25,6 +25,7 @@
 
 partaked_sources = [
     'main.c',
+    'partake_allocator.c',
 ]
 
 executable('partaked',
