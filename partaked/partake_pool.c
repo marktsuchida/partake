@@ -1,0 +1,130 @@
+/*
+ * Partake shared memory pool
+ *
+ *
+ * Copyright (C) 2020, The Board of Regents of the University of Wisconsin
+ * System
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include "partake_allocator.h"
+#include "partake_malloc.h"
+#include "partake_object.h"
+#include "partake_pool.h"
+
+#include <uthash.h>
+
+#include <assert.h>
+
+
+struct partake_pool {
+    // For now, the pool consists of a single segment.
+    void *addr;
+    partake_allocator allocator;
+    struct partake_object *objects; // Hash table
+};
+
+
+struct partake_pool *partake_pool_create(void *addr, size_t size) {
+    struct partake_pool *ret = partake_malloc(sizeof(struct partake_pool));
+
+    ret->addr = addr;
+
+    ret->allocator = partake_create_allocator(addr, size);
+    // We allow allocator to be null (the result of size being too small); it
+    // just means we are always out of memory.
+
+    ret->objects = NULL;
+
+    return ret;
+}
+
+
+void partake_pool_destroy(struct partake_pool *pool) {
+    assert (pool->objects == NULL);
+    partake_free(pool);
+}
+
+
+struct partake_object *partake_pool_find_object(
+        struct partake_pool *pool, partake_token token) {
+    struct partake_object *ret;
+    HASH_FIND(hh, pool->objects, &token, sizeof(partake_token), ret);
+    return ret;
+}
+
+
+struct partake_object *partake_pool_create_object(
+        struct partake_pool *pool, size_t size, partake_token token) {
+    struct partake_object *object =
+        partake_malloc(sizeof(struct partake_object));
+
+    char *block = partake_allocate(pool->allocator, size, false);
+    if (block == NULL) {
+        partake_free(object);
+        return NULL;
+    }
+
+    object->token = token;
+    object->offset = block - (char *)pool->addr;
+    object->size = size;
+    object->flags = 0;
+    object->reader_count = 0;
+    object->writer_count = 0;
+
+    HASH_ADD(hh, pool->objects, token, sizeof(partake_token), object);
+
+    return object;
+}
+
+
+void partake_pool_destroy_object(struct partake_pool *pool,
+        struct partake_object *object) {
+    assert (object->reader_count == 0);
+    assert (object->writer_count == 0);
+
+    HASH_DELETE(hh, pool->objects, object);
+    partake_deallocate(pool->allocator, (char *)pool->addr + object->offset);
+    partake_free(object);
+}
+
+
+int partake_pool_resize_object(struct partake_pool *pool,
+        struct partake_object *object, size_t size) {
+    char *block = partake_reallocate(pool->allocator,
+            (char *)pool->addr + object->offset, size);
+    if (block == NULL)
+        return -1;
+
+    object->offset = block - (char *)pool->addr;
+    return 0;
+}
+
+
+void partake_pool_rekey_object(struct partake_pool *pool,
+        struct partake_object *object, partake_token token) {
+    HASH_DELETE(hh, pool->objects, object);
+    object->token = token;
+    HASH_ADD(hh, pool->objects, token, sizeof(partake_token), object);
+}

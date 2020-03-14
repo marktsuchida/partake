@@ -27,6 +27,7 @@ partaked_sources = [
     'main.c',
     'partake_allocator.c',
     'partake_malloc.c',
+    'partake_pool.c',
     'partake_token.c',
 ]
 
