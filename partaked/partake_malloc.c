@@ -28,6 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "partake_iobuf.h"
 #include "partake_malloc.h"
 
 #include <stdio.h>
@@ -106,11 +107,17 @@ static void out_of_memory(const char *func, size_t n, size_t size) {
 
 void *partake_malloc(size_t size) {
     void *p = malloc(size);
-    if (p == NULL && size == 0) {
-        p = malloc(1);
-    }
     if (p == NULL) {
-        out_of_memory("malloc", 1, size);
+        if (size == 0)
+            p = malloc(1);
+
+        if (p == NULL) {
+            partake_iobuf_release_freelist();
+
+            p = malloc(size != 0 ? size : 1);
+            if (p == NULL)
+                out_of_memory("malloc", 1, size);
+        }
     }
     return p;
 }
@@ -118,13 +125,20 @@ void *partake_malloc(size_t size) {
 
 void *partake_realloc(void *ptr, size_t size) {
     void *p = realloc(ptr, size);
-    if (p == NULL && size == 0) {
-        // Some realloc() implementations free when size is 0. Or ptr may have
-        // been NULL.
-        p = malloc(1);
-    }
     if (p == NULL) {
-        out_of_memory("realloc", 1, size);
+        if (size == 0) {
+            // Some realloc() implementations free when size is 0; others
+            // don't. Or ptr may have been NULL.
+            p = malloc(1);
+        }
+
+        if (p == NULL) {
+            partake_iobuf_release_freelist();
+
+            p = realloc(ptr, size != 0 ? size : 1);
+            if (p == NULL)
+                out_of_memory("realloc", 1, size);
+        }
     }
     return p;
 }
@@ -132,11 +146,17 @@ void *partake_realloc(void *ptr, size_t size) {
 
 void *partake_calloc(size_t n, size_t size) {
     void *p = calloc(n, size);
-    if (p == NULL && (n == 0 || size == 0)) {
-        p = malloc(1);
-    }
     if (p == NULL) {
-        out_of_memory("calloc", n, size);
+        if (n == 0 || size == 0)
+            p = malloc(1);
+
+        if (p == NULL) {
+            partake_iobuf_release_freelist();
+
+            p = calloc(n != 0 ? n : 1, size != 0 ? size : 1);
+            if (p == NULL)
+                out_of_memory("calloc", n, size);
+        }
     }
     return p;
 }
