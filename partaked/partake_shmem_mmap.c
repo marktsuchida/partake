@@ -28,8 +28,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "partake_shmem.h"
 #include "partake_logging.h"
+#include "partake_malloc.h"
+#include "partake_shmem.h"
 
 #ifndef _WIN32
 
@@ -54,10 +55,7 @@ struct mmap_private_data {
 
 
 static int mmap_initialize(void **data) {
-    *data = malloc(sizeof(struct mmap_private_data));
-    if (!*data) {
-        return ENOMEM;
-    }
+    *data = partake_malloc(sizeof(struct mmap_private_data));
     memset(*data, 0, sizeof(struct mmap_private_data));
     return 0;
 }
@@ -79,7 +77,7 @@ static void mmap_deinitialize(void *data) {
         ZF_LOGF("Deinitializing mmap segment whose shm/file still exists!");
     }
 
-    free(data);
+    partake_free(data);
 }
 
 
@@ -108,14 +106,13 @@ static int create_posix_shm(const struct partake_daemon_config *config,
             char emsg[1024];
             ZF_LOGE("shm_open: %s: %s", name,
                     partake_strerror(ret, emsg, sizeof(emsg)));
-            free(generated_name);
+            partake_free(generated_name);
 
             if (generate_name && ret == EEXIST) {
                 continue;
             }
             return ret;
         }
-
         ZF_LOGI("shm_open: %s: fd = %d", name, d->fd);
 
         d->shmname = name;
@@ -142,10 +139,11 @@ static int unlink_posix_shm(struct mmap_private_data *d) {
         ZF_LOGE("shm_unlink: %s: %s", d->shmname,
                 partake_strerror(ret, emsg, sizeof(emsg)));
     }
+    ZF_LOGI("shm_unlink: %s", d->shmname);
 
     // Marked unlinked even on error; there is nothing further we can do.
     if (d->must_free_shmname) {
-        free((void *)d->shmname);
+        partake_free((void *)d->shmname);
     }
     d->shmname = NULL;
 
@@ -156,7 +154,7 @@ static int unlink_posix_shm(struct mmap_private_data *d) {
 static int create_file_shm(const struct partake_daemon_config *config,
         struct mmap_private_data *d) {
     if (d->must_free_shmname) {
-        free((void *)d->shmname);
+        partake_free((void *)d->shmname);
     }
     errno = 0;
     d->shmname = realpath(config->shmem.mmap.filename, NULL);
@@ -180,7 +178,7 @@ static int create_file_shm(const struct partake_daemon_config *config,
         ZF_LOGE("open: %s: %s", d->shmname,
                 partake_strerror(ret, emsg, sizeof(emsg)));
         if (d->must_free_shmname) {
-            free((void *)d->shmname);
+            partake_free((void *)d->shmname);
         }
         d->shmname = NULL;
         return ret;
@@ -205,10 +203,11 @@ static int unlink_file_shm(struct mmap_private_data *d) {
         ZF_LOGE("unlink: %s: %s", d->shmname,
                 partake_strerror(ret, emsg, sizeof(emsg)));
     }
+    ZF_LOGI("unlink: %s", d->shmname);
 
     // Marked unlinked even on error; there is nothing further we can do.
     if (d->must_free_shmname) {
-        free((void *)d->shmname);
+        partake_free((void *)d->shmname);
     }
     d->shmname = NULL;
 
@@ -257,6 +256,7 @@ static int mmap_allocate(const struct partake_daemon_config *config,
                 partake_strerror(ret, emsg, sizeof(emsg)));
         goto error;
     }
+    ZF_LOGI("ftruncate: fd %d, %zu bytes", d->fd, config->size);
 
     if (config->size > 0) {
         errno = 0;

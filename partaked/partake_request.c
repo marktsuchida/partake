@@ -28,6 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "partake_malloc.h"
 #include "partake_request.h"
 
 #include <stdlib.h>
@@ -41,10 +42,8 @@ struct partake_request {
 
 struct partake_request *partake_request_create(struct partake_iobuf *buf,
         size_t offset) {
-    struct partake_request *ret = malloc(sizeof(struct partake_request));
-    if (ret == NULL) {
-        return NULL;
-    }
+    struct partake_request *ret =
+        partake_malloc(sizeof(struct partake_request));
 
     ret->buf = buf;
     ret->offset = offset;

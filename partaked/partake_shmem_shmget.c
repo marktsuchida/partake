@@ -28,8 +28,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "partake_shmem.h"
 #include "partake_logging.h"
+#include "partake_malloc.h"
+#include "partake_shmem.h"
 
 #ifndef _WIN32
 
@@ -52,10 +53,7 @@ struct shmget_private_data {
 
 
 static int shmget_initialize(void **data) {
-    *data = malloc(sizeof(struct shmget_private_data));
-    if (!*data) {
-        return ENOMEM;
-    }
+    *data = partake_malloc(sizeof(struct shmget_private_data));
     memset(*data, 0, sizeof(struct shmget_private_data));
     return 0;
 }
@@ -74,7 +72,7 @@ static void shmget_deinitialize(void *data) {
         ZF_LOGF("Deinitializing shmget segment whose key still exists!");
     }
 
-    free(data);
+    partake_free(data);
 }
 
 
@@ -121,7 +119,6 @@ static int create_sysv_shm(const struct partake_daemon_config *config,
             }
             return ret;
         }
-
         ZF_LOGI("shmget: key %d: id = %d", d->key, d->shmid);
 
         d->key_active = true;
@@ -165,8 +162,8 @@ static int attach_sysv_shm(const struct partake_daemon_config *config,
                 partake_strerror(ret, emsg, sizeof(emsg)));
         return ret;
     }
-
     ZF_LOGI("shmat: id %d: addr = %p", d->shmid, d->addr);
+
     return 0;
 }
 
