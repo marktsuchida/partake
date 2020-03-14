@@ -26,6 +26,7 @@
  */
 
 #include "partake_daemon.h"
+#include "partake_malloc.h"
 #include "partake_pool.h"
 #include "partake_shmem.h"
 
@@ -116,6 +117,8 @@ static int run_event_loop(struct daemon *daemon) {
 
 
 int partake_daemon_run(const struct partake_daemon_config *config) {
+    partake_initialize_malloc();
+
     struct daemon daemon;
     memset(&daemon, 0, sizeof(daemon));
     daemon.config = config;
