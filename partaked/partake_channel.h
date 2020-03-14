@@ -54,7 +54,8 @@ int partake_channel_realloc_object(struct partake_channel *chan,
         struct partake_object_handle **handle);
 
 int partake_channel_acquire_object(struct partake_channel *chan,
-        partake_token token, struct partake_object_handle **handle);
+        partake_token token, bool share_mutable,
+        struct partake_object_handle **handle);
 
 int partake_channel_release_object(struct partake_channel *chan,
         partake_token token);

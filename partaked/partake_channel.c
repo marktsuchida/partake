@@ -142,12 +142,17 @@ int partake_channel_realloc_object(struct partake_channel *chan,
 
 
 int partake_channel_acquire_object(struct partake_channel *chan,
-        partake_token token, struct partake_object_handle **handle) {
+        partake_token token, bool share_mutable,
+        struct partake_object_handle **handle) {
     *handle = find_handle_in_channel(chan, token);
     struct partake_object *object;
     if (*handle == NULL) {
         object = partake_pool_find_object(chan->pool, token);
         if (object == NULL) {
+            return -1;
+        }
+        if (!!(object->flags & PARTAKE_OBJECT_SHARE_MUTABLE) !=
+                !!share_mutable) {
             return -1;
         }
 
@@ -159,12 +164,16 @@ int partake_channel_acquire_object(struct partake_channel *chan,
         add_handle_to_channel(chan, *handle);
     }
     else {
-        ++(*handle)->refcount;
         object = (*handle)->object;
+        if (!!(object->flags & PARTAKE_OBJECT_SHARE_MUTABLE) !=
+                !!share_mutable) {
+            return -1;
+        }
+
+        ++(*handle)->refcount;
     }
 
-    if (!(object->flags & PARTAKE_OBJECT_SHARE_MUTABLE) &&
-            !(object->flags & PARTAKE_OBJECT_PUBLISHED)) {
+    if (!share_mutable && !(object->flags & PARTAKE_OBJECT_PUBLISHED)) {
         return -1; // TODO BUSY (handle refcount has been incremented)
     }
 

@@ -149,6 +149,7 @@ table ReallocResponse {
 table AcquireRequest {
     tokens: [uint64];
     wait: bool = true;
+    share_mutable: bool = false;
 
     /*
      * All tokens must exist, or else status is NO_SUCH_OBJECT. If all objects
@@ -164,6 +165,9 @@ table AcquireRequest {
      *
      * In all cases, either all requested objects are acquired, or none are.
      * Use individual requests if partial results are desired.
+     *
+     * The 'share_mutable' flag must match the allocation mode of all of the
+     * objects being acquired.
      */
 }
 
