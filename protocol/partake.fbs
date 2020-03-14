@@ -11,37 +11,6 @@ namespace partake;
 //   messages will be handled correctly, as long as memory is not too low).
 
 
-table Request {
-    seqno: uint64;
-    request: RequestType;
-}
-
-table Response {
-    seqno: uint64;
-    status: Status = OK;
-    response: ResponseType;
-}
-
-union RequestType {
-    GetSegmentsRequest,
-    AllocRequest,
-    ReallocRequest,
-    AcquireRequest,
-    ReleaseRequest,
-    PublishRequest,
-    UnpublishRequest,
-}
-
-union ResponseType {
-    GetSegmentsResponse,
-    AllocResponse,
-    ReallocResponse,
-    AcquireResponse,
-    ReleaseResponse,
-    PublishResponse,
-    UnpublishResponse,
-}
-
 enum Status : int32 {
     OK,
     INVALID_REQUEST, // Malformed
@@ -50,17 +19,6 @@ enum Status : int32 {
     NO_SUCH_OBJECT, // Token does not exist (in the correct state)
     OBJECT_BUSY, // Cannot acquire unpublished; cannot unpublish shared
     OBJECT_RESERVED, // Unpublish request already pending
-}
-
-table SegmentSpec {
-    size: uint64;
-    spec: SegmentMappingSpec;
-}
-
-union SegmentMappingSpec {
-    PosixMmapSpec,
-    SystemVSharedMemorySpec,
-    Win32FileMappingSpec,
 }
 
 table PosixMmapSpec {
@@ -79,6 +37,17 @@ table Win32FileMappingSpec {
     // OpenFileMapping() and MapViewOfFile()
     name: string (required);
     use_large_pages: bool = false; // FILE_MAP_LARGE_PAGES
+}
+
+union SegmentMappingSpec {
+    PosixMmapSpec,
+    SystemVSharedMemorySpec,
+    Win32FileMappingSpec,
+}
+
+table SegmentSpec {
+    size: uint64;
+    spec: SegmentMappingSpec;
 }
 
 struct Mapping {
@@ -242,4 +211,35 @@ table UnpublishRequest {
 
 table UnpublishResponse {
     tokens: [uint64]; // In same order as request
+}
+
+union RequestType {
+    GetSegmentsRequest,
+    AllocRequest,
+    ReallocRequest,
+    AcquireRequest,
+    ReleaseRequest,
+    PublishRequest,
+    UnpublishRequest,
+}
+
+union ResponseType {
+    GetSegmentsResponse,
+    AllocResponse,
+    ReallocResponse,
+    AcquireResponse,
+    ReleaseResponse,
+    PublishResponse,
+    UnpublishResponse,
+}
+
+table Request {
+    seqno: uint64;
+    request: RequestType;
+}
+
+table Response {
+    seqno: uint64;
+    status: Status = OK;
+    response: ResponseType;
 }
