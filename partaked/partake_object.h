@@ -30,6 +30,7 @@
 
 #pragma once
 
+#include "partake_malloc.h" // before uthash.h
 #include "partake_token.h"
 
 #include <uthash.h>

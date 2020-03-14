@@ -43,8 +43,13 @@
 #define PTXT(x) PARTAKE_TEXT(x)
 
 
-// The prefix myopt_ is used in this file for local extensions to dropt.
-// All such symbols follow dropt's support for wide char handling.
+/*
+ * The prefix myopt_ is used in this file for local extensions to dropt.
+ * All such symbols follow dropt's support for wide char handling.
+ *
+ * We do not bother to use partake_malloc() for option parsing (dropt doesn't
+ * support replacing malloc()).
+ */
 
 // We need long long to ensure 64-bit sizes fit (Windows is LLP64).
 #ifdef DROPT_USE_WCHAR
