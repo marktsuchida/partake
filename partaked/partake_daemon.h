@@ -65,3 +65,6 @@ struct partake_daemon_config {
         } win32;
     } shmem;
 };
+
+
+int partake_daemon_run(const struct partake_daemon_config *config);

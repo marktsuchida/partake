@@ -461,7 +461,7 @@ int main(int argc, TCHAR **argv)
 
     check_options(&opts, &config);
 
-    // int ret = run_daemon(&config);
+    int ret = partake_daemon_run(&config);
 
-    return EXIT_SUCCESS;
+    return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
