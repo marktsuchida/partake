@@ -37,6 +37,7 @@ partaked_sources = [
     'partake_iobuf.c',
     'partake_malloc.c',
     'partake_pool.c',
+    'partake_request.c',
     'partake_shmem.c',
     'partake_shmem_mmap.c',
     'partake_shmem_shmget.c',
