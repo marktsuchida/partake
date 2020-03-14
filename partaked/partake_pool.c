@@ -90,8 +90,8 @@ struct partake_object *partake_pool_create_object(
     object->offset = block - (char *)pool->addr;
     object->size = size;
     object->flags = 0;
-    object->reader_count = 0;
-    object->writer_count = 0;
+    object->refcount = 1;
+    object->exclusive_writer = NULL;
 
     HASH_ADD(hh, pool->objects, token, sizeof(partake_token), object);
 
@@ -101,8 +101,7 @@ struct partake_object *partake_pool_create_object(
 
 void partake_pool_destroy_object(struct partake_pool *pool,
         struct partake_object *object) {
-    assert (object->reader_count == 0);
-    assert (object->writer_count == 0);
+    assert (object->refcount == 0);
 
     HASH_DELETE(hh, pool->objects, object);
     partake_deallocate(pool->allocator, (char *)pool->addr + object->offset);

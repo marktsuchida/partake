@@ -36,6 +36,8 @@
 
 #include <stddef.h>
 
+struct partake_channel;
+
 
 /*
  * Objects start their life unpublished. They may get published once. Objects
@@ -67,13 +69,15 @@ struct partake_object {
     size_t size;
     short flags;
 
-    // Reference counts. References waiting to acquire this object upon
-    // publication are included in reader_count; any reference waiting to
-    // unpublish this object upon reader_count reaching 0 is included in
-    // writer_count. For normal objects, writer_count is 0 or 1; for
-    // share-mutable objects, reader_count is always 0.
-    unsigned reader_count;
-    unsigned writer_count;
+    // The reference count is the number of _channels_ holding a reference to
+    // this object. This includes channels waiting for this object to change
+    // state. (Note that a single channel can hold multiple references to an
+    // object; the object doesn't know about this.)
+    unsigned refcount;
+
+    // The channel currently holding a writable reference. Always NULL for
+    // published or share-mutable objects.
+    struct partake_channel *exclusive_writer;
 
     // Object descriptors are kept in a global hash table for their entire
     // lifetime. This reference is _not_ included in the refcount field above.
