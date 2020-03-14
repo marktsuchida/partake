@@ -4,10 +4,10 @@ protocol_headers = custom_target('protocol_headers',
     output: [
         'flatbuffers_common_builder.h',
         'flatbuffers_common_reader.h',
-        'partake_builder.h',
-        'partake_reader.h',
+        'partake_protocol_builder.h',
+        'partake_protocol_reader.h',
     ],
-    input: 'partake.fbs',
+    input: 'partake_protocol.fbs',
     command: [
         prog_flatcc, '-cwo', '@OUTDIR@', '@INPUT@',
     ],

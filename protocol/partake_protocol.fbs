@@ -1,4 +1,4 @@
-namespace partake;
+namespace partake.protocol;
 
 // There is no root_type; Request and Response are our root types, and we
 // always know which to expect.
@@ -213,7 +213,7 @@ table UnpublishResponse {
     tokens: [uint64]; // In same order as request
 }
 
-union RequestType {
+union Request {
     GetSegmentsRequest,
     AllocRequest,
     ReallocRequest,
@@ -223,7 +223,7 @@ union RequestType {
     UnpublishRequest,
 }
 
-union ResponseType {
+union Response {
     GetSegmentsResponse,
     AllocResponse,
     ReallocResponse,
@@ -233,13 +233,13 @@ union ResponseType {
     UnpublishResponse,
 }
 
-table Request {
+table RequestMessage {
     seqno: uint64;
-    request: RequestType;
+    request: Request;
 }
 
-table Response {
+table ResponseMessage {
     seqno: uint64;
     status: Status = OK;
-    response: ResponseType;
+    response: Response;
 }
