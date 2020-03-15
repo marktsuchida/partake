@@ -78,7 +78,8 @@ static void shmget_deinitialize(void *data) {
 
 static int create_sysv_shm(const struct partake_daemon_config *config,
         struct shmget_private_data *d) {
-    if (sizeof(key_t) == sizeof(config->shmem.shmget.key)) { // pedantic check
+    if (sizeof(key_t) < sizeof(config->shmem.shmget.key)) {
+        // Hopefully this check is pedantic.
         ZF_LOGF("Assumption violated for System V IPC key size");
         abort();
     }
