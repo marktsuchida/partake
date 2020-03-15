@@ -128,10 +128,10 @@ static dropt_error myopt_handle_size(dropt_context *context,
 
 struct parsed_options {
     size_t memory;
-    dropt_char **socket;
+    dropt_char *socket;
     dropt_bool force;
-    dropt_char **name;
-    dropt_char **file;
+    dropt_char *name;
+    dropt_char *file;
     dropt_bool posix;
     dropt_bool systemv;
     dropt_bool windows;
@@ -336,11 +336,11 @@ static void check_options(const struct parsed_options *opts,
         error_exit(PTXT("Socket must be given with option -s/--socket\n"));
     }
 #ifdef _WIN32
-    if (tcsncmp(*opts->socket, PTXT("\\\\.\\pipe\\"), 9) != 0) {
+    if (tcsncmp(opts->socket, PTXT("\\\\.\\pipe\\"), 9) != 0) {
         error_exit(PTXT("Socket name must begin with \"\\\\.\\pipe\\\"\n"));
     }
 #endif
-    config->socket = *opts->socket;
+    config->socket = opts->socket;
 
     config->size = opts->memory;
     config->force = opts->force;
@@ -382,21 +382,21 @@ static void check_options(const struct parsed_options *opts,
     // Check/convert name depending on type
     if (opts->name != NULL) {
         if (opts->posix) {
-            size_t len = tcslen(*opts->name);
-            if ((*opts->name)[0] != PTXT('/') || len < 2 || len > 255 ||
-                    tcschr(*opts->name + 1, PTXT('/')) != NULL) {
+            size_t len = tcslen(opts->name);
+            if (opts->name[0] != PTXT('/') || len < 2 || len > 255 ||
+                    tcschr(opts->name + 1, PTXT('/')) != NULL) {
                 error_exit(PTXT("POSIX shared memory name must be less ")
                         PTXT("than 256 characters and consist of an ")
                         PTXT("initial slash, followed by one or more ")
                         PTXT("characters, none of which are slashes\n"));
             }
-            config->shmem.mmap.shmname = *opts->name;
+            config->shmem.mmap.shmname = opts->name;
         }
         else if (opts->systemv) {
             TCHAR *end;
             errno = 0;
-            long key = tcstol(*opts->name, &end, 10);
-            if (end == *opts->name || *end != PTXT('\0') ||
+            long key = tcstol(opts->name, &end, 10);
+            if (end == opts->name || *end != PTXT('\0') ||
                     errno != 0 || key > INT_MAX || key < INT_MIN) {
                 // It is left to the main daemon code to check that key
                 // doesn't collide with IPC_PRIVATE and that key_t is
@@ -407,27 +407,27 @@ static void check_options(const struct parsed_options *opts,
             config->shmem.shmget.key = (int)key;
         }
         else if (config->type == PARTAKE_SHMEM_WIN32) {
-            size_t len = tcslen(*opts->name);
-            if (tcsncmp(*opts->name, PTXT("Local\\"), 6) != 0 ||
-                    len < 7 || tcschr(*opts->name + 6, PTXT('\\')) != NULL) {
+            size_t len = tcslen(opts->name);
+            if (tcsncmp(opts->name, PTXT("Local\\"), 6) != 0 ||
+                    len < 7 || tcschr(opts->name + 6, PTXT('\\')) != NULL) {
                 error_exit(PTXT("Windows shared memory name must consist of ")
                         PTXT("the prefix \"Local\\\", followed by one or ")
                         PTXT("more characters, none of which are ")
                         PTXT("backslashes\n"));
             }
-            config->shmem.win32.name = *opts->name;
+            config->shmem.win32.name = opts->name;
         }
     }
 
     if (opts->file != NULL) {
-        if ((*opts->file)[0] == PTXT('\0')) {
+        if (opts->file[0] == PTXT('\0')) {
             error_exit(PTXT("Filename must not be empty\n"));
         }
         if (config->type == PARTAKE_SHMEM_MMAP) {
-            config->shmem.mmap.filename = *opts->file;
+            config->shmem.mmap.filename = opts->file;
         }
         else if (config->type == PARTAKE_SHMEM_WIN32) {
-            config->shmem.win32.filename = *opts->file;
+            config->shmem.win32.filename = opts->file;
         }
     }
 
