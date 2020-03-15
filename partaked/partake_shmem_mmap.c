@@ -306,6 +306,7 @@ static void mmap_deallocate(const struct partake_daemon_config *config,
         else {
             ZF_LOGI("munmap: %zu bytes at %p", config->size, d->addr);
         }
+        d->addr = NULL;
     }
 }
 
