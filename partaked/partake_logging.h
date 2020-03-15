@@ -63,10 +63,10 @@ static inline const char *partake_strtolog(const TCHAR *s, char *buf,
     if (r == (size_t)-1) {
         snprintf(buf, size, "(string unavailable)");
     }
-    return buf;
 #else
-    return s;
+    snprintf(buf, size, "%s", s);
 #endif
+    return buf;
 }
 
 // On Windows this takes Windows system error codes from GetLastError().
