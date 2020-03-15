@@ -113,45 +113,58 @@ static int create_file(const struct partake_daemon_config *config,
 
 static int create_file_mapping(const struct partake_daemon_config *config,
         struct win32_private_data *d) {
-    // TODO Fix the case where config->force is false or the generated name
-    // collides. CreateFileMapping() returns an existing handle, but
-    // GetLastError() should return ERROR_ALREADY_EXISTS.
-
     bool generate_name = config->shmem.win32.name == NULL;
+    bool force = config->force && !generate_name;
+
     char *generated_name = NULL;
     char *name;
-    if (generate_name) {
-        name = generated_name = partake_alloc_random_name(
-                PARTAKE_TEXT("Local\\"), 128);
-    }
-    else {
+
+    if (!generate_name) {
         name = config->shmem.win32.name;
     }
 
-    d->h_mapping = CreateFileMapping(d->h_file,
-            NULL,
-            PAGE_READWRITE | SEC_COMMIT |
-            (config->shmem.win32.large_pages ? SEC_LARGE_PAGES : 0),
-            sizeof(size_t) > 4 ? config->size >> 32 : 0,
-            config->size & UINT_MAX,
-            name);
-    if (d->h_mapping == NULL) {
+    int NUM_RETRIES = 100;
+    for (int i = 0; i < NUM_RETRIES; ++i) {
+        if (generate_name) {
+            name = generated_name = partake_alloc_random_name(
+                    PARTAKE_TEXT("Local\\"), 32);
+        }
+
+        d->h_mapping = CreateFileMapping(d->h_file,
+                NULL,
+                PAGE_READWRITE | SEC_COMMIT |
+                (config->shmem.win32.large_pages ? SEC_LARGE_PAGES : 0),
+                sizeof(size_t) > 4 ? config->size >> 32 : 0,
+                config->size & UINT_MAX,
+                name);
         DWORD ret = GetLastError();
-        char namebuf[1024], emsg[1024];
-        ZF_LOGE("CreateFileMapping: %s: %s",
+        if (ret != 0) {
+            char namebuf[1024], emsg[1024];
+            ZF_LOGE("CreateFileMapping: %s: %s",
+                    partake_strtolog(name, namebuf, sizeof(namebuf)),
+                    partake_strerror(ret, emsg, sizeof(emsg)));
+            partake_free(generated_name);
+            d->h_mapping = INVALID_HANDLE_VALUE;
+
+            if (generate_name && ret == ERROR_ALREADY_EXISTS) {
+                CloseHandle(d->h_mapping);
+                continue;
+            }
+            return ret;
+        }
+
+        char namebuf[1024];
+        ZF_LOGI("CreateFileMapping: %s: HANDLE %p",
                 partake_strtolog(name, namebuf, sizeof(namebuf)),
-                partake_strerror(ret, emsg, sizeof(emsg)));
-        d->h_mapping = INVALID_HANDLE_VALUE;
-        return ret;
+                d->h_mapping);
+
+        d->mapping_name = name;
+        d->must_free_mapping_name = generate_name;
+        return 0;
     }
 
-    char namebuf[1024];
-    ZF_LOGI("CreateFileMapping: %s: HANDLE %p",
-            partake_strtolog(name, namebuf, sizeof(namebuf)), d->h_mapping);
-
-    d->mapping_name = name;
-    d->must_free_mapping_name = generate_name;
-    return 0;
+    ZF_LOGE("Giving up after trying %d names", NUM_RETRIES);
+    return ERROR_ALREADY_EXISTS;
 }
 
 

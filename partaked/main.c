@@ -185,9 +185,7 @@ PTXT("  this case, --memory must be a multiple of the large page size.\n")
 PTXT("\n")
 PTXT("In all cases, partaked will exit with an error if the the filename\n")
 PTXT("given by --file or the name given by --name already exists, unless\n")
-PTXT("--force is also given. An exception to this rule is Windows shared\n")
-PTXT("memory: using a name that exists may result in attaching to an\n")
-PTXT("existing mapping, with highly undesirable consequences.\n"),
+PTXT("--force is also given.\n"),
     file);
 }
 
