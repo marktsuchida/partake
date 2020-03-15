@@ -40,7 +40,7 @@
 
 #   include <tchar.h>
 
-#   define TEXT(x) _TEXT(x)
+#   define PARTAKE_TEXT(x) _TEXT(x)
 
 #   define fputts _fputts
 #   define ftprintf _ftprintf
@@ -52,9 +52,9 @@
 
 #else // _WIN32
 
-typedef char TCHAR
+typedef char TCHAR;
 
-#   define TEXT(x) x
+#   define PARTAKE_TEXT(x) x
 
 #   define fputts fputs
 #   define ftprintf fprintf

@@ -40,6 +40,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define PTXT(x) PARTAKE_TEXT(x)
+
 
 // The prefix myopt_ is used in this file for local extensions to dropt.
 // All such symbols follow dropt's support for wide char handling.
@@ -136,58 +138,58 @@ struct parsed_options {
 
 
 static void print_help_prolog(FILE *file) {
-    fputts(TEXT("Usage: partaked -m <size> -s <name> [more options]\n"), file);
-    fputts(TEXT("\n"), file);
-    fputts(TEXT("Options:\n"), file);
+    fputts(PTXT("Usage: partaked -m <size> -s <name> [more options]\n"), file);
+    fputts(PTXT("\n"), file);
+    fputts(PTXT("Options:\n"), file);
 }
 
 
 static void print_help_epilog(FILE *file) {
     fputts(
-TEXT("Client connection:\n")
-TEXT("  On POSIX systems, a UNIX domain socket (AF_UNIX) is used. The name\n")
-TEXT("  passed to --socket should be an ordinary file path. On Windows, a\n")
-TEXT("  named pipe is used; the name must begin with \"\\\\.\\pipe\\\". In\n")
-TEXT("  both cases, the same name should be passed to clients so that they\n")
-TEXT("  can connect.\n")
-TEXT("\n")
-TEXT("POSIX shared memory:\n")
-TEXT("  [--posix] [--name=/myshmem]: Create with shm_open(2) and map with\n")
-TEXT("      mmap(2). If name is given it should start with a slash and\n")
-TEXT("      contain no more slashes.\n")
-TEXT("  --systemv [--name=key]: Create with shmget(2) and map with shmat(2).\n")
-TEXT("      If name is given it must be an integer key.\n")
-TEXT("  --file=myfile: Create with open(2) and map with mmap(2). The --name\n")
-TEXT("      option is ignored.\n")
-TEXT("  Not all of the above may be available on a given UNIX-like system.\n")
-TEXT("  On Linux, huge pages can be allocated either by using --file with a\n")
-TEXT("  location in a mounted hugetlbfs or by giving --huge-pages with\n")
-TEXT("  --systemv. In both cases, --memory must be a multiple of the huge\n")
-TEXT("  page size.\n")
-TEXT("\n")
-TEXT("Windows shared memory:\n")
-TEXT("  [--windows] [--name=Local\\myshmem]: A named file mapping backed by\n")
-TEXT("      the system paging file is created. If name is given it should\n")
-TEXT("      start with \"Local\\\" and contain no further backslashes.\n")
-TEXT("  --file=myfile [--name=Local\\myshmem]: A named file mapping backed\n")
-TEXT("      by the given file is created. Usage of --name is the same as\n")
-TEXT("      with --windows.\n")
-TEXT("  On Windows, --large-pages can be specified with either of the above\n")
-TEXT("  options. This requires the user to have SeLockMemoryPrivilege. In\n")
-TEXT("  this case, --memory must be a multiple of the large page size.\n")
-TEXT("\n")
-TEXT("In all cases, partaked will exit with an error if the the filename\n")
-TEXT("given by --file or the name given by --name already exists, unless\n")
-TEXT("--force is also given. An exception to this rule is Windows shared\n")
-TEXT("memory: using a name that exists may result in attaching to an\n")
-TEXT("existing mapping, with highly undesirable consequences.\n"),
+PTXT("Client connection:\n")
+PTXT("  On POSIX systems, a UNIX domain socket (AF_UNIX) is used. The name\n")
+PTXT("  passed to --socket should be an ordinary file path. On Windows, a\n")
+PTXT("  named pipe is used; the name must begin with \"\\\\.\\pipe\\\". In\n")
+PTXT("  both cases, the same name should be passed to clients so that they\n")
+PTXT("  can connect.\n")
+PTXT("\n")
+PTXT("POSIX shared memory:\n")
+PTXT("  [--posix] [--name=/myshmem]: Create with shm_open(2) and map with\n")
+PTXT("      mmap(2). If name is given it should start with a slash and\n")
+PTXT("      contain no more slashes.\n")
+PTXT("  --systemv [--name=key]: Create with shmget(2) and map with shmat(2).\n")
+PTXT("      If name is given it must be an integer key.\n")
+PTXT("  --file=myfile: Create with open(2) and map with mmap(2). The --name\n")
+PTXT("      option is ignored.\n")
+PTXT("  Not all of the above may be available on a given UNIX-like system.\n")
+PTXT("  On Linux, huge pages can be allocated either by using --file with a\n")
+PTXT("  location in a mounted hugetlbfs or by giving --huge-pages with\n")
+PTXT("  --systemv. In both cases, --memory must be a multiple of the huge\n")
+PTXT("  page size.\n")
+PTXT("\n")
+PTXT("Windows shared memory:\n")
+PTXT("  [--windows] [--name=Local\\myshmem]: A named file mapping backed by\n")
+PTXT("      the system paging file is created. If name is given it should\n")
+PTXT("      start with \"Local\\\" and contain no further backslashes.\n")
+PTXT("  --file=myfile [--name=Local\\myshmem]: A named file mapping backed\n")
+PTXT("      by the given file is created. Usage of --name is the same as\n")
+PTXT("      with --windows.\n")
+PTXT("  On Windows, --large-pages can be specified with either of the above\n")
+PTXT("  options. This requires the user to have SeLockMemoryPrivilege. In\n")
+PTXT("  this case, --memory must be a multiple of the large page size.\n")
+PTXT("\n")
+PTXT("In all cases, partaked will exit with an error if the the filename\n")
+PTXT("given by --file or the name given by --name already exists, unless\n")
+PTXT("--force is also given. An exception to this rule is Windows shared\n")
+PTXT("memory: using a name that exists may result in attaching to an\n")
+PTXT("existing mapping, with highly undesirable consequences.\n"),
     file);
 }
 
 
 static void print_version(FILE *file) {
     const TCHAR *version = "<TBD>";
-    ftprintf(file, TEXT("partaked version %s\n"), version);
+    ftprintf(file, PTXT("partaked version %s\n"), version);
 }
 
 
@@ -195,7 +197,7 @@ static const TCHAR *progname;
 
 static void error_exit(const TCHAR *msg) {
     if (progname) {
-        ftprintf(stderr, TEXT("%s: "), progname);
+        ftprintf(stderr, PTXT("%s: "), progname);
     }
     fputts(msg, stderr);
     exit(EXIT_FAILURE);
@@ -210,62 +212,62 @@ static void parse_options(int argc, TCHAR **argv, struct parsed_options *opts) {
         // arg_descr
         // handler dest attr extra_data
 
-        { TEXT('m'), TEXT("memory"),
-            TEXT("Size of shared memory"),
-            TEXT("{<bytes>|<kibibytes>K|<mebibytes>M|<gibibytes>G}"),
+        { PTXT('m'), PTXT("memory"),
+            PTXT("Size of shared memory"),
+            PTXT("{<bytes>|<kibibytes>K|<mebibytes>M|<gibibytes>G}"),
             myopt_handle_size, &opts->memory, },
 
-        { TEXT('s'), TEXT("socket"),
-            TEXT("Name of UNIX domain socket or Win32 named pipe for client ")
-                TEXT("connection"),
-            TEXT("<name>"),
+        { PTXT('s'), PTXT("socket"),
+            PTXT("Name of UNIX domain socket or Win32 named pipe for client ")
+                PTXT("connection"),
+            PTXT("<name>"),
             dropt_handle_string, &opts->socket, },
 
-        { TEXT('f'), TEXT("force"),
-            TEXT("Overwrite existing shared memory given by --name and/or ")
-                TEXT("--file"),
+        { PTXT('f'), PTXT("force"),
+            PTXT("Overwrite existing shared memory given by --name and/or ")
+                PTXT("--file"),
             NULL,
             dropt_handle_bool, &opts->force, },
 
-        { TEXT('n'), TEXT("name"),
-            TEXT("Name of shared memory block (integer if --systemv is given)"),
-            TEXT("{<name>|<integer>}"),
+        { PTXT('n'), PTXT("name"),
+            PTXT("Name of shared memory block (integer if --systemv is given)"),
+            PTXT("{<name>|<integer>}"),
             dropt_handle_string, &opts->name, },
 
-        { TEXT('F'), TEXT("file"),
-            TEXT("Use shared memory backed by the given filesystem file"),
-            TEXT("<filename>"),
+        { PTXT('F'), PTXT("file"),
+            PTXT("Use shared memory backed by the given filesystem file"),
+            PTXT("<filename>"),
             dropt_handle_string, &opts->file, },
 
-        { TEXT('P'), TEXT("posix"),
-            TEXT("Use POSIX shm_open(2) shared memory (default)"),
+        { PTXT('P'), PTXT("posix"),
+            PTXT("Use POSIX shm_open(2) shared memory (default)"),
             NULL,
             dropt_handle_bool, &opts->posix, },
 
-        { TEXT('S'), TEXT("systemv"),
-            TEXT("Use System V shmget(2) shared memory"),
+        { PTXT('S'), PTXT("systemv"),
+            PTXT("Use System V shmget(2) shared memory"),
             NULL,
             dropt_handle_bool, &opts->systemv, },
 
-        { TEXT('W'), TEXT("windows"),
-            TEXT("Use Win32 named shared memory (default on Windows)"),
+        { PTXT('W'), PTXT("windows"),
+            PTXT("Use Win32 named shared memory (default on Windows)"),
             NULL,
             dropt_handle_bool, &opts->windows, },
 
-        { TEXT('H'), TEXT("huge-pages"),
-            TEXT("Use Linux huge pages with --systemv"),
+        { PTXT('H'), PTXT("huge-pages"),
+            PTXT("Use Linux huge pages with --systemv"),
             NULL,
             dropt_handle_bool, &opts->huge_pages, },
 
-        { TEXT('L'), TEXT("large-pages"),
-            TEXT("Use Windows large pages (requires SeLockMemoryPrivilege)"),
+        { PTXT('L'), PTXT("large-pages"),
+            PTXT("Use Windows large pages (requires SeLockMemoryPrivilege)"),
             NULL,
             dropt_handle_bool, &opts->large_pages, },
 
-        { TEXT('h'), TEXT("help"), TEXT("Show this help and exit"), NULL,
+        { PTXT('h'), PTXT("help"), PTXT("Show this help and exit"), NULL,
             dropt_handle_bool, &opts->help, dropt_attr_halt, },
 
-        { TEXT('V'), TEXT("version"), TEXT("Print version and exit"), NULL,
+        { PTXT('V'), PTXT("version"), PTXT("Print version and exit"), NULL,
             dropt_handle_bool, &opts->version, dropt_attr_halt, },
 
         { 0 } // sentinel
@@ -284,7 +286,7 @@ static void parse_options(int argc, TCHAR **argv, struct parsed_options *opts) {
     char **rest = dropt_parse(context, -1, &argv[1]);
 
     if (dropt_get_error(context) != dropt_error_none) {
-        ftprintf(stderr, TEXT("partaked: %s\n"),
+        ftprintf(stderr, PTXT("partaked: %s\n"),
                 dropt_get_error_message(context));
         goto error;
     }
@@ -303,7 +305,7 @@ static void parse_options(int argc, TCHAR **argv, struct parsed_options *opts) {
 
     // Currently we do not have any non-option arguments.
     if (*rest != NULL) {
-        ftprintf(stderr, TEXT("partaked: invalid argument: %s\n"), *rest);
+        ftprintf(stderr, PTXT("partaked: invalid argument: %s\n"), *rest);
         goto error;
     }
 
@@ -326,11 +328,11 @@ static void check_options(const struct parsed_options *opts,
     memset(config, 0, sizeof(struct partake_daemon_config));
 
     if (opts->socket == NULL) {
-        error_exit(TEXT("Socket must be given with option -s/--socket\n"));
+        error_exit(PTXT("Socket must be given with option -s/--socket\n"));
     }
 #ifdef _WIN32
-    if (tcsncmp(*opts->socket, TEXT("\\\\.\\pipe\\"), 9) != 0) {
-        error_exit(TEXT("Socket name must begin with \"\\\\.\\pipe\\\"\n"));
+    if (tcsncmp(*opts->socket, PTXT("\\\\.\\pipe\\"), 9) != 0) {
+        error_exit(PTXT("Socket name must begin with \"\\\\.\\pipe\\\"\n"));
     }
 #endif
     config->socket = *opts->socket;
@@ -342,8 +344,8 @@ static void check_options(const struct parsed_options *opts,
         (opts->posix ? 1 : 0) + (opts->systemv ? 1 : 0) +
         (opts->file != NULL ? 1 : 0) + (opts->windows ? 1 : 0);
     if (n_types_given > 1) {
-        error_exit(TEXT("Only one of -P/--posix, -S/--systemv, -F/--file, or ")
-                TEXT("-W/--windows may be given\n"));
+        error_exit(PTXT("Only one of -P/--posix, -S/--systemv, -F/--file, or ")
+                PTXT("-W/--windows may be given\n"));
     }
 
     if (opts->posix) {
@@ -376,12 +378,12 @@ static void check_options(const struct parsed_options *opts,
     if (opts->name != NULL) {
         if (opts->posix) {
             size_t len = tcslen(*opts->name);
-            if ((*opts->name)[0] != TEXT('/') || len < 2 || len > 255 ||
-                    tcschr(*opts->name + 1, TEXT('/')) != NULL) {
-                error_exit(TEXT("POSIX shared memory name must be less ")
-                        TEXT("than 256 characters and consist of an ")
-                        TEXT("initial slash, followed by one or more ")
-                        TEXT("characters, none of which are slashes\n"));
+            if ((*opts->name)[0] != PTXT('/') || len < 2 || len > 255 ||
+                    tcschr(*opts->name + 1, PTXT('/')) != NULL) {
+                error_exit(PTXT("POSIX shared memory name must be less ")
+                        PTXT("than 256 characters and consist of an ")
+                        PTXT("initial slash, followed by one or more ")
+                        PTXT("characters, none of which are slashes\n"));
             }
             config->shmem.mmap.shmname = *opts->name;
         }
@@ -389,32 +391,32 @@ static void check_options(const struct parsed_options *opts,
             TCHAR *end;
             errno = 0;
             long key = tcstol(*opts->name, &end, 10);
-            if (end == *opts->name || *end != TEXT('\0') ||
+            if (end == *opts->name || *end != PTXT('\0') ||
                     errno != 0 || key > INT_MAX || key < INT_MIN) {
                 // It is left to the main daemon code to check that key
                 // doesn't collide with IPC_PRIVATE and that key_t is
                 // actually int.
-                error_exit(TEXT("System V shared memory key must be an ")
-                        TEXT("integer\n"));
+                error_exit(PTXT("System V shared memory key must be an ")
+                        PTXT("integer\n"));
             }
             config->shmem.shmget.key = (int)key;
         }
         else if (config->type == PARTAKE_SHMEM_WIN32) {
             size_t len = tcslen(*opts->name);
-            if (tcsncmp(*opts->name, TEXT("Local\\"), 6) != 0 ||
-                    len < 7 || tcschr(*opts->name + 6, TEXT('\\')) != NULL) {
-                error_exit(TEXT("Windows shared memory name must consist of ")
-                        TEXT("the prefix \"Local\\\", followed by one or ")
-                        TEXT("more characters, none of which are ")
-                        TEXT("backslashes\n"));
+            if (tcsncmp(*opts->name, PTXT("Local\\"), 6) != 0 ||
+                    len < 7 || tcschr(*opts->name + 6, PTXT('\\')) != NULL) {
+                error_exit(PTXT("Windows shared memory name must consist of ")
+                        PTXT("the prefix \"Local\\\", followed by one or ")
+                        PTXT("more characters, none of which are ")
+                        PTXT("backslashes\n"));
             }
             config->shmem.win32.name = *opts->name;
         }
     }
 
     if (opts->file != NULL) {
-        if ((*opts->file)[0] == TEXT('\0')) {
-            error_exit(TEXT("Filename must not be empty\n"));
+        if ((*opts->file)[0] == PTXT('\0')) {
+            error_exit(PTXT("Filename must not be empty\n"));
         }
         if (config->type == PARTAKE_SHMEM_MMAP) {
             config->shmem.mmap.filename = *opts->file;
@@ -428,16 +430,16 @@ static void check_options(const struct parsed_options *opts,
         config->shmem.shmget.huge_pages = opts->huge_pages;
     }
     else if (opts->huge_pages) {
-        error_exit(TEXT("-H/--huge-pages can only be used with System V ")
-                TEXT("shared memory\n"));
+        error_exit(PTXT("-H/--huge-pages can only be used with System V ")
+                PTXT("shared memory\n"));
     }
 
     if (config->type == PARTAKE_SHMEM_WIN32) {
         config->shmem.win32.large_pages = opts->large_pages;
     }
     else if (opts->large_pages) {
-        error_exit(TEXT("-L/--large-pages can only be used with Windows ")
-                TEXT("shared memory\n"));
+        error_exit(PTXT("-L/--large-pages can only be used with Windows ")
+                PTXT("shared memory\n"));
     }
 }
 
