@@ -180,10 +180,11 @@ static void close_handle(HANDLE *h) {
 
 static int map_memory(const struct partake_daemon_config *config,
         struct win32_private_data *d) {
-    if (!MapViewOfFile(d->h_mapping,
-                FILE_MAP_READ | FILE_MAP_WRITE |
-                (config->shmem.win32.large_pages ? FILE_MAP_LARGE_PAGES : 0),
-                0, 0, config->size)) {
+    d->addr = MapViewOfFile(d->h_mapping,
+            FILE_MAP_READ | FILE_MAP_WRITE |
+            (config->shmem.win32.large_pages ? FILE_MAP_LARGE_PAGES : 0),
+            0, 0, config->size);
+    if (d->addr == NULL) {
         DWORD ret = GetLastError();
         char emsg[1024];
         ZF_LOGE("MapViewOfFile: %zu bytes: %s", config->size,
@@ -201,16 +202,21 @@ static int unmap_memory(struct win32_private_data *d) {
         return 0;
     }
 
+    DWORD ret = 0;
     if (!UnmapViewOfFile(d->addr)) {
-        DWORD ret = GetLastError();
+        ret = GetLastError();
         char emsg[1024];
         ZF_LOGE("UnmapViewOfFile: %p: %s", d->addr,
                 partake_strerror(ret, emsg, sizeof(emsg)));
         return ret;
     }
+    else {
+        ZF_LOGI("UnmapViewOfFile: %p", d->addr);
+    }
 
-    ZF_LOGI("UnmapViewOfFile: %p", d->addr);
-    return 0;
+    d->addr = NULL;
+
+    return ret;
 }
 
 
