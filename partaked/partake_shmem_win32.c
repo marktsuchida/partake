@@ -103,23 +103,19 @@ static int create_file(const struct partake_daemon_config *config,
     }
 
     char fname[1024];
-    ZF_LOGI("CreateFile: %s",
+    ZF_LOGI("CreateFile: %s: HANDLE %p",
             partake_strtolog(config->shmem.win32.filename,
-                fname, sizeof(fname)));
+                fname, sizeof(fname)),
+            d->h_file);
     return 0;
 }
 
 
 static int create_file_mapping(const struct partake_daemon_config *config,
         struct win32_private_data *d) {
-    // We cannot implement --force for Win32 named shared memory objects,
-    // because we have no control over existing named kernel objects. As far as
-    // I can tell, there is no way to even reject attaching to an existing file
-    // mapping when we call CreateFileMapping(), other than using a unique disk
-    // file (opened for exclusive access) for backing.
-    //
-    // For the case of partaked-generated names, we use a long, high-quality
-    // random string to eliminate all chances of collision.
+    // TODO Fix the case where config->force is false or the generated name
+    // collides. CreateFileMapping() returns an existing handle, but
+    // GetLastError() should return ERROR_ALREADY_EXISTS.
 
     bool generate_name = config->shmem.win32.name == NULL;
     char *generated_name = NULL;
@@ -139,18 +135,19 @@ static int create_file_mapping(const struct partake_daemon_config *config,
             sizeof(size_t) > 4 ? config->size >> 32 : 0,
             config->size & UINT_MAX,
             name);
-    if (d->h_mapping == INVALID_HANDLE_VALUE) {
+    if (d->h_mapping == NULL) {
         DWORD ret = GetLastError();
         char namebuf[1024], emsg[1024];
         ZF_LOGE("CreateFileMapping: %s: %s",
                 partake_strtolog(name, namebuf, sizeof(namebuf)),
                 partake_strerror(ret, emsg, sizeof(emsg)));
+        d->h_mapping = INVALID_HANDLE_VALUE;
         return ret;
     }
 
     char namebuf[1024];
-    ZF_LOGI("CreateFileMapping: %s",
-            partake_strtolog(name, namebuf, sizeof(namebuf)));
+    ZF_LOGI("CreateFileMapping: %s: HANDLE %p",
+            partake_strtolog(name, namebuf, sizeof(namebuf)), d->h_mapping);
 
     d->mapping_name = name;
     d->must_free_mapping_name = generate_name;
@@ -166,10 +163,11 @@ static void close_handle(HANDLE *h) {
     if (!CloseHandle(*h)) {
         DWORD ret = GetLastError();
         char emsg[1024];
-        ZF_LOGE("CloseHandle: %s", partake_strerror(ret, emsg, sizeof(emsg)));
+        ZF_LOGE("CloseHandle: HANDLE %p: %s", *h,
+                partake_strerror(ret, emsg, sizeof(emsg)));
     }
     else {
-        ZF_LOGI("CloseHandle: success");
+        ZF_LOGI("CloseHandle: HANDLE %p", *h);
     }
 
     // Mark closed regardless of CloseHandle() success, because there is no
@@ -187,12 +185,14 @@ static int map_memory(const struct partake_daemon_config *config,
     if (d->addr == NULL) {
         DWORD ret = GetLastError();
         char emsg[1024];
-        ZF_LOGE("MapViewOfFile: %zu bytes: %s", config->size,
+        ZF_LOGE("MapViewOfFile: HANDLE %p, %zu bytes: %s",
+                d->h_mapping, config->size,
                 partake_strerror(ret, emsg, sizeof(emsg)));
         return ret;
     }
 
-    ZF_LOGI("MapViewOfFile: %zu bytes at %p", config->size, d->addr);
+    ZF_LOGI("MapViewOfFile: HANDLE %p: %zu bytes at %p",
+            d->h_mapping, config->size, d->addr);
     return 0;
 }
 
