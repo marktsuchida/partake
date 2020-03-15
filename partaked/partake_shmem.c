@@ -52,10 +52,6 @@
 
 static char *alloc_random_bytes(size_t size) {
     char *buf = partake_malloc(size);
-    if (buf == NULL) {
-        ZF_LOGF("Out of memory");
-        abort();
-    }
 
 #ifndef _WIN32
     char emsg[1024];
@@ -107,25 +103,25 @@ int partake_generate_random_int(void) {
 TCHAR *partake_alloc_random_name(TCHAR *prefix, size_t random_len) {
     size_t len = tcslen(prefix) + tcslen(NAME_INFIX) + random_len;
     TCHAR *ret = partake_malloc(sizeof(TCHAR) * (len + 1));
-    if (ret == NULL) {
-        ZF_LOGF("Out of memory");
-        abort();
-    }
 
-    sntprintf(ret, len, PARTAKE_TEXT("%s") NAME_INFIX, prefix);
+    int prefix_infix_len =
+        sntprintf(ret, len, PARTAKE_TEXT("%s") NAME_INFIX, prefix);
 
     size_t randbufsize = (random_len + 1) / 2;
     char *randbuf = alloc_random_bytes(randbufsize);
 
     // Now convert (up to) randbufsize random bytes to random_len hex digits
     char *byte = randbuf;
-    size_t prefix_infix_len = tcslen(ret);
-    TCHAR *suffix = ret + prefix_infix_len;
-    size_t suffix_len = len - prefix_infix_len;
-    while (suffix_len > 0) {
-        int n = sntprintf(suffix, suffix_len, "%hhx", *byte++);
-        suffix += n;
-        suffix_len -= n;
+    TCHAR *p = ret + prefix_infix_len;
+    size_t space_left = len + 1 - prefix_infix_len;
+    while (space_left > 1) {
+        int n = sntprintf(p, space_left, "%hhx", *byte++);
+        p += n;
+        space_left -= n;
+
+        if (space_left == 0) { // Win32 _sntprintf doesn't null-terminate
+            *--p = PARTAKE_TEXT('\0');
+        }
     }
 
     partake_free(randbuf);
