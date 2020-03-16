@@ -77,8 +77,7 @@ static inline void remove_handle_from_channel(struct partake_channel *chan,
 
 
 struct partake_channel *partake_channel_create(struct partake_pool *pool) {
-    struct partake_channel *ret =
-        partake_malloc(sizeof(struct partake_channel));
+    struct partake_channel *ret = partake_malloc(sizeof(*ret));
 
     ret->pool = pool;
     ret->handles = NULL;
@@ -120,7 +119,7 @@ int partake_channel_alloc_object(struct partake_channel *chan,
     else
         object->exclusive_writer = chan;
 
-    *handle = partake_malloc(sizeof(struct partake_object_handle));
+    *handle = partake_malloc(sizeof(**handle));
     (*handle)->object = object;
     (*handle)->refcount = 1;
     add_handle_to_channel(chan, *handle);
@@ -158,7 +157,7 @@ int partake_channel_acquire_object(struct partake_channel *chan,
 
         ++object->refcount;
 
-        *handle = partake_malloc(sizeof(struct partake_object_handle));
+        *handle = partake_malloc(sizeof(**handle));
         (*handle)->object = object;
         (*handle)->refcount = 1;
         add_handle_to_channel(chan, *handle);

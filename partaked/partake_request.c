@@ -42,8 +42,7 @@ struct partake_request {
 
 struct partake_request *partake_request_create(struct partake_iobuf *buf,
         size_t offset) {
-    struct partake_request *ret =
-        partake_malloc(sizeof(struct partake_request));
+    struct partake_request *ret = partake_malloc(sizeof(*ret));
 
     ret->buf = buf;
     ret->offset = offset;

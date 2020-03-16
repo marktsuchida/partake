@@ -47,7 +47,7 @@ struct partake_pool {
 
 
 struct partake_pool *partake_pool_create(void *addr, size_t size) {
-    struct partake_pool *ret = partake_malloc(sizeof(struct partake_pool));
+    struct partake_pool *ret = partake_malloc(sizeof(*ret));
 
     ret->addr = addr;
 
@@ -77,8 +77,7 @@ struct partake_object *partake_pool_find_object(
 
 struct partake_object *partake_pool_create_object(
         struct partake_pool *pool, size_t size, partake_token token) {
-    struct partake_object *object =
-        partake_malloc(sizeof(struct partake_object));
+    struct partake_object *object = partake_malloc(sizeof(*object));
 
     char *block = partake_allocate(pool->allocator, size, false);
     if (block == NULL) {

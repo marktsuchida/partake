@@ -46,7 +46,7 @@ struct partake_iobuf *partake_iobuf_create(size_t size) {
         freelist = ret->md.next_free;
     }
     else {
-        ret = partake_malloc(sizeof(struct partake_iobuf));
+        ret = partake_malloc(sizeof(*ret));
         ret->uvbuf.base = partake_malloc(size);
         ret->uvbuf.len = size;
     }
