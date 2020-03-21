@@ -34,10 +34,14 @@
 
 #include <stddef.h>
 
+struct partake_segment;
 
-struct partake_pool *partake_pool_create(void *addr, size_t size);
+
+struct partake_pool *partake_pool_create(struct partake_segment *segment);
 
 void partake_pool_destroy(struct partake_pool *pool);
+
+struct partake_segment *partake_pool_segment(struct partake_pool *pool);
 
 
 /*

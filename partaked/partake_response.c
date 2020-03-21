@@ -37,6 +37,7 @@
 #include "partake_protocol_builder.h"
 #include "partake_request.h"
 #include "partake_response.h"
+#include "partake_segment.h"
 #include "partake_token.h"
 
 #include <string.h>
@@ -110,14 +111,18 @@ static inline void responsemessage_finish_response(flatcc_builder_t *b) {
 
 void partake_responsemessage_append_GetSegment_response(
         struct partake_responsemessage *respmsg, struct partake_request *req,
-        int status) {
+        int status, struct partake_segment *segment) {
     flatcc_builder_t *b = &respmsg->builder;
 
     responsemessage_start_response(b, req, status);
     partake_protocol_Response_response_GetSegmentResponse_start(b);
 
     if (status == partake_protocol_Status_OK) {
-        // TODO
+        partake_protocol_GetSegmentResponse_segment_start(b);
+        partake_protocol_SegmentSpec_size_add(b,
+                partake_segment_size(segment));
+        partake_segment_add_mapping_spec(segment, b);
+        partake_protocol_GetSegmentResponse_segment_end(b);
     }
 
     partake_protocol_Response_response_GetSegmentResponse_end(b);

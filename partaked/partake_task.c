@@ -44,6 +44,25 @@
 #include <stdint.h>
 
 
+void partake_task_GetSegment(struct partake_channel *chan,
+        struct partake_request *req, struct partake_sender *sender) {
+    uint32_t segno = partake_request_GetSegment_segment(req);
+
+    struct partake_segment *segment = NULL;
+    int status = partake_channel_get_segment(chan, segno, &segment);
+
+    struct partake_responsemessage *respmsg =
+        partake_sender_checkout_responsemessage(sender);
+
+    partake_responsemessage_append_GetSegment_response(respmsg, req, status,
+            segment);
+
+    partake_sender_checkin_responsemessage(sender, respmsg);
+
+    partake_request_destroy(req);
+}
+
+
 void partake_task_Alloc(struct partake_channel *chan,
         struct partake_request *req, struct partake_sender *sender) {
     uint64_t size = partake_request_Alloc_size(req);

@@ -34,6 +34,7 @@
 #include "partake_malloc.h"
 #include "partake_object.h"
 #include "partake_pool.h"
+#include "partake_segment.h"
 
 #include <uthash.h>
 
@@ -43,18 +44,21 @@
 
 struct partake_pool {
     // For now, the pool consists of a single segment.
+    struct partake_segment *segment;
     void *addr;
     partake_allocator allocator;
     struct partake_object *objects; // Hash table
 };
 
 
-struct partake_pool *partake_pool_create(void *addr, size_t size) {
+struct partake_pool *partake_pool_create(struct partake_segment *segment) {
     struct partake_pool *ret = partake_malloc(sizeof(*ret));
 
-    ret->addr = addr;
+    ret->segment = segment;
+    ret->addr = partake_segment_addr(segment);
 
-    ret->allocator = partake_create_allocator(addr, size);
+    ret->allocator = partake_create_allocator(ret->addr,
+            partake_segment_size(segment));
     // We allow allocator to be null (the result of size being too small); it
     // just means we are always out of memory.
 
@@ -67,6 +71,11 @@ struct partake_pool *partake_pool_create(void *addr, size_t size) {
 void partake_pool_destroy(struct partake_pool *pool) {
     assert (pool->objects == NULL);
     partake_free(pool);
+}
+
+
+struct partake_segment *partake_pool_segment(struct partake_pool *pool) {
+    return pool->segment;
 }
 
 

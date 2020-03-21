@@ -30,6 +30,8 @@
 
 #pragma once
 
+#include <stdio.h>
+
 #ifdef _WIN32
 
     // Guard against inconsistent UNICODE (Win32 A vs W) and _UNICODE (tchar
@@ -38,7 +40,9 @@
 #       error Inconsistent definition of UNICODE vs _UNICODE
 #   endif
 
+#   define WIN32_LEAN_AND_MEAN
 #   include <tchar.h>
+#   include <Windows.h>
 
 #   define PARTAKE_TEXT(x) _TEXT(x)
 
@@ -49,6 +53,16 @@
 #   define tcschr _tcschr
 #   define tcsncmp _tcsncmp
 #   define tcstol _tcstol
+
+static inline const char *partake_tstrtoutf8(const TCHAR *s, char *buf,
+        size_t size) {
+#ifdef UNICODE
+    WideCharToMultiByte(CP_UTF8, 0, s, -1, buf, (int)size, NULL, NULL);
+#else
+    snprintf(buf, size, "%s", s);
+#endif
+    return buf;
+}
 
 #else // _WIN32
 
@@ -63,5 +77,11 @@ typedef char TCHAR;
 #   define tcschr strchr
 #   define tcsncmp strncmp
 #   define tcstol strtol
+
+static inline const char *partake_tstrtoutf8(const TCHAR *s, char *buf,
+        size_t size) {
+    snprintf(buf, size, "%s", s);
+    return buf;
+}
 
 #endif

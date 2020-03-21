@@ -107,6 +107,17 @@ void partake_channel_destroy(struct partake_channel *chan) {
 }
 
 
+int partake_channel_get_segment(struct partake_channel *chan, uint32_t segno,
+        struct partake_segment **segment) {
+    // Currently we use a single segment, 0.
+    if (segno != 0)
+        return partake_protocol_Status_NO_SUCH_SEGMENT;
+
+    *segment = partake_pool_segment(chan->pool);
+    return 0;
+}
+
+
 int partake_channel_alloc_object(struct partake_channel *chan,
         size_t size, bool clear, bool share_mutable,
         struct partake_handle **handle) {

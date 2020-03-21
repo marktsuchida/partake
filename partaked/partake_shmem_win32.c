@@ -45,6 +45,7 @@ struct win32_private_data {
     TCHAR *mapping_name;
     bool must_free_mapping_name;
     HANDLE h_mapping;
+    bool large_pages;
     void *addr;
 };
 
@@ -118,6 +119,8 @@ static int create_file_mapping(const struct partake_daemon_config *config,
     bool generate_name = config->shmem.win32.name == NULL;
     bool force = config->force && !generate_name;
 
+    d->large_pages = config->shmem.win32.large_pages;
+
     char *generated_name = NULL;
     char *name;
 
@@ -135,7 +138,7 @@ static int create_file_mapping(const struct partake_daemon_config *config,
         d->h_mapping = CreateFileMapping(d->h_file,
                 NULL,
                 PAGE_READWRITE | SEC_COMMIT |
-                (config->shmem.win32.large_pages ? SEC_LARGE_PAGES : 0),
+                (d->large_pages ? SEC_LARGE_PAGES : 0),
                 sizeof(size_t) > 4 ? config->size >> 32 : 0,
                 config->size & UINT_MAX,
                 name);
@@ -195,7 +198,7 @@ static int map_memory(const struct partake_daemon_config *config,
         struct win32_private_data *d) {
     d->addr = MapViewOfFile(d->h_mapping,
             FILE_MAP_READ | FILE_MAP_WRITE |
-            (config->shmem.win32.large_pages ? FILE_MAP_LARGE_PAGES : 0),
+            (d->large_pages ? FILE_MAP_LARGE_PAGES : 0),
             0, 0, config->size);
     if (d->addr == NULL) {
         DWORD ret = GetLastError();
@@ -284,6 +287,22 @@ static void *win32_getaddr(void *data) {
     return d->addr;
 }
 
+
+static void win32_add_mapping_spec(flatcc_builder_t *b, void *data) {
+    struct win32_private_data *d = data;
+
+    partake_protocol_SegmentSpec_spec_Win32FileMappingSpec_start(b);
+
+    char buf[1024];
+    partake_protocol_Win32FileMappingSpec_name_create_str(b,
+            partake_tstrtoutf8(d->mapping_name, buf, sizeof(buf)));
+
+    partake_protocol_Win32FileMappingSpec_use_large_pages_add(b,
+            d->large_pages);
+
+    partake_protocol_SegmentSpec_spec_Win32FileMappingSpec_end(b);
+}
+
 #endif // _WIN32
 
 
@@ -295,6 +314,7 @@ static struct partake_shmem_impl win32_impl = {
     .allocate = win32_allocate,
     .deallocate = win32_deallocate,
     .getaddr = win32_getaddr,
+    .add_mapping_spec = win32_add_mapping_spec,
 #endif
 };
 

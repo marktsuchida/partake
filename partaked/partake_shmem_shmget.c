@@ -224,6 +224,15 @@ static void *shmget_getaddr(void *data) {
     return d->addr;
 }
 
+
+static void shmget_add_mapping_spec(flatcc_builder_t *b, void *data) {
+    struct shmget_private_data *d = data;
+
+    partake_protocol_SegmentSpec_spec_SystemVSharedMemorySpec_start(b);
+    partake_protocol_SystemVSharedMemorySpec_key_add(b, d->key);
+    partake_protocol_SegmentSpec_spec_SystemVSharedMemorySpec_end(b);
+}
+
 #endif // _WIN32
 
 
@@ -235,6 +244,7 @@ static struct partake_shmem_impl shmget_impl = {
     .allocate = shmget_allocate,
     .deallocate = shmget_deallocate,
     .getaddr = shmget_getaddr,
+    .add_mapping_spec = shmget_add_mapping_spec,
 #endif
 };
 

@@ -31,6 +31,7 @@
 #pragma once
 
 #include "partake_daemon.h"
+#include "partake_protocol_builder.h"
 #include "partake_tchar.h"
 
 
@@ -43,6 +44,7 @@ struct partake_shmem_impl {
     int (*allocate)(const struct partake_daemon_config *config, void *data);
     void (*deallocate)(const struct partake_daemon_config *config, void *data);
     void *(*getaddr)(void *data);
+    void (*add_mapping_spec)(flatcc_builder_t *b, void *data);
 };
 
 

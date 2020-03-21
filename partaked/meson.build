@@ -34,6 +34,7 @@ partaked_sources = [
     'partake_pool.c',
     'partake_request.c',
     'partake_response.c',
+    'partake_segment.c',
     'partake_sender.c',
     'partake_shmem.c',
     'partake_shmem_mmap.c',

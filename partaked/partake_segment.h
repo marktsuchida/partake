@@ -1,4 +1,7 @@
 /*
+ * Shared memory segments for partaked
+ *
+ *
  * Copyright (C) 2020, The Board of Regents of the University of Wisconsin
  * System
  *
@@ -25,73 +28,25 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "prefix.h"
+#pragma once
 
-#include "partake_daemon.h"
-#include "partake_malloc.h"
-#include "partake_pool.h"
-#include "partake_segment.h"
-
-#include <zf_log.h>
+#include "partake_protocol_builder.h"
 
 
-struct daemon {
-    const struct partake_daemon_config *config;
-
-    // We currently use a single shared memory segment
-    struct partake_segment *segment;
-
-    struct partake_pool *pool;
-};
+struct partake_daemon_config;
+struct partake_segment;
 
 
-static int setup_server(struct daemon *daemon) {
-    // TODO Set up event loop and server socket
-    return 0;
-}
+struct partake_segment *partake_segment_create(
+        const struct partake_daemon_config *config);
+
+void partake_segment_destroy(struct partake_segment *segment);
 
 
-static int shutdown_server(struct daemon *daemon) {
-    // TODO Stop server socket and event loop
-    return 0;
-}
+void *partake_segment_addr(struct partake_segment *segment);
+
+size_t partake_segment_size(struct partake_segment *segment);
 
 
-static int run_event_loop(struct daemon *daemon) {
-    // TODO
-    return 0;
-}
-
-
-int partake_daemon_run(const struct partake_daemon_config *config) {
-    partake_initialize_malloc();
-
-    struct daemon daemon;
-    memset(&daemon, 0, sizeof(daemon));
-    daemon.config = config;
-
-    int ret = 0;
-    daemon.segment = partake_segment_create(daemon.config);
-    if (daemon.segment == NULL) {
-        ret = -1;
-        goto exit;
-    }
-
-    daemon.pool = partake_pool_create(daemon.segment);
-    if (daemon.pool == NULL) {
-        ret = -1;
-        goto exit;
-    }
-
-    ret = setup_server(&daemon);
-    if (ret != 0)
-        goto exit;
-
-    ret = run_event_loop(&daemon);
-
-exit:
-    shutdown_server(&daemon);
-    partake_pool_destroy(daemon.pool);
-    partake_segment_destroy(daemon.segment);
-    return ret;
-}
+void partake_segment_add_mapping_spec(struct partake_segment *segment,
+        flatcc_builder_t *b);

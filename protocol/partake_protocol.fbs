@@ -72,7 +72,6 @@ table PosixMmapSpec {
 table SystemVSharedMemorySpec {
     // shmget()
     key: int32;
-    flags: int32;
 }
 
 

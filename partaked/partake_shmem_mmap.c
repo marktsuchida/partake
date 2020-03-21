@@ -48,6 +48,7 @@
 
 
 struct mmap_private_data {
+    bool use_posix; // Or else filesystem
     int fd;
     bool fd_open;
     const char *shmname; // non-null indicates shm/file created
@@ -244,9 +245,10 @@ static int mmap_allocate(const struct partake_daemon_config *config,
         void *data) {
     struct mmap_private_data *d = data;
 
-    int ret = config->shmem.mmap.shm_open ?
-        create_posix_shm(config, d) :
-        create_file_shm(config, d);
+    d->use_posix = config->shmem.mmap.shm_open;
+
+    int ret = d->use_posix ?
+        create_posix_shm(config, d) : create_file_shm(config, d);
     if (ret != 0)
         return ret;
 
@@ -318,6 +320,16 @@ static void *mmap_getaddr(void *data) {
     return d->addr;
 }
 
+
+static void mmap_add_mapping_spec(flatcc_builder_t *b, void *data) {
+    struct mmap_private_data *d = data;
+
+    partake_protocol_SegmentSpec_spec_PosixMmapSpec_start(b);
+    partake_protocol_PosixMmapSpec_name_create_str(b, d->shmname);
+    partake_protocol_PosixMmapSpec_use_shm_open_add(b, d->use_posix);
+    partake_protocol_SegmentSpec_spec_PosixMmapSpec_end(b);
+}
+
 #endif // _WIN32
 
 
@@ -329,6 +341,7 @@ static struct partake_shmem_impl mmap_impl = {
     .allocate = mmap_allocate,
     .deallocate = mmap_deallocate,
     .getaddr = mmap_getaddr,
+    .add_mapping_spec = mmap_add_mapping_spec,
 #endif
 };
 

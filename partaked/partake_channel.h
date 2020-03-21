@@ -37,11 +37,16 @@
 
 struct partake_handle;
 struct partake_pool;
+struct partake_segment;
 
 
 struct partake_channel *partake_channel_create(struct partake_pool *pool);
 
 void partake_channel_destroy(struct partake_channel *chan);
+
+
+int partake_channel_get_segment(struct partake_channel *chan, uint32_t segno,
+        struct partake_segment **segment);
 
 
 // If successful, *handle has refcount 1, open_count 1.

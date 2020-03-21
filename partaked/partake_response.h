@@ -36,6 +36,7 @@
 
 struct partake_handle;
 struct partake_request;
+struct partake_segment;
 
 
 struct partake_responsemessage *partake_responsemessage_create(void);
@@ -47,7 +48,7 @@ struct partake_iobuf *partake_responsemessage_finish(
 
 void partake_responsemessage_append_GetSegment_response(
         struct partake_responsemessage *respmsg, struct partake_request *req,
-        int status);
+        int status, struct partake_segment *segment);
 
 void partake_responsemessage_append_Alloc_response(
         struct partake_responsemessage *respmsg, struct partake_request *req,
