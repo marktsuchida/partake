@@ -28,6 +28,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "prefix.h"
+
 #include "partake_logging.h"
 #include "partake_malloc.h"
 #include "partake_shmem.h"

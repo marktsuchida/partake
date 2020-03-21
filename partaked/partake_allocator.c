@@ -28,6 +28,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "prefix.h"
+
 #include "partake_allocator.h"
 
 #include <stdbool.h>

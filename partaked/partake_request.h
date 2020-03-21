@@ -38,63 +38,62 @@
 #include <stdint.h>
 
 
-struct partake_request;
+// Look in 'iobuf' at offset 'start', where 'size' bytes are valid, to see what
+// we have. Return true if there is a complete or partial message frame; false
+// otherwise (i.e. size == 0). When returning true, sets *frame_complete to
+// whether the entire message frame is contained within the 'size' bytes, and
+// *frame_size to the size of the message frame (including the size prefix and
+// any required padding bytes). If a partial message frame is present but its
+// size is not known yet, *frame_size is set to zero.
+bool partake_requestframe_scan(struct partake_iobuf *iobuf, size_t start,
+        size_t size, size_t *frame_size, bool *frame_complete);
 
-struct partake_request *partake_request_create(struct partake_iobuf *buf,
-        size_t offset);
+
+// Wrap a portion of 'buf' so that it can be accessed as a request. The
+// 'offset' argument should point to the size prefix of the message frame.
+struct partake_requestmessage *partake_requestmessage_create(
+        struct partake_iobuf *buf, size_t offset);
+
+void partake_requestmessage_destroy(struct partake_requestmessage *reqmsg);
+
+uint32_t partake_requestmessage_count(struct partake_requestmessage *reqmsg);
+
+// The returned request is uniquely owned by the caller
+struct partake_request *partake_requestmessage_request(
+        struct partake_requestmessage *reqmsg, uint32_t index);
 
 void partake_request_destroy(struct partake_request *req);
 
+
 uint64_t partake_request_seqno(struct partake_request *req);
 
-partake_protocol_Request_union_type_t partake_request_type(
+partake_protocol_AnyRequest_union_type_t partake_request_type(
         struct partake_request *req);
 
-uint32_t partake_request_GetSegments_count(struct partake_request *req);
 
-uint32_t partake_request_GetSegments_segment(struct partake_request *req,
-        size_t index);
+uint32_t partake_request_GetSegment_segment(struct partake_request *req);
 
-uint32_t partake_request_Alloc_count(struct partake_request *req);
-
-uint64_t partake_request_Alloc_size(struct partake_request *req,
-        size_t index);
+uint64_t partake_request_Alloc_size(struct partake_request *req);
 
 bool partake_request_Alloc_clear(struct partake_request *req);
 
 bool partake_request_Alloc_share_mutable(struct partake_request *req);
 
-uint32_t partake_request_Realloc_count(struct partake_request *req);
+uint64_t partake_request_Realloc_token(struct partake_request *req);
 
-uint64_t partake_request_Realloc_token(struct partake_request *req,
-        size_t index);
+uint64_t partake_request_Realloc_size(struct partake_request *req);
 
-uint64_t partake_request_Realloc_size(struct partake_request *req,
-        size_t index);
+uint64_t partake_request_Open_token(struct partake_request *req);
 
-uint32_t partake_request_Acquire_count(struct partake_request *req);
+bool partake_request_Open_wait(struct partake_request *req);
 
-uint64_t partake_request_Acquire_token(struct partake_request *req,
-        size_t index);
+bool partake_request_Open_share_mutable(struct partake_request *req);
 
-bool partake_request_Acquire_wait(struct partake_request *req);
+uint64_t partake_request_Close_token(struct partake_request *req);
 
-bool partake_request_Acquire_share_mutable(struct partake_request *req);
+uint64_t partake_request_Publish_token(struct partake_request *req);
 
-uint32_t partake_request_Release_count(struct partake_request *req);
-
-uint64_t partake_request_Release_token(struct partake_request *req,
-        size_t index);
-
-uint32_t partake_request_Publish_count(struct partake_request *req);
-
-uint64_t partake_request_Publish_token(struct partake_request *req,
-        size_t index);
-
-uint32_t partake_request_Unpublish_count(struct partake_request *req);
-
-uint64_t partake_request_Unpublish_token(struct partake_request *req,
-        size_t index);
+uint64_t partake_request_Unpublish_token(struct partake_request *req);
 
 bool partake_request_Unpublish_wait(struct partake_request *req);
 

@@ -1,5 +1,5 @@
 /*
- * Partake object tokens
+ * Definitions to be included first in all source files
  *
  *
  * Copyright (C) 2020, The Board of Regents of the University of Wisconsin
@@ -28,9 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "prefix.h"
+#pragma once
 
-#include "partake_token.h"
-
-
-partake_token partake_prev_token = PARTAKE_TOKEN_SEED;
+#define uthash_malloc(s) partake_malloc(s)
+#define uthash_free(p, s) partake_free(p)

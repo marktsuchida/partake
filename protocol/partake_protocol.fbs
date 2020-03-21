@@ -27,15 +27,28 @@
 
 namespace partake.protocol;
 
-// There is no root_type; Request and Response are our root types, and we
-// always know which to expect.
-
-// Additional rules not expressed by the FlatBuffers schema:
-// - The wire format always prefixes each Request/Response with a 32-bit size
-//   field, using the standard FlatBuffers-generated methods.
-// - The maximum size of a single request or response (including the size
-//   prefix) should be kept below 64 KiB for efficient processing (but larger
-//   messages will be handled correctly, as long as memory is not too low).
+/*
+ * There is no root_type; RequestMessage and ResponseMessage are our root
+ * types, and we always know which to expect.
+ *
+ * Additional rules not expressed by the FlatBuffers schema:
+ *
+ * - The wire format always prefixes each RequestMessage/ResponseMessage with a
+ *   32-bit size field, using the standard FlatBuffers-generated methods.
+ *   - This guarantees that the size prefix can be placed at an 8-byte boundary
+ *     in order to have aligned access to the message payload.
+ *
+ * - We do the following to ensure that correct alignment can be mainteined at
+ *   the receiver:
+ *   - If the value of the size prefix is not a half-integer multiple of 8,
+ *     append zero bytes up to an 8-byte boundary.
+ *   - The receiver thus only needs to ensure that a buffer holding one or more
+ *     consecutive messages is 8-byte aligned. The end-of-message offset is
+ *     rounded up to a multiple of 8.
+ *
+ * - The size of a single RequestMessage or ResponseMessage must not exceed
+ *   32 KiB.
+ */
 
 
 enum Status : int32 {
@@ -44,9 +57,10 @@ enum Status : int32 {
     OUT_OF_MEMORY,
     NO_SUCH_SEGMENT,
     NO_SUCH_OBJECT, // Token does not exist (in the correct state)
-    OBJECT_BUSY, // Cannot acquire unpublished; cannot unpublish shared
+    OBJECT_BUSY, // Cannot open unpublished; cannot unpublish opened by others
     OBJECT_RESERVED, // Unpublish request already pending
 }
+
 
 table PosixMmapSpec {
     // shm_open() or open() and mmap()
@@ -54,11 +68,13 @@ table PosixMmapSpec {
     use_shm_open: bool = true; // Otherwise use open()
 }
 
+
 table SystemVSharedMemorySpec {
     // shmget()
     key: int32;
     flags: int32;
 }
+
 
 table Win32FileMappingSpec {
     // OpenFileMapping() and MapViewOfFile()
@@ -66,16 +82,19 @@ table Win32FileMappingSpec {
     use_large_pages: bool = false; // FILE_MAP_LARGE_PAGES
 }
 
+
 union SegmentMappingSpec {
     PosixMmapSpec,
     SystemVSharedMemorySpec,
     Win32FileMappingSpec,
 }
 
+
 table SegmentSpec {
     size: uint64;
     spec: SegmentMappingSpec;
 }
+
 
 struct Mapping {
     token: uint64;
@@ -84,193 +103,274 @@ struct Mapping {
     size: uint64;
 }
 
-table GetSegmentsRequest {
-    segments: [uint32];
+
+table GetSegmentRequest {
+    segment: uint32;
 
     /*
-     * Segment numbers must be those that appear in Mapping records returned by
-     * previous Alloc/Realloc/Acquire. If any of the segment numbers are
-     * unknown, status is NO_SUCH_SEGMENT. Otherwise, segment specifications
-     * are returned in order.
+     * The segment number must be one that appeared in a Mapping returned by a
+     * previous Alloc/Realloc/Open. If the segment number is unknown, status is
+     * NO_SUCH_SEGMENT.
      */
 }
 
-table GetSegmentsResponse {
-    segments: [SegmentSpec];
+
+table GetSegmentResponse {
+    segment: SegmentSpec;
 }
 
+
 table AllocRequest {
-    count: uint32;
-    sizes: [uint64]; // Length = 1 or count
+    size: uint64;
     clear: bool = false;
     share_mutable: bool = false;
 
     /*
-     * Objects of the specified count and (uniform or variable) sizes are
-     * allocated. If not all objects could be allocated, none are allocated and
-     * status is OUT_OF_MEMORY. Allocated objects need to be released when done
-     * with, whether or not they are published.
+     * An object of the given size is allocated, and optionally cleared. If
+     * there was not enough space in the shared memory pool, status is
+     * OUT_OF_MEMORY.
      *
-     * If 'clear' is true, the object buffer is zeroed.
+     * If 'share_mutable' is false, the returned object is in the "unpublished"
+     * state and opened for writing by this connection. It can later be
+     * published to allow access by (this and) other connections.
      *
-     * If 'share_mutable' is true, the objects can be immediately acquired by
-     * (this or) other connections; user code is fully responsible for
-     * synchronizing reads and writes. Such objects cannot be published or
-     * unpublished; Realloc and Acquire can be performed at any time. This is
-     * intended for simple use cases, for example when all clients are
-     * controlled from a single, synchronous procedure.
+     * If 'share_mutable' is true, the returned object is a shared-mutable
+     * object. This means that (this and) other connections can immediately
+     * open the object, and all openers have read and write access. However,
+     * Open requests on shared-mutable objects must also specify
+     * 'share_mutable' to ensure consistent usage by the client. Shared-
+     * mutable objects are intended for use cases where some other mechanism
+     * exists to coordinate object read and write access.
+     *
+     * Both normal and shared-mutable objects need to be closed when done with.
      */
 }
+
 
 table AllocResponse {
-    objects: [Mapping]; // On success, length equals requested count
+    object: Mapping; // Null if status is not OK
 }
 
+
 table ReallocRequest {
-    tokens: [uint64];
-    sizes: [uint64]; // Length = 1 or len(tokens)
+    token: uint64;
+    size: uint64;
 
     /*
-     * All tokens must exist, be unpublished, and be owned by this connection,
-     * or else status is NO_SUCH_OBJECT and no realloc takes place. Otherwise
-     * each object has its buffer reallocated to the requested size, preserving
-     * the contents. If any reallocation fails, status is OUT_OF_MEMORY but
-     * some of the objects may have moved and need to be remapped by the
-     * client.
+     * The token must exist, be unpublished, not be shared-mutable, and opened
+     * by this connection for writing, or else status is NO_SUCH_OBJECT.
+     * Otherwise the object's buffer is resized to the requested size,
+     * preserving its contents. If there is not enough space in the shared
+     * memory pool, status is OUT_OF_MEMORY. On success, the object buffer may
+     * move, requiring the client to remap it.
      */
 }
 
+
 table ReallocResponse {
-    // Contains all objects whose mapping has changed; may also contain objects
-    // whose mapping has not changed.
-    objects: [Mapping];
+    object: Mapping; // Null if status is not OK
 }
 
-table AcquireRequest {
-    tokens: [uint64];
+
+table OpenRequest {
+    token: uint64;
     wait: bool = true;
     share_mutable: bool = false;
 
     /*
-     * All tokens must exist, or else status is NO_SUCH_OBJECT. If all objects
-     * are published, they are returned; otherwise status is OBJECT_BUSY.
-     * Acquired objects need to be released when done with.
+     * The token must exist and its type must match 'share_mutable', or else
+     * status is NO_SUCH_OBJECT.
      *
-     * If 'wait' is true, requests that would return OBJECT_BUSY instead wait
-     * for the objects to become published before responding. No wait takes
-     * place for nonexistent objects. A NO_SUCH_OBJECT response may be returned
-     * after waiting if one or more of the objects are released without ever
-     * being published; in this case any acquired subset is released and not
+     * If 'share_mutable' is false and the token refers to a published object,
+     * the object is opened for read-only access. If the token refers to an
+     * unpublished object, behavior depends on the 'wait' flag. If 'wait' is
+     * false, status is OBJECT_BUSY. If 'wait' is true, partaked waits for the
+     * object to be published and opens it for read-only access before
+     * responding. If the object is closed by its writer before ever being
+     * published, the wait is canceled and a status of NO_SUCH_OBJECT is
      * returned.
      *
-     * In all cases, either all requested objects are acquired, or none are.
-     * Use individual requests if partial results are desired.
+     * If 'share_mutable' is true and the token refers to a shared-mutable
+     * object, the object is opened for read and write access.
      *
-     * The 'share_mutable' flag must match the allocation mode of all of the
-     * objects being acquired.
+     * In all cases, successfully opened objects must be closed when done with.
      */
 }
 
-table AcquireResponse {
-    objects: [Mapping];
+
+table OpenResponse {
+    object: Mapping; // Null if status is not OK
 }
 
-table ReleaseRequest {
-    tokens: [uint64];
+
+table CloseRequest {
+    token: uint64;
 
     /*
-     * All tokens must exist and be referenced by this connection, or else
-     * status is NO_SUCH_OBJECT; objects that do exist are released even in
-     * this case.
+     * The token must exist and be opened by this connection, whether by Alloc
+     * or by Open, or else status is NO_SUCH_OBJECT.
      *
-     * References to objects (obtained by allocating or acquiring) are counted,
-     * and objects remain in the shared memory until all references are
-     * released.
+     * The number of times a given object is opened by a connection is counted
+     * by partaked, and a corresponding number of Close requests must be
+     * issued.
      *
-     * Objects must be released the same number of times as they have been
-     * allocated or acquired by this connection. Unreleased objects of a
-     * connection are automatically released upon disconnecting, and it is safe
-     * (and reasonable) to rely upon this behavior for cleanup (e.g. by using
-     * a throw-away connection for each batch of processing).
+     * If a client disconnects (intentionally or otherwise), all objects that
+     * were opened by the connection are automatically closed; use of a
+     * throw-away connection might be a simpler cleanup method for some
+     * applications (note that a process can make multiple connections to
+     * partaked).
      */
 }
 
-table ReleaseResponse {
+
+table CloseResponse {
 }
+
 
 table PublishRequest {
-    tokens: [uint64];
+    token: uint64;
 
     /*
-     * All tokens must exist, be unpublished, and be owned by this connection,
-     * or else status is NO_SUCH_OBJECT and no operation takes place. Otherwise
-     * each object is marked published, meaning that they can be acquired by
-     * this and other connections for read-only access. The reference held by
-     * the publisher also becomes read-only.
+     * The token must exist, be unpublished, not be shared-mutable, and opened
+     * by this connection for writing, or else status is NO_SUCH_OBJECT.
+     *
+     * Otherwise the object is marked published, which allows (this and) other
+     * connections to open it for read-only access. The access already held by
+     * this connection also changes to read-only.
      */
 }
+
 
 table PublishResponse {
 }
 
+
 table UnpublishRequest {
-    tokens: [uint64];
+    token: uint64;
     wait: bool = true;
     clear: bool = false;
 
     /*
-     * All tokens must exist, be published, and be held by this connection, or
-     * else status is NO_SUCH_OBJECT. No other references to the objects may by
-     * held (by this or other connections), or else status is OBJECT_BUSY.
-     * Also, no other Unpublish requests may be pending on the objects, or else
-     * status is OBJECT_RESERVED. Otherwise, the objects are marked
-     * unpublished, and new tokens are assigned to each object (so that the
-     * same token never refers to more than one version of published object
-     * content).
+     * The token must exist, be published, not be shared-mutable, and opened by
+     * this connection (for reading), or else status is NO_SUCH_OBJECT.
      *
-     * If 'wait' is true, requests that would return OBJECT_BUSY instead wait
-     * for other references to the object to be released before responding. No
-     * wait takes place if any of the objects are missing or already have a
-     * pending Unpublish request.
+     * If the object is exclusively opened by this connection (i.e., opened
+     * exactly once by this connection, and not opened by any other
+     * connections), the object is removed from circulation, marked
+     * unpublished, given a new token, and reopened by this connection with
+     * read and write access. Otherwise, behavior depends on the 'wait' flag.
+     * If 'wait' is false, status is OBJECT_BUSY. If 'wait' is true, the
+     * request is suspended until this connection becomes the exclusive holder
+     * of access to the object, so that unpublishing can take place.
      *
-     * In all cases, either all of the tokens are unpublished, or none are. If
-     * partial results are desired, use individual requests.
+     * Even if 'wait' is true, if another Unpublish request (by this or another
+     * connection) is pending on the object, the request fails immediately with
+     * a status of OBJECT_RESERVED.
      *
-     * If 'clear' is true, the object buffer is zeroed.
+     * A pending Unpublish request can fail with a NO_SUCH_OBJECT status if
+     * this connection (erroneously) closes all of its access to the object
+     * (while other connections still hold access).
+     *
+     * Upon successful completion of an Unpublish, the old token of the object
+     * is completely removed from partaked and no client can ever open it
+     * again. This allows the client performing the Unpublish to reuse the
+     * buffer by writing new content to it and publishing it again. The fact
+     * that an Unpublish (rather than a Close followed by a fresh Alloc) is
+     * taking place is not visible to any other clients. Note that for
+     * non-shared-mutable objects, a given token is guaranteed to only ever
+     * refer to the same content.
+     *
+     * Unpublishing is intended for two types of advanced and
+     * performance-critical applications: (1) streaming data from one process
+     * to one or more consumers without incurring the overhead of allocating
+     * new buffers, and (2) passing data from one process to second, which
+     * modifies the data in place (and potentially passes it to other
+     * processes) without incurring the overhead of copying data (and
+     * allocating a new object). Whatever system that coordinates access to the
+     * objects must ensure that deadlock or premature unpublishing does not
+     * occur.
+     *
+     * If 'clear' is true, the object buffer is zeroed upon successful
+     * unpublishing.
      */
 }
 
+
 table UnpublishResponse {
-    tokens: [uint64]; // In same order as request
+    token: uint64; // Null if status is not OK
 }
 
-union Request {
-    GetSegmentsRequest,
+
+table QuitRequest {
+    /*
+     * Clients should send this request when intentionally disconnecting. It
+     * has no effect (other than that partaked may initiate the disconnection),
+     * but allows partaked to log the disconnection as intentional, potentially
+     * helping with diagnosing issues.
+     */
+}
+
+
+union AnyRequest {
+    GetSegmentRequest,
     AllocRequest,
     ReallocRequest,
-    AcquireRequest,
-    ReleaseRequest,
+    OpenRequest,
+    CloseRequest,
     PublishRequest,
     UnpublishRequest,
+    QuitRequest,
 }
 
-union Response {
-    GetSegmentsResponse,
+
+union AnyResponse {
+    GetSegmentResponse,
     AllocResponse,
     ReallocResponse,
-    AcquireResponse,
-    ReleaseResponse,
+    OpenResponse,
+    CloseResponse,
     PublishResponse,
     UnpublishResponse,
+    // No response to Quit
 }
 
-table RequestMessage {
+
+table Request {
     seqno: uint64;
-    request: Request;
+    request: AnyRequest;
+
+    /*
+     * 'seqno' is copied to the corresponding response by partaked. The client
+     * can assign whatever it prefers.
+     */
 }
 
-table ResponseMessage {
+
+table Response {
     seqno: uint64;
     status: Status = OK;
-    response: Response;
+    response: AnyResponse;
+}
+
+
+table RequestMessage {
+    requests: [Request];
+
+    /*
+     * Sending multiple requests in a packet is exactly equivalent to sending
+     * individual packets containing a single request each (except that it may
+     * allow partaked to combine some or all of the responses into a single
+     * packet).
+     */
+}
+
+
+table ResponseMessage {
+    responses: [Response];
+
+    /*
+     * Clients must treat a packet containing multiple responses exactly the
+     * same way it would treat individual packets containing a single response
+     * each.
+     */
 }

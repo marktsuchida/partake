@@ -70,11 +70,15 @@ struct partake_object {
     size_t size;
     short flags;
 
-    // The reference count is the number of _channels_ holding a reference to
-    // this object. This includes channels waiting for this object to change
-    // state. (Note that a single channel can hold multiple references to an
-    // object; the object doesn't know about this.)
+    // The reference count is the number of handles to this object. This
+    // includes channels waiting for this object to change state. (Note that a
+    // single channel can hold multiple references to an object; the object
+    // doesn't know about this.)
     unsigned refcount;
+
+    // The open count is the number of handles to this object with a positive
+    // open count.
+    unsigned open_count;
 
     // The channel currently holding a writable reference. Always NULL for
     // published or share-mutable objects.
@@ -83,4 +87,18 @@ struct partake_object {
     // Object descriptors are kept in a global hash table for their entire
     // lifetime. This reference is _not_ included in the refcount field above.
     UT_hash_handle hh; // Key == token
+
+    // Some request handling requires waiting on objects to change state. Here
+    // we only manage handles waiting on this object; detailed bookkeeping and
+    // callbacks are done by handles.
+
+    // These handles are notified when this object is published, or released by
+    // the creator without publishing. The list is empty unless this object is
+    // unpublished. Handles are stored in a singly-linked list (utlist).
+    struct partake_handle *handles_waiting_for_publish;
+
+    // This handle is notified when this object is published _and_ the number
+    // of owning handles goes from 2 to 1. It should be NULL if the object is
+    // not published or there is only 1 handle.
+    struct partake_handle *handle_waiting_for_sole_ownership;
 };

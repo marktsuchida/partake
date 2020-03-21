@@ -23,26 +23,23 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-cc = meson.get_compiler('c')
-
-# POSIX shm_open() and shm_unlink()
-librt = cc.find_library('rt', required: false)
-
-libbcrypt = cc.find_library('bcrypt', required: false)
-
 partaked_sources = [
     'main.c',
     'partake_allocator.c',
     'partake_channel.c',
     'partake_daemon.c',
+    'partake_handle.c',
     'partake_iobuf.c',
     'partake_malloc.c',
     'partake_pool.c',
     'partake_request.c',
+    'partake_response.c',
+    'partake_sender.c',
     'partake_shmem.c',
     'partake_shmem_mmap.c',
     'partake_shmem_shmget.c',
     'partake_shmem_win32.c',
+    'partake_task.c',
     'partake_token.c',
 ]
 
@@ -62,5 +59,6 @@ executable('partaked',
     dependencies: [
         librt,
         libbcrypt,
+        libflatccrt,
     ],
 )

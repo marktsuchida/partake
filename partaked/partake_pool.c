@@ -28,6 +28,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "prefix.h"
+
 #include "partake_allocator.h"
 #include "partake_malloc.h"
 #include "partake_object.h"
@@ -36,6 +38,7 @@
 #include <uthash.h>
 
 #include <assert.h>
+#include <string.h>
 
 
 struct partake_pool {
@@ -75,11 +78,11 @@ struct partake_object *partake_pool_find_object(
 }
 
 
-struct partake_object *partake_pool_create_object(
-        struct partake_pool *pool, size_t size, partake_token token) {
+struct partake_object *partake_pool_create_object(struct partake_pool *pool,
+        size_t size, bool clear, partake_token token) {
     struct partake_object *object = partake_malloc(sizeof(*object));
 
-    char *block = partake_allocate(pool->allocator, size, false);
+    char *block = partake_allocate(pool->allocator, size, clear);
     if (block == NULL) {
         partake_free(object);
         return NULL;
@@ -90,6 +93,7 @@ struct partake_object *partake_pool_create_object(
     object->size = size;
     object->flags = 0;
     object->refcount = 1;
+    object->open_count = 0;
     object->exclusive_writer = NULL;
 
     HASH_ADD(hh, pool->objects, token, sizeof(partake_token), object);
@@ -125,4 +129,10 @@ void partake_pool_rekey_object(struct partake_pool *pool,
     HASH_DELETE(hh, pool->objects, object);
     object->token = token;
     HASH_ADD(hh, pool->objects, token, sizeof(partake_token), object);
+}
+
+
+void partake_pool_clear_object(struct partake_pool *pool,
+        struct partake_object *object) {
+    memset((char *)pool->addr + object->offset, 0, object->size);
 }

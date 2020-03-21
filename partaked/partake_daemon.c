@@ -25,6 +25,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "prefix.h"
+
 #include "partake_daemon.h"
 #include "partake_malloc.h"
 #include "partake_pool.h"

@@ -47,7 +47,3 @@ void *partake_malloc(size_t size);
 void *partake_realloc(void *ptr, size_t size);
 void *partake_calloc(size_t n, size_t size);
 void partake_free(const void *ptr);
-
-
-#define uthash_malloc(s) partake_malloc(s)
-#define uthash_free(p, s) partake_free(p)

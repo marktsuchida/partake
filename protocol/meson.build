@@ -23,8 +23,6 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-prog_flatcc = find_program('flatcc')
-
 protocol_headers = custom_target('protocol_headers',
     output: [
         'flatbuffers_common_builder.h',

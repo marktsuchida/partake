@@ -7,3 +7,6 @@
 [submodule "subprojects/uthash"]
 	path = thirdparty/uthash
 	url = https://github.com/troydhanson/uthash.git
+[submodule "subprojects/flatcc"]
+	path = subprojects/flatcc
+	url = https://github.com/dvidelabs/flatcc.git

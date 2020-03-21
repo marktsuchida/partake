@@ -30,8 +30,6 @@
 
 #pragma once
 
-#include <uv.h>
-
 #include <stddef.h>
 
 
@@ -58,30 +56,66 @@
 
 
 // Buffers of this size are recycled
-#define PARTAKE_IOBUF_STD_SIZE 65536
+#define PARTAKE_IOBUF_STD_SIZE (49152 - 32)
+
+
+/*
+ * Overview of buffer handling with libuv io:
+ *
+ * The iobufs are reference counted, and we retain while using for io.
+ *
+ * When reading, we pass a standard-sized buffer via the alloc_cb. In the read
+ * callback, we will find zero or more messages in this buffer, with the last
+ * one potentially being partial. For each complete message (easily determined
+ * by their offset within the buffer and the size prefix of the message), we
+ * handle requests; if any request needs to be suspended, it the request
+ * handler retains the iobuf.
+ *
+ * If the last message is incomplete, we have two options: (1) pass this buffer
+ * to libuv again, or (2) copy the partial message to the front of a new iobuf
+ * and pass it to libuv. In both cases, we set the uv_buf_t to point to the
+ * unfilled portion of the buffer.
+ *
+ * If the partial message has a complete size prefix indicating that it will
+ * not fit in the current buffer, we take approach (2). Otherwise, we
+ * heuristically choose between (1) and (2) to try to minimize copying.
+ *
+ * When writing, we use a standard-sized buffer for each message.
+ *
+ * The iobuf(s) currently being read into or written from by libuv are retained
+ * by our connection object, so that we can recover them when the io completes.
+ */
 
 
 struct partake_iobuf {
-    uv_buf_t uvbuf; // Must be at offset 0
+    // We place this struct within the same partake_malloc()ed block as the
+    // buffer itself. Passing addr_to_free to partake_free() frees both the
+    // buffer and the struct partake_iobuf.
+    void *addr_to_free;
+
+    void *buffer; // Start of data buffer
+    size_t capacity; // Capacity of data buffer
+
     union {
         size_t refcount;
         struct partake_iobuf *next_free; // Freelist
-    } md;
+    } management;
 };
-
-
-static inline struct partake_iobuf *partake_iobuf_from_uvbuf(uv_buf_t *b) {
-    return (struct partake_iobuf *)b;
-}
-
-
-static inline uv_buf_t *partake_iobuf_get_uvbuf(struct partake_iobuf *b) {
-    return (uv_buf_t *)b;
-}
 
 
 struct partake_iobuf *partake_iobuf_create(size_t size);
 
-void partake_iobuf_destroy(struct partake_iobuf *buf);
+// Do not call directly; use partake_iobuf_release().
+void partake_iobuf_destroy(struct partake_iobuf *iobuf);
+
+static inline void partake_iobuf_retain(struct partake_iobuf *iobuf) {
+    ++iobuf->management.refcount;
+}
+
+static inline void partake_iobuf_release(struct partake_iobuf *iobuf) {
+    if (iobuf != NULL && --iobuf->management.refcount == 0) {
+        partake_iobuf_destroy(iobuf);
+    }
+}
 
 void partake_iobuf_release_freelist(void);

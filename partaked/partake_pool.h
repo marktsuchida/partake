@@ -34,9 +34,6 @@
 
 #include <stddef.h>
 
-struct partake_object;
-struct partake_pool;
-
 
 struct partake_pool *partake_pool_create(void *addr, size_t size);
 
@@ -51,8 +48,8 @@ void partake_pool_destroy(struct partake_pool *pool);
 struct partake_object *partake_pool_find_object(
         struct partake_pool *pool, partake_token token);
 
-struct partake_object *partake_pool_create_object(
-        struct partake_pool *pool, size_t size, partake_token token);
+struct partake_object *partake_pool_create_object(struct partake_pool *pool,
+        size_t size, bool clear, partake_token token);
 
 void partake_pool_destroy_object(struct partake_pool *pool,
         struct partake_object *object);
@@ -62,3 +59,6 @@ int partake_pool_resize_object(struct partake_pool *pool,
 
 void partake_pool_rekey_object(struct partake_pool *pool,
         struct partake_object *object, partake_token token);
+
+void partake_pool_clear_object(struct partake_pool *pool,
+        struct partake_object *object);

@@ -1,5 +1,5 @@
 /*
- * Partake object tokens
+ * Request handling tasks
  *
  *
  * Copyright (C) 2020, The Board of Regents of the University of Wisconsin
@@ -28,9 +28,33 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "prefix.h"
+#pragma once
 
-#include "partake_token.h"
+struct partake_channel;
+struct partake_request;
+struct partake_sender;
 
 
-partake_token partake_prev_token = PARTAKE_TOKEN_SEED;
+void partake_task_GetSegment(struct partake_channel *chan,
+        struct partake_request *req, struct partake_sender *sender);
+
+void partake_task_Alloc(struct partake_channel *chan,
+        struct partake_request *req, struct partake_sender *sender);
+
+void partake_task_Realloc(struct partake_channel *chan,
+        struct partake_request *req, struct partake_sender *sender);
+
+void partake_task_Open(struct partake_channel *chan,
+        struct partake_request *req, struct partake_sender *sender);
+
+void partake_task_Close(struct partake_channel *chan,
+        struct partake_request *req, struct partake_sender *sender);
+
+void partake_task_Publish(struct partake_channel *chan,
+        struct partake_request *req, struct partake_sender *sender);
+
+void partake_task_Unpublish(struct partake_channel *chan,
+        struct partake_request *req, struct partake_sender *sender);
+
+void partake_task_Quit(struct partake_channel *chan,
+        struct partake_request *req, struct partake_sender *sender);

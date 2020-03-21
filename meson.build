@@ -25,6 +25,28 @@
 
 project('partake', 'c')
 
+cc = meson.get_compiler('c')
+
+# POSIX shm_open() and shm_unlink()
+librt = cc.find_library('rt', required: false)
+
+libbcrypt = cc.find_library('bcrypt', required: false)
+
+libflatccrt = cc.find_library('flatccrt', required: false)
+prog_flatcc = find_program('flatcc', required: false)
+
+if not libflatccrt.found() or not prog_flatcc.found()
+    # Note that we use the 'meson' branch of flatcc
+    flatcc_proj = subproject('flatcc')
+
+    libflatccrt = declare_dependency(
+        include_directories: flatcc_proj.get_variable('inc_dir'),
+        link_with: flatcc_proj.get_variable('libflatccrt'),
+    )
+
+    prog_flatcc = flatcc_proj.get_variable('flatcc')
+endif
+
 subdir('thirdparty')
 subdir('protocol')
 subdir('partaked')

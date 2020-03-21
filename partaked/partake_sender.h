@@ -1,5 +1,5 @@
 /*
- * Partake object tokens
+ * Collect and send partaked responses
  *
  *
  * Copyright (C) 2020, The Board of Regents of the University of Wisconsin
@@ -28,9 +28,38 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "prefix.h"
+#pragma once
 
-#include "partake_token.h"
+struct partake_responsemessage;
 
 
-partake_token partake_prev_token = PARTAKE_TOKEN_SEED;
+struct partake_sender *partake_sender_create(void);
+
+void partake_sender_destroy(struct partake_sender *sender);
+
+
+/*
+ * "Attach" and "detach" a response message: the sender adds responses to the
+ * attached response message, if any. Detaching switches the sender to sending
+ * subsequent responses individually.
+ */
+
+void partake_sender_attach_responsemessage(struct partake_sender *sender,
+        struct partake_responsemessage *respmsg);
+
+struct partake_responsemessage *partake_sender_detach_responsemessage(
+        struct partake_sender *sender);
+
+
+/*
+ * "Check out" and "check in" a/the response message: task handlers use these
+ * to record their response. If the sender holds a response message being
+ * accumulated, that response message gets checked out. Otherwise, a new
+ * response message is created and checked out, and sent upon checking back in.
+ */
+
+struct partake_responsemessage *partake_sender_checkout_responsemessage(
+        struct partake_sender *sender);
+
+void partake_sender_checkin_responsemessage(struct partake_sender *sender,
+        struct partake_responsemessage *respmsg);
