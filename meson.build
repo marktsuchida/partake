@@ -32,9 +32,28 @@ librt = cc.find_library('rt', required: false)
 
 libbcrypt = cc.find_library('bcrypt', required: false)
 
-# Would be nice to make libuv a subproject, but it only builds with GYP on
-# Windows. For now it is easier to require a separate build.
-libuv = cc.find_library('uv', required: true)
+libuv = dependency('uv', required: false)
+
+if not libuv.found()
+    cmake = import('cmake')
+
+    libuv_needs_win32_libs = host_machine.system() == 'windows'
+    winsock = cc.find_library('Ws2_32', required: libuv_needs_win32_libs)
+    iphlpapi = cc.find_library('Iphlpapi', required: libuv_needs_win32_libs)
+    userenv = cc.find_library('Userenv', required: libuv_needs_win32_libs)
+
+    libuv_proj = cmake.subproject('libuv')
+
+    libuv = declare_dependency(
+        include_directories: libuv_proj.include_directories('uv_a'),
+        link_with: libuv_proj.get_variable('uv_a'),
+        dependencies: [ # Needed for the static version (uv_a)
+            winsock,
+            iphlpapi,
+            userenv,
+        ],
+    )
+endif
 
 libflatccrt = cc.find_library('flatccrt', required: false)
 prog_flatcc = find_program('flatcc', required: false)

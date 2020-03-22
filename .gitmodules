@@ -10,3 +10,6 @@
 [submodule "subprojects/flatcc"]
 	path = subprojects/flatcc
 	url = https://github.com/dvidelabs/flatcc.git
+[submodule "subprojects/libuv"]
+	path = subprojects/libuv
+	url = https://github.com/libuv/libuv.git
