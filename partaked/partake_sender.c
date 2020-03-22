@@ -28,72 +28,107 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "prefix.h"
+
+#include "partake_iobuf.h"
 #include "partake_malloc.h"
 #include "partake_response.h"
 #include "partake_sender.h"
+
+#include <uv.h>
+#include <zf_log.h>
 
 #include <assert.h>
 
 
 struct partake_sender {
-    struct partake_responsemessage *respmsg;
+    size_t refcount;
 
-    // TODO Fields for sending a separate response message if respmsg is NULL
+    // Created lazily; destroyed on each flush.
+    struct partake_responsemessage *respmsg; // Owning
+
+    // When true, send (flush) after each checkin.
+    bool autoflush;
+
+    uv_stream_t *client; // Non-owning
 };
 
 
-struct partake_sender *partake_sender_create(void) {
+struct partake_sender *partake_sender_create(uv_stream_t *client) {
     struct partake_sender *sender = partake_malloc(sizeof(*sender));
+    sender->refcount = 1;
     sender->respmsg = NULL;
+    sender->autoflush = false;
+    sender->client = client;
     return sender;
 }
 
 
-void partake_sender_destroy(struct partake_sender *sender) {
-    if (sender == NULL)
-        return;
-
-    assert (sender->respmsg == NULL);
-    partake_free(sender);
+void partake_sender_retain(struct partake_sender *sender) {
+    ++sender->refcount;
 }
 
 
-void partake_sender_attach_responsemessage(struct partake_sender *sender,
-        struct partake_responsemessage *respmsg) {
-    assert (sender->respmsg == NULL);
-    sender->respmsg = respmsg;
+void partake_sender_release(struct partake_sender *sender) {
+    --sender->refcount;
+    if (sender->refcount == 0) {
+        assert (sender->respmsg == NULL);
+        partake_free(sender);
+    }
 }
 
 
-struct partake_responsemessage *partake_sender_detach_responsemessage(
-        struct partake_sender *sender) {
-    struct partake_responsemessage *respmsg = sender->respmsg;
+static void on_write_finish(uv_write_t *writereq, int status) {
+    if (status < 0)
+        ZF_LOGE("uv_write_cb: %s", uv_strerror(status));
+
+    struct partake_iobuf *iobuf = writereq->data;
+    partake_iobuf_release(iobuf);
+    partake_free(writereq);
+}
+
+
+void partake_sender_flush(struct partake_sender *sender) {
+    size_t msgsize;
+    struct partake_iobuf *iobuf =
+        partake_responsemessage_finish(sender->respmsg, &msgsize);
     sender->respmsg = NULL;
-    return respmsg;
+
+    if (iobuf != NULL) {
+        iobuf->uvbuf.base = iobuf->buffer;
+        iobuf->uvbuf.len = msgsize;
+
+        uv_write_t *writereq = partake_malloc(sizeof(*writereq));
+        writereq->data = iobuf;
+
+        int err = uv_write(writereq, sender->client, &iobuf->uvbuf, 1,
+                on_write_finish);
+        if (err != 0)
+            ZF_LOGE("uv write: %s", uv_strerror(err));
+    }
+}
+
+
+void partake_sender_set_autoflush(struct partake_sender *sender,
+        bool autoflush) {
+    sender->autoflush = autoflush;
 }
 
 
 struct partake_responsemessage *partake_sender_checkout_responsemessage(
         struct partake_sender *sender) {
-    if (sender->respmsg != NULL)
-        return sender->respmsg;
+    if (sender->respmsg == NULL)
+        sender->respmsg = partake_responsemessage_create();
 
-    return partake_responsemessage_create();
+    return sender->respmsg;
 }
 
 
 void partake_sender_checkin_responsemessage(struct partake_sender *sender,
         struct partake_responsemessage *respmsg) {
-    if (respmsg == sender->respmsg)
-        return;
+    assert (sender->respmsg != NULL);
+    assert (respmsg == sender->respmsg);
 
-    assert (sender->respmsg == NULL);
-
-    size_t size;
-    struct partake_iobuf *iobuf = partake_responsemessage_finish(respmsg,
-            &size);
-    if (iobuf == NULL)
-        return;
-
-    // TODO Send iobuf
+    if (sender->autoflush)
+        partake_sender_flush(sender);
 }

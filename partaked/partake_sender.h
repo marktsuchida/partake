@@ -30,32 +30,32 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 struct partake_responsemessage;
 
 
-struct partake_sender *partake_sender_create(void);
+struct partake_sender *partake_sender_create(uv_stream_t *client);
 
-void partake_sender_destroy(struct partake_sender *sender);
+void partake_sender_retain(struct partake_sender *sender);
+
+void partake_sender_release(struct partake_sender *sender);
 
 
-/*
- * "Attach" and "detach" a response message: the sender adds responses to the
- * attached response message, if any. Detaching switches the sender to sending
- * subsequent responses individually.
- */
+// Send any accumulated responses.
+void partake_sender_flush(struct partake_sender *sender);
 
-void partake_sender_attach_responsemessage(struct partake_sender *sender,
-        struct partake_responsemessage *respmsg);
-
-struct partake_responsemessage *partake_sender_detach_responsemessage(
-        struct partake_sender *sender);
+void partake_sender_set_autoflush(struct partake_sender *sender,
+        bool autoflush);
 
 
 /*
  * "Check out" and "check in" a/the response message: task handlers use these
- * to record their response. If the sender holds a response message being
- * accumulated, that response message gets checked out. Otherwise, a new
- * response message is created and checked out, and sent upon checking back in.
+ * to record their response. A checkout always returns a valid responsemessage.
+ * A checkin indicates that the caller is done adding a response(s). If the
+ * sender is set to autoflush, the response(s) will be sent upon checking in;
+ * otherwise some other code should call partake_sender_flush() at an
+ * appropriate moment.
  */
 
 struct partake_responsemessage *partake_sender_checkout_responsemessage(

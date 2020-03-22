@@ -73,3 +73,7 @@ void partake_responsemessage_append_Publish_response(
 void partake_responsemessage_append_Unpublish_response(
         struct partake_responsemessage *respmsg, struct partake_request *req,
         int status, partake_token token);
+
+void partake_responsemessage_append_empty_response(
+        struct partake_responsemessage *respmsg, struct partake_request *req,
+        int status);

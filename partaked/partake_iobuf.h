@@ -30,6 +30,8 @@
 
 #pragma once
 
+#include <uv.h>
+
 #include <stddef.h>
 
 
@@ -95,6 +97,8 @@ struct partake_iobuf {
 
     void *buffer; // Start of data buffer
     size_t capacity; // Capacity of data buffer
+
+    uv_buf_t uvbuf; // Used for writes only
 
     union {
         size_t refcount;

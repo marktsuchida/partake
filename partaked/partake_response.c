@@ -95,8 +95,11 @@ struct partake_iobuf *partake_responsemessage_finish(
 }
 
 
-static inline void responsemessage_start_response(flatcc_builder_t *b,
+static inline void start_response(struct partake_responsemessage *respmsg,
         struct partake_request *req, int status) {
+    ++respmsg->count;
+
+    flatcc_builder_t *b = &respmsg->builder;
     partake_protocol_ResponseMessage_responses_push_start(b);
 
     partake_protocol_Response_seqno_add(b, partake_request_seqno(req));
@@ -104,7 +107,8 @@ static inline void responsemessage_start_response(flatcc_builder_t *b,
 }
 
 
-static inline void responsemessage_finish_response(flatcc_builder_t *b) {
+static inline void finish_response(struct partake_responsemessage *respmsg) {
+    flatcc_builder_t *b = &respmsg->builder;
     partake_protocol_ResponseMessage_responses_push_end(b);
 }
 
@@ -114,7 +118,7 @@ void partake_responsemessage_append_GetSegment_response(
         int status, struct partake_segment *segment) {
     flatcc_builder_t *b = &respmsg->builder;
 
-    responsemessage_start_response(b, req, status);
+    start_response(respmsg, req, status);
     partake_protocol_Response_response_GetSegmentResponse_start(b);
 
     if (status == partake_protocol_Status_OK) {
@@ -126,7 +130,7 @@ void partake_responsemessage_append_GetSegment_response(
     }
 
     partake_protocol_Response_response_GetSegmentResponse_end(b);
-    responsemessage_finish_response(b);
+    finish_response(respmsg);
 }
 
 
@@ -135,7 +139,7 @@ void partake_responsemessage_append_Alloc_response(
         int status, struct partake_handle *handle) {
     flatcc_builder_t *b = &respmsg->builder;
 
-    responsemessage_start_response(b, req, status);
+    start_response(respmsg, req, status);
     partake_protocol_Response_response_AllocResponse_start(b);
 
     if (status == partake_protocol_Status_OK) {
@@ -144,7 +148,7 @@ void partake_responsemessage_append_Alloc_response(
     }
 
     partake_protocol_Response_response_AllocResponse_end(b);
-    responsemessage_finish_response(b);
+    finish_response(respmsg);
 }
 
 
@@ -153,7 +157,7 @@ void partake_responsemessage_append_Realloc_response(
         int status, struct partake_handle *handle) {
     flatcc_builder_t *b = &respmsg->builder;
 
-    responsemessage_start_response(b, req, status);
+    start_response(respmsg, req, status);
     partake_protocol_Response_response_ReallocResponse_start(b);
 
     if (status == partake_protocol_Status_OK) {
@@ -163,7 +167,7 @@ void partake_responsemessage_append_Realloc_response(
     }
 
     partake_protocol_Response_response_ReallocResponse_end(b);
-    responsemessage_finish_response(b);
+    finish_response(respmsg);
 }
 
 
@@ -172,7 +176,7 @@ void partake_responsemessage_append_Open_response(
         int status, struct partake_handle *handle) {
     flatcc_builder_t *b = &respmsg->builder;
 
-    responsemessage_start_response(b, req, status);
+    start_response(respmsg, req, status);
     partake_protocol_Response_response_OpenResponse_start(b);
 
     if (status == partake_protocol_Status_OK) {
@@ -181,7 +185,7 @@ void partake_responsemessage_append_Open_response(
     }
 
     partake_protocol_Response_response_OpenResponse_end(b);
-    responsemessage_finish_response(b);
+    finish_response(respmsg);
 }
 
 
@@ -190,10 +194,10 @@ void partake_responsemessage_append_Close_response(
         int status) {
     flatcc_builder_t *b = &respmsg->builder;
 
-    responsemessage_start_response(b, req, status);
+    start_response(respmsg, req, status);
     partake_protocol_Response_response_CloseResponse_start(b);
     partake_protocol_Response_response_CloseResponse_end(b);
-    responsemessage_finish_response(b);
+    finish_response(respmsg);
 }
 
 
@@ -202,10 +206,10 @@ void partake_responsemessage_append_Publish_response(
         int status) {
     flatcc_builder_t *b = &respmsg->builder;
 
-    responsemessage_start_response(b, req, status);
+    start_response(respmsg, req, status);
     partake_protocol_Response_response_PublishResponse_start(b);
     partake_protocol_Response_response_PublishResponse_end(b);
-    responsemessage_finish_response(b);
+    finish_response(respmsg);
 }
 
 
@@ -214,12 +218,22 @@ void partake_responsemessage_append_Unpublish_response(
         int status, partake_token token) {
     flatcc_builder_t *b = &respmsg->builder;
 
-    responsemessage_start_response(b, req, status);
+    start_response(respmsg, req, status);
     partake_protocol_Response_response_UnpublishResponse_start(b);
 
     if (status == partake_protocol_Status_OK)
         partake_protocol_UnpublishResponse_token_add(b, token);
 
     partake_protocol_Response_response_UnpublishResponse_end(b);
-    responsemessage_finish_response(b);
+    finish_response(respmsg);
+}
+
+
+void partake_responsemessage_append_empty_response(
+        struct partake_responsemessage *respmsg, struct partake_request *req,
+        int status) {
+    flatcc_builder_t *b = &respmsg->builder;
+
+    start_response(respmsg, req, status);
+    finish_response(respmsg);
 }

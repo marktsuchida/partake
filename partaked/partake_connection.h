@@ -1,4 +1,7 @@
 /*
+ * Connections to partaked
+ *
+ *
  * Copyright (C) 2020, The Board of Regents of the University of Wisconsin
  * System
  *
@@ -27,52 +30,36 @@
 
 #pragma once
 
-#include "partake_tchar.h"
+#include <uthash.h>
+#include <uv.h>
 
-#include <stdbool.h>
-#include <stddef.h>
-
-struct partake_connection;
-struct partake_daemon;
+struct partake_pool;
 
 
-enum partake_shmem_type {
-    PARTAKE_SHMEM_UNKNOWN,
-    PARTAKE_SHMEM_MMAP,
-    PARTAKE_SHMEM_SHMGET,
-    PARTAKE_SHMEM_WIN32,
+struct partake_connection {
+    struct partake_channel *chan;
+
+    uv_pipe_t client;
+
+    // The buffer currently being read into, if any.
+    struct partake_iobuf *readbuf;
+    size_t readbuf_start;
+
+    UT_hash_handle hh; // Key == ptr to this struct
 };
 
 
-struct partake_daemon_config {
-    TCHAR *socket;
+struct partake_connection *partake_connection_create(uv_loop_t *loop,
+        struct partake_pool *pool);
 
-    size_t size;
-    bool force;
+void partake_connection_destroy(struct partake_connection *conn);
 
-    enum partake_shmem_type type;
-    union {
-        struct {
-            bool shm_open;
-            TCHAR *shmname;
-            TCHAR *filename;
-        } mmap;
-        struct {
-            int key;
-            bool huge_pages;
-        } shmget;
-        struct {
-            TCHAR *filename; // NULL for system paging file
-            TCHAR *name;
-            bool large_pages;
-        } win32;
-    } shmem;
-};
+// Like destroy, but waits for pending writes to complete.
+void partake_connection_shutdown(struct partake_connection *conn);
 
 
-// Remove connection from the list to be closed upon server shutdown
-void partake_daemon_remove_connection(struct partake_daemon *daemon,
-        struct partake_connection *conn);
+void partake_connection_alloc_cb(uv_handle_t *client, size_t size,
+        uv_buf_t *buf);
 
-
-int partake_daemon_run(const struct partake_daemon_config *config);
+void partake_connection_read_cb(uv_stream_t *client, ssize_t nread,
+        const uv_buf_t *buf);

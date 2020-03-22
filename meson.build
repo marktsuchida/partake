@@ -32,6 +32,10 @@ librt = cc.find_library('rt', required: false)
 
 libbcrypt = cc.find_library('bcrypt', required: false)
 
+# Would be nice to make libuv a subproject, but it only builds with GYP on
+# Windows. For now it is easier to require a separate build.
+libuv = cc.find_library('uv', required: true)
+
 libflatccrt = cc.find_library('flatccrt', required: false)
 prog_flatcc = find_program('flatcc', required: false)
 

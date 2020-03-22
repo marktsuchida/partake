@@ -27,6 +27,7 @@ partaked_sources = [
     'main.c',
     'partake_allocator.c',
     'partake_channel.c',
+    'partake_connection.c',
     'partake_daemon.c',
     'partake_handle.c',
     'partake_iobuf.c',
@@ -58,8 +59,9 @@ executable('partaked',
         zf_log_incdir,
     ],
     dependencies: [
-        librt,
         libbcrypt,
         libflatccrt,
+        librt,
+        libuv,
     ],
 )

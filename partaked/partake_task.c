@@ -147,6 +147,7 @@ static void continue_task_Open(struct partake_handle *handle, void *data) {
     partake_sender_checkin_responsemessage(d->sender, respmsg);
 
 exit:
+    partake_sender_release(d->sender);
     partake_request_destroy(d->req);
     partake_free(d);
 }
@@ -167,6 +168,7 @@ void partake_task_Open(struct partake_channel *chan,
         data->chan = chan;
         data->req = req;
         data->sender = sender;
+        partake_sender_retain(sender);
 
         partake_handle_register_continue_on_publish(handle, req,
                 continue_task_Open, data);
@@ -253,6 +255,7 @@ static void continue_task_Unpublish(struct partake_handle *handle,
     partake_channel_release_handle(d->chan, handle);
 
 exit:
+    partake_sender_release(d->sender);
     partake_request_destroy(d->req);
     partake_free(d);
 }
@@ -275,6 +278,7 @@ void partake_task_Unpublish(struct partake_channel *chan,
         data->req = req;
         data->sender = sender;
         data->clear = clear;
+        partake_sender_retain(sender);
 
         partake_handle_register_continue_on_sole_ownership(handle, req,
                 continue_task_Unpublish, data);
@@ -295,7 +299,21 @@ void partake_task_Unpublish(struct partake_channel *chan,
 
 void partake_task_Quit(struct partake_channel *chan,
         struct partake_request *req, struct partake_sender *sender) {
-    // Nothing to do for now.
+    // Actual quitting is handled by connection.
+
+    partake_request_destroy(req);
+}
+
+
+void partake_task_Unknown(struct partake_channel *chan,
+        struct partake_request *req, struct partake_sender *sender) {
+    struct partake_responsemessage *respmsg =
+        partake_sender_checkout_responsemessage(sender);
+
+    partake_responsemessage_append_empty_response(respmsg, req,
+            partake_protocol_Status_INVALID_REQUEST);
+
+    partake_sender_checkin_responsemessage(sender, respmsg);
 
     partake_request_destroy(req);
 }

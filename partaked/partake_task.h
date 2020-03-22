@@ -58,3 +58,6 @@ void partake_task_Unpublish(struct partake_channel *chan,
 
 void partake_task_Quit(struct partake_channel *chan,
         struct partake_request *req, struct partake_sender *sender);
+
+void partake_task_Unknown(struct partake_channel *chan,
+        struct partake_request *req, struct partake_sender *sender);
