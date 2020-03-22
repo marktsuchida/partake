@@ -51,16 +51,16 @@ bool partake_requestframe_scan(struct partake_iobuf *iobuf, size_t start,
 
 // Wrap a portion of 'buf' so that it can be accessed as a request. The
 // 'offset' argument should point to the size prefix of the message frame.
-struct partake_requestmessage *partake_requestmessage_create(
-        struct partake_iobuf *buf, size_t offset);
+struct partake_reqarray *partake_reqarray_create(struct partake_iobuf *buf,
+        size_t offset);
 
-void partake_requestmessage_destroy(struct partake_requestmessage *reqmsg);
+void partake_reqarray_destroy(struct partake_reqarray *reqarr);
 
-uint32_t partake_requestmessage_count(struct partake_requestmessage *reqmsg);
+uint32_t partake_reqarray_count(struct partake_reqarray *reqarr);
 
 // The returned request is uniquely owned by the caller
-struct partake_request *partake_requestmessage_request(
-        struct partake_requestmessage *reqmsg, uint32_t index);
+struct partake_request *partake_reqarray_request(
+        struct partake_reqarray *reqarr, uint32_t index);
 
 void partake_request_destroy(struct partake_request *req);
 

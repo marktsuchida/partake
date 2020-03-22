@@ -39,41 +39,41 @@ struct partake_request;
 struct partake_segment;
 
 
-struct partake_responsemessage *partake_responsemessage_create(void);
+struct partake_resparray *partake_resparray_create(void);
 
 
-struct partake_iobuf *partake_responsemessage_finish(
-        struct partake_responsemessage *respmsg, size_t *size);
+struct partake_iobuf *partake_resparray_finish(
+        struct partake_resparray *resparr, size_t *size);
 
 
-void partake_responsemessage_append_GetSegment_response(
-        struct partake_responsemessage *respmsg, struct partake_request *req,
+void partake_resparray_append_GetSegment_response(
+        struct partake_resparray *resparr, struct partake_request *req,
         int status, struct partake_segment *segment);
 
-void partake_responsemessage_append_Alloc_response(
-        struct partake_responsemessage *respmsg, struct partake_request *req,
+void partake_resparray_append_Alloc_response(
+        struct partake_resparray *resparr, struct partake_request *req,
         int status, struct partake_handle *handle);
 
-void partake_responsemessage_append_Realloc_response(
-        struct partake_responsemessage *respmsg, struct partake_request *req,
+void partake_resparray_append_Realloc_response(
+        struct partake_resparray *resparr, struct partake_request *req,
         int status, struct partake_handle *handle);
 
-void partake_responsemessage_append_Open_response(
-        struct partake_responsemessage *respmsg, struct partake_request *req,
+void partake_resparray_append_Open_response(
+        struct partake_resparray *resparr, struct partake_request *req,
         int status, struct partake_handle *handle);
 
-void partake_responsemessage_append_Close_response(
-        struct partake_responsemessage *respmsg, struct partake_request *req,
+void partake_resparray_append_Close_response(
+        struct partake_resparray *resparr, struct partake_request *req,
         int status);
 
-void partake_responsemessage_append_Publish_response(
-        struct partake_responsemessage *respmsg, struct partake_request *req,
+void partake_resparray_append_Publish_response(
+        struct partake_resparray *resparr, struct partake_request *req,
         int status);
 
-void partake_responsemessage_append_Unpublish_response(
-        struct partake_responsemessage *respmsg, struct partake_request *req,
+void partake_resparray_append_Unpublish_response(
+        struct partake_resparray *resparr, struct partake_request *req,
         int status, partake_token token);
 
-void partake_responsemessage_append_empty_response(
-        struct partake_responsemessage *respmsg, struct partake_request *req,
+void partake_resparray_append_empty_response(
+        struct partake_resparray *resparr, struct partake_request *req,
         int status);

@@ -32,7 +32,7 @@
 
 #include <stdbool.h>
 
-struct partake_responsemessage;
+struct partake_resparray;
 
 
 struct partake_sender *partake_sender_create(uv_stream_t *client);
@@ -50,16 +50,16 @@ void partake_sender_set_autoflush(struct partake_sender *sender,
 
 
 /*
- * "Check out" and "check in" a/the response message: task handlers use these
- * to record their response. A checkout always returns a valid responsemessage.
- * A checkin indicates that the caller is done adding a response(s). If the
+ * "Check out" and "check in" a/the response array: task handlers use these to
+ * record their response. A checkout always returns a valid resparray. A
+ * checkin indicates that the caller is done adding a response(s). If the
  * sender is set to autoflush, the response(s) will be sent upon checking in;
  * otherwise some other code should call partake_sender_flush() at an
  * appropriate moment.
  */
 
-struct partake_responsemessage *partake_sender_checkout_responsemessage(
+struct partake_resparray *partake_sender_checkout_resparray(
         struct partake_sender *sender);
 
-void partake_sender_checkin_responsemessage(struct partake_sender *sender,
-        struct partake_responsemessage *respmsg);
+void partake_sender_checkin_resparray(struct partake_sender *sender,
+        struct partake_resparray *resparr);

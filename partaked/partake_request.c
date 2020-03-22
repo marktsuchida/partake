@@ -42,7 +42,7 @@
 #define MESSAGE_FRAME_ALIGNMENT 8
 
 
-struct partake_requestmessage {
+struct partake_reqarray {
     struct partake_iobuf *iobuf; // Owning, reference-counted
     size_t offset; // Excluding 32-bit size prefix
 
@@ -77,8 +77,8 @@ bool partake_requestframe_scan(struct partake_iobuf *iobuf, size_t start,
 }
 
 
-struct partake_requestmessage *partake_requestmessage_create(
-        struct partake_iobuf *iobuf, size_t offset) {
+struct partake_reqarray *partake_reqarray_create(struct partake_iobuf *iobuf,
+        size_t offset) {
     size_t size;
     void *msg = flatbuffers_read_size_prefix((char *)iobuf->buffer + offset,
             &size);
@@ -94,39 +94,39 @@ struct partake_requestmessage *partake_requestmessage_create(
         return NULL;
     }
 
-    struct partake_requestmessage *reqmsg = partake_malloc(sizeof(*reqmsg));
+    struct partake_reqarray *reqarr = partake_malloc(sizeof(*reqarr));
     partake_iobuf_retain(iobuf);
-    reqmsg->iobuf = iobuf;
-    reqmsg->offset = offset;
-    reqmsg->table = partake_protocol_RequestMessage_as_root(msg);
+    reqarr->iobuf = iobuf;
+    reqarr->offset = offset;
+    reqarr->table = partake_protocol_RequestMessage_as_root(msg);
 
-    return reqmsg;
+    return reqarr;
 }
 
 
-void partake_requestmessage_destroy(struct partake_requestmessage *reqmsg) {
-    if (reqmsg == NULL)
+void partake_reqarray_destroy(struct partake_reqarray *reqarr) {
+    if (reqarr == NULL)
         return;
 
-    partake_iobuf_release(reqmsg->iobuf);
-    partake_free(reqmsg);
+    partake_iobuf_release(reqarr->iobuf);
+    partake_free(reqarr);
 }
 
 
-uint32_t partake_requestmessage_count(struct partake_requestmessage *reqmsg) {
+uint32_t partake_reqarray_count(struct partake_reqarray *reqarr) {
     return partake_protocol_Request_vec_len(
-            partake_protocol_RequestMessage_requests_get(reqmsg->table));
+            partake_protocol_RequestMessage_requests_get(reqarr->table));
 }
 
 
-struct partake_request *partake_requestmessage_request(
-        struct partake_requestmessage *reqmsg, uint32_t index) {
+struct partake_request *partake_reqarray_request(
+        struct partake_reqarray *reqarr, uint32_t index) {
     struct partake_request *req = partake_malloc(sizeof(*req));
 
-    partake_iobuf_retain(reqmsg->iobuf);
-    req->iobuf = reqmsg->iobuf;
+    partake_iobuf_retain(reqarr->iobuf);
+    req->iobuf = reqarr->iobuf;
     req->table = partake_protocol_Request_vec_at(
-            partake_protocol_RequestMessage_requests_get(reqmsg->table),
+            partake_protocol_RequestMessage_requests_get(reqarr->table),
             index);
 
     return req;

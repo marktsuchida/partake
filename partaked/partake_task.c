@@ -51,13 +51,13 @@ void partake_task_GetSegment(struct partake_channel *chan,
     struct partake_segment *segment = NULL;
     int status = partake_channel_get_segment(chan, segno, &segment);
 
-    struct partake_responsemessage *respmsg =
-        partake_sender_checkout_responsemessage(sender);
+    struct partake_resparray *resparr =
+        partake_sender_checkout_resparray(sender);
 
-    partake_responsemessage_append_GetSegment_response(respmsg, req, status,
+    partake_resparray_append_GetSegment_response(resparr, req, status,
             segment);
 
-    partake_sender_checkin_responsemessage(sender, respmsg);
+    partake_sender_checkin_resparray(sender, resparr);
 
     partake_request_destroy(req);
 }
@@ -80,13 +80,13 @@ void partake_task_Alloc(struct partake_channel *chan,
                 &handle);
     }
 
-    struct partake_responsemessage *respmsg =
-        partake_sender_checkout_responsemessage(sender);
+    struct partake_resparray *resparr =
+        partake_sender_checkout_resparray(sender);
 
-    partake_responsemessage_append_Alloc_response(respmsg, req, status,
+    partake_resparray_append_Alloc_response(resparr, req, status,
             handle);
 
-    partake_sender_checkin_responsemessage(sender, respmsg);
+    partake_sender_checkin_resparray(sender, resparr);
 
     partake_request_destroy(req);
 }
@@ -107,13 +107,13 @@ void partake_task_Realloc(struct partake_channel *chan,
         status = partake_channel_realloc_object(chan, token, size, &handle);
     }
 
-    struct partake_responsemessage *respmsg =
-        partake_sender_checkout_responsemessage(sender);
+    struct partake_resparray *resparr =
+        partake_sender_checkout_resparray(sender);
 
-    partake_responsemessage_append_Realloc_response(respmsg, req, status,
+    partake_resparray_append_Realloc_response(resparr, req, status,
             handle);
 
-    partake_sender_checkin_responsemessage(sender, respmsg);
+    partake_sender_checkin_resparray(sender, resparr);
 
     partake_request_destroy(req);
 }
@@ -138,13 +138,12 @@ static void continue_task_Open(struct partake_handle *handle, void *data) {
         handle = NULL;
     }
 
-    struct partake_responsemessage *respmsg =
-        partake_sender_checkout_responsemessage(d->sender);
+    struct partake_resparray *resparr =
+        partake_sender_checkout_resparray(d->sender);
 
-    partake_responsemessage_append_Open_response(respmsg, d->req, status,
-            handle);
+    partake_resparray_append_Open_response(resparr, d->req, status, handle);
 
-    partake_sender_checkin_responsemessage(d->sender, respmsg);
+    partake_sender_checkin_resparray(d->sender, resparr);
 
 exit:
     partake_sender_release(d->sender);
@@ -179,13 +178,12 @@ void partake_task_Open(struct partake_channel *chan,
             handle = NULL;
         }
 
-        struct partake_responsemessage *respmsg =
-            partake_sender_checkout_responsemessage(sender);
+        struct partake_resparray *resparr =
+            partake_sender_checkout_resparray(sender);
 
-        partake_responsemessage_append_Open_response(respmsg, req, status,
-                handle);
+        partake_resparray_append_Open_response(resparr, req, status, handle);
 
-        partake_sender_checkin_responsemessage(sender, respmsg);
+        partake_sender_checkin_resparray(sender, resparr);
 
         partake_request_destroy(req);
     }
@@ -198,12 +196,12 @@ void partake_task_Close(struct partake_channel *chan,
 
     int status = partake_channel_close_object(chan, token);
 
-    struct partake_responsemessage *respmsg =
-        partake_sender_checkout_responsemessage(sender);
+    struct partake_resparray *resparr =
+        partake_sender_checkout_resparray(sender);
 
-    partake_responsemessage_append_Close_response(respmsg, req, status);
+    partake_resparray_append_Close_response(resparr, req, status);
 
-    partake_sender_checkin_responsemessage(sender, respmsg);
+    partake_sender_checkin_resparray(sender, resparr);
 
     partake_request_destroy(req);
 }
@@ -215,12 +213,12 @@ void partake_task_Publish(struct partake_channel *chan,
 
     int status = partake_channel_publish_object(chan, token);
 
-    struct partake_responsemessage *respmsg =
-        partake_sender_checkout_responsemessage(sender);
+    struct partake_resparray *resparr =
+        partake_sender_checkout_resparray(sender);
 
-    partake_responsemessage_append_Publish_response(respmsg, req, status);
+    partake_resparray_append_Publish_response(resparr, req, status);
 
-    partake_sender_checkin_responsemessage(sender, respmsg);
+    partake_sender_checkin_resparray(sender, resparr);
 
     partake_request_destroy(req);
 }
@@ -244,13 +242,13 @@ static void continue_task_Unpublish(struct partake_handle *handle,
     int status = partake_channel_resume_unpublish_object(d->chan, handle,
             d->clear);
 
-    struct partake_responsemessage *respmsg =
-        partake_sender_checkout_responsemessage(d->sender);
+    struct partake_resparray *resparr =
+        partake_sender_checkout_resparray(d->sender);
 
-    partake_responsemessage_append_Unpublish_response(respmsg, d->req, status,
+    partake_resparray_append_Unpublish_response(resparr, d->req, status,
             handle != NULL ? handle->object->token : 0);
 
-    partake_sender_checkin_responsemessage(d->sender, respmsg);
+    partake_sender_checkin_resparray(d->sender, resparr);
 
     partake_channel_release_handle(d->chan, handle);
 
@@ -284,13 +282,13 @@ void partake_task_Unpublish(struct partake_channel *chan,
                 continue_task_Unpublish, data);
     }
     else {
-        struct partake_responsemessage *respmsg =
-            partake_sender_checkout_responsemessage(sender);
+        struct partake_resparray *resparr =
+            partake_sender_checkout_resparray(sender);
 
-        partake_responsemessage_append_Unpublish_response(respmsg, req, status,
+        partake_resparray_append_Unpublish_response(resparr, req, status,
                 handle != NULL ? handle->object->token : 0);
 
-        partake_sender_checkin_responsemessage(sender, respmsg);
+        partake_sender_checkin_resparray(sender, resparr);
 
         partake_request_destroy(req);
     }
@@ -307,13 +305,13 @@ void partake_task_Quit(struct partake_channel *chan,
 
 void partake_task_Unknown(struct partake_channel *chan,
         struct partake_request *req, struct partake_sender *sender) {
-    struct partake_responsemessage *respmsg =
-        partake_sender_checkout_responsemessage(sender);
+    struct partake_resparray *resparr =
+        partake_sender_checkout_resparray(sender);
 
-    partake_responsemessage_append_empty_response(respmsg, req,
+    partake_resparray_append_empty_response(resparr, req,
             partake_protocol_Status_INVALID_REQUEST);
 
-    partake_sender_checkin_responsemessage(sender, respmsg);
+    partake_sender_checkin_resparray(sender, resparr);
 
     partake_request_destroy(req);
 }
