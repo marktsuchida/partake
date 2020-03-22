@@ -49,6 +49,13 @@ bool partake_requestframe_scan(struct partake_iobuf *iobuf, size_t start,
         size_t size, size_t *frame_size, bool *frame_complete);
 
 
+// Either do nothing and return iobuf, or copy the message given by (start,
+// size) from iobuf to a new buffer, release iobuf, and return the new buffer.
+// *start is set to the new start of the message (i.e. zero) if copied.
+struct partake_iobuf *partake_requestframe_maybe_move(
+        struct partake_iobuf *iobuf, size_t *start, size_t size);
+
+
 // Wrap a portion of 'buf' so that it can be accessed as a request. The
 // 'offset' argument should point to the size prefix of the message frame.
 struct partake_reqarray *partake_reqarray_create(struct partake_iobuf *buf,

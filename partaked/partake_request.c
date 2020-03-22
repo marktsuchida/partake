@@ -77,6 +77,22 @@ bool partake_requestframe_scan(struct partake_iobuf *iobuf, size_t start,
 }
 
 
+struct partake_iobuf *partake_requestframe_maybe_move(
+        struct partake_iobuf *iobuf, size_t *start, size_t size) {
+    // For now we just always copy unless already at start. TODO Avoid moving
+    // when size is large-ish but there is still plenty of room left in iobuf.
+    if (*start > 0) {
+        struct partake_iobuf *newbuf =
+            partake_iobuf_create(PARTAKE_IOBUF_STD_SIZE);
+        memcpy(newbuf->buffer, (char *)iobuf->buffer + *start, size);
+        partake_iobuf_release(iobuf);
+        *start = 0;
+        return newbuf;
+    }
+    return iobuf;
+}
+
+
 struct partake_reqarray *partake_reqarray_create(struct partake_iobuf *iobuf,
         size_t offset) {
     size_t size;

@@ -114,22 +114,6 @@ void partake_connection_alloc_cb(uv_handle_t *client, size_t size,
 }
 
 
-// 'start' is input-output parameter
-static struct partake_iobuf *maybe_shift_partial_message(
-        struct partake_iobuf *iobuf, size_t *start, size_t size) {
-    // For now we just always copy unless already at start
-    if (*start > 0) {
-        struct partake_iobuf *newbuf =
-            partake_iobuf_create(PARTAKE_IOBUF_STD_SIZE);
-        memcpy(newbuf->buffer, (char *)iobuf->buffer + *start, size);
-        partake_iobuf_release(iobuf);
-        *start = 0;
-        return newbuf;
-    }
-    return iobuf;
-}
-
-
 static bool handle_request(struct partake_connection *conn,
         struct partake_request *req, struct partake_sender *sender) {
     partake_protocol_AnyRequest_union_type_t type = partake_request_type(req);
@@ -238,7 +222,7 @@ void partake_connection_read_cb(uv_stream_t *client, ssize_t nread,
     partake_sender_release(sender);
 
     if (!frame_complete && !quit) {
-        conn->readbuf = maybe_shift_partial_message(conn->readbuf,
+        conn->readbuf = partake_requestframe_maybe_move(conn->readbuf,
                 &start, size);
         conn->readbuf_start = start + size;
     }
