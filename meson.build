@@ -32,7 +32,7 @@ librt = cc.find_library('rt', required: false)
 
 libbcrypt = cc.find_library('bcrypt', required: false)
 
-libuv = dependency('uv', required: false)
+libuv = dependency('libuv', required: false) # pkg-config on Unix
 
 if not libuv.found()
     cmake = import('cmake')

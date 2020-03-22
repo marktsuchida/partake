@@ -32,6 +32,6 @@ protocol_headers = custom_target('protocol_headers',
     ],
     input: 'partake_protocol.fbs',
     command: [
-        prog_flatcc, '-cwo', '@OUTDIR@', '@INPUT@',
+        prog_flatcc, '-cvwo', '@OUTDIR@', '@INPUT@',
     ],
 )

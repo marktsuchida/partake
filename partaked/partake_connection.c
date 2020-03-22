@@ -210,6 +210,11 @@ void partake_connection_read_cb(uv_stream_t *client, ssize_t nread,
         // TODO Dynamic alloc is superfluous
         struct partake_requestmessage *reqmsg =
             partake_requestmessage_create(conn->readbuf, start);
+        if (reqmsg == NULL) {
+            ZF_LOGI("Dropping connection due to request verification failure");
+            quit = true;
+            break;
+        }
 
         uint32_t count = partake_requestmessage_count(reqmsg);
         for (uint32_t i = 0; i < count; ++i) {

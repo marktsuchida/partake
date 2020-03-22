@@ -31,7 +31,10 @@
 #include "prefix.h"
 
 #include "partake_malloc.h"
+#include "partake_protocol_verifier.h"
 #include "partake_request.h"
+
+#include <zf_log.h>
 
 #include <stdlib.h>
 
@@ -76,15 +79,26 @@ bool partake_requestframe_scan(struct partake_iobuf *iobuf, size_t start,
 
 struct partake_requestmessage *partake_requestmessage_create(
         struct partake_iobuf *iobuf, size_t offset) {
-    struct partake_requestmessage *reqmsg = partake_malloc(sizeof(*reqmsg));
+    size_t size;
+    void *msg = flatbuffers_read_size_prefix((char *)iobuf->buffer + offset,
+            &size);
+    if (size > (32 << 10) - sizeof(flatbuffers_uoffset_t)) {
+        ZF_LOGE("Request too long");
+        return NULL;
+    }
 
+    int err = partake_protocol_RequestMessage_verify_as_root(msg, size);
+    if (err != 0) {
+        ZF_LOGE("Request verification failed: %s",
+                flatcc_verify_error_string(err));
+        return NULL;
+    }
+
+    struct partake_requestmessage *reqmsg = partake_malloc(sizeof(*reqmsg));
     partake_iobuf_retain(iobuf);
     reqmsg->iobuf = iobuf;
     reqmsg->offset = offset;
-    size_t size;
-    reqmsg->table = partake_protocol_RequestMessage_as_root(
-            flatbuffers_read_size_prefix(
-                (char *)reqmsg->iobuf->buffer + offset, &size));
+    reqmsg->table = partake_protocol_RequestMessage_as_root(msg);
 
     return reqmsg;
 }

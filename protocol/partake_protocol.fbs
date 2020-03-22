@@ -46,8 +46,8 @@ namespace partake.protocol;
  *     consecutive messages is 8-byte aligned. The end-of-message offset is
  *     rounded up to a multiple of 8.
  *
- * - The size of a single RequestMessage or ResponseMessage must not exceed
- *   32 KiB.
+ * - The size of a single RequestMessage or ResponseMessage, including the size
+ *   prefix, must not exceed 32 KiB.
  */
 
 
