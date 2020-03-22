@@ -56,6 +56,7 @@ static int win32_initialize(void **data) {
 
     struct win32_private_data *d = *data;
     d->h_file = INVALID_HANDLE_VALUE;
+    d->h_mapping = INVALID_HANDLE_VALUE;
 
     return 0;
 }
@@ -118,6 +119,11 @@ static int create_file_mapping(const struct partake_daemon_config *config,
         struct win32_private_data *d) {
     bool generate_name = config->shmem.win32.name == NULL;
     bool force = config->force && !generate_name;
+
+    if (config->size == 0) {
+        ZF_LOGI("CreateFileMapping skipped due to zero size");
+        return 0;
+    }
 
     d->large_pages = config->shmem.win32.large_pages;
 
@@ -196,6 +202,11 @@ static void close_handle(HANDLE *h) {
 
 static int map_memory(const struct partake_daemon_config *config,
         struct win32_private_data *d) {
+    if (config->size == 0) {
+        ZF_LOGI("MapViewOfFile skipped due to zero size");
+        return 0;
+    }
+
     d->addr = MapViewOfFile(d->h_mapping,
             FILE_MAP_READ | FILE_MAP_WRITE |
             (d->large_pages ? FILE_MAP_LARGE_PAGES : 0),
