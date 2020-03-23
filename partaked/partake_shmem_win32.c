@@ -86,6 +86,48 @@ static void win32_deinitialize(void *data) {
 }
 
 
+static int add_lock_memory_privilage(void) {
+    HANDLE h_token;
+    if (!OpenProcessToken(GetCurrentProcess(),
+                TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, &h_token)) {
+        DWORD ret = GetLastError();
+        char emsg[1024];
+        ZF_LOGE("OpenProcessToken: %s",
+                partake_strerror(ret, emsg, sizeof(emsg)));
+        return ret;
+    }
+
+    LUID lock_mem_luid;
+    if (!LookupPrivilegeValue(NULL, SE_LOCK_MEMORY_NAME, &lock_mem_luid)) {
+        DWORD ret = GetLastError();
+        char name[1024], emsg[1024];
+        ZF_LOGE("LookupPrivilageValue: %s: %s",
+                partake_strtolog(SE_LOCK_MEMORY_NAME, name, sizeof(name)),
+                partake_strerror(ret, emsg, sizeof(emsg)));
+        return ret;
+    }
+
+    TOKEN_PRIVILEGES privs;
+    privs.PrivilegeCount = 1;
+    privs.Privileges[0].Luid = lock_mem_luid;
+    privs.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+    BOOL ok = AdjustTokenPrivileges(h_token, FALSE, &privs, sizeof(privs),
+            NULL, NULL);
+    DWORD ret = GetLastError();
+    if (!ok || ret == ERROR_NOT_ALL_ASSIGNED) {
+        char name[1024], emsg[1024];
+        ZF_LOGE("AdjustTokenPrivileges: %s: %s",
+                partake_strtolog(SE_LOCK_MEMORY_NAME, name, sizeof(name)),
+                partake_strerror(ret, emsg, sizeof(emsg)));
+        return ret;
+    }
+
+    CloseHandle(h_token);
+    return 0;
+}
+
+
 static int create_file(const struct partake_daemon_config *config,
         struct win32_private_data *d) {
     // We do not need to canonicalize the filename, since we never send it
@@ -252,6 +294,12 @@ static int unmap_memory(struct win32_private_data *d) {
 static int win32_allocate(const struct partake_daemon_config *config,
         void *data) {
     struct win32_private_data *d = data;
+
+    if (config->shmem.win32.large_pages) {
+        int ret = add_lock_memory_privilage();
+        if (ret != 0)
+            return ret;
+    }
 
     if (config->shmem.win32.filename != NULL) {
         int ret = create_file(config, d);
