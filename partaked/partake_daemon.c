@@ -200,6 +200,8 @@ static int run_event_loop(struct partake_daemon *daemon) {
 
 int partake_daemon_run(const struct partake_daemon_config *config) {
     partake_initialize_malloc();
+    uv_replace_allocator(partake_malloc, partake_realloc, partake_calloc,
+            (void (*)(void *))partake_free);
 
     struct partake_daemon daemon;
     memset(&daemon, 0, sizeof(daemon));
