@@ -29,9 +29,11 @@
 
 #include "partake_connection.h"
 #include "partake_daemon.h"
+#include "partake_logging.h"
 #include "partake_malloc.h"
 #include "partake_pool.h"
 #include "partake_segment.h"
+#include "partake_tchar.h"
 
 #include <utlist.h>
 #include <uv.h>
@@ -154,6 +156,9 @@ static int setup_server(struct partake_daemon *daemon) {
         ZF_LOGE("uv_listen: %s", uv_strerror(err));
         goto error;
     }
+    TCHAR buf[1024];
+    ZF_LOGI("Listening on %s",
+            partake_strtolog(daemon->config->socket, buf, sizeof(buf)));
 
     int signums[3] = { SIGINT, SIGHUP, SIGTERM };
     for (int i = 0; i < 3; ++i) {

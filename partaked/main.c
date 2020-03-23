@@ -42,6 +42,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef _WIN32
+#   include <sys/un.h> // For struct sockaddr_un
+#endif
+
 #define PTXT(x) PARTAKE_TEXT(x)
 
 
@@ -131,6 +135,7 @@ static dropt_error myopt_handle_size(dropt_context *context,
 struct parsed_options {
     size_t memory;
     dropt_char *socket;
+    dropt_char *raw_socket;
     dropt_bool force;
     dropt_char *name;
     dropt_char *file;
@@ -154,13 +159,19 @@ static void print_help_prolog(FILE *file) {
 static void print_help_epilog(FILE *file) {
     fputts(
 PTXT("Client connection:\n")
-PTXT("  On POSIX systems, a UNIX domain socket (AF_UNIX) is used. The name\n")
-PTXT("  passed to --socket should be an ordinary file path. On Windows, a\n")
-PTXT("  named pipe is used; the name must begin with \"\\\\.\\pipe\\\". In\n")
-PTXT("  both cases, the same name should be passed to clients so that they\n")
-PTXT("  can connect.\n")
+PTXT("  Either --socket or --socket-fullname must be passed. Normally,\n")
+PTXT("  --socket is more convenient; it must be a string of length 1 to 80\n")
+PTXT("  containing no slashes or backslashes. On Unix-like systems,\n")
+PTXT("  the pathname for a Unix domain socket is derived by prepending\n")
+PTXT("  \"/tmp/\" to the name. On Windows, the name of a named pipe is\n")
+PTXT("  derived by prepending \"\\\\.\\pipe\\\" to the name.\n")
+PTXT("  The --socket-fullname option allows full control over the socket or\n")
+PTXT("  named pipe name to be used, allowing sockets at arbitrary paths on\n")
+PTXT("  Unix and longer names on Windows.\n")
+PTXT("  In either case, the same socket name must be passed to clients so\n")
+PTXT("  that they can connect.\n")
 PTXT("\n")
-PTXT("POSIX shared memory:\n")
+PTXT("Unix shared memory:\n")
 PTXT("  [--posix] [--name=/myshmem]: Create with shm_open(2) and map with\n")
 PTXT("      mmap(2). If name is given it should start with a slash and\n")
 PTXT("      contain no more slashes.\n")
@@ -168,7 +179,7 @@ PTXT("  --systemv [--name=key]: Create with shmget(2) and map with shmat(2).\n")
 PTXT("      If name is given it must be an integer key.\n")
 PTXT("  --file=myfile: Create with open(2) and map with mmap(2). The --name\n")
 PTXT("      option is ignored.\n")
-PTXT("  Not all of the above may be available on a given UNIX-like system.\n")
+PTXT("  Not all of the above may be available on a given Unix-like system.\n")
 PTXT("  On Linux, huge pages can be allocated either by using --file with a\n")
 PTXT("  location in a mounted hugetlbfs or by giving --huge-pages with\n")
 PTXT("  --systemv. In both cases, --memory must be a multiple of the huge\n")
@@ -223,10 +234,15 @@ static void parse_options(int argc, TCHAR **argv, struct parsed_options *opts) {
             myopt_handle_size, &opts->memory, },
 
         { PTXT('s'), PTXT("socket"),
-            PTXT("Name of UNIX domain socket or Win32 named pipe for client ")
-                PTXT("connection"),
+            PTXT("Socket name for client connection"),
             PTXT("<name>"),
             dropt_handle_string, &opts->socket, },
+
+        { PTXT('\0'), PTXT("socket-fullname"),
+            PTXT("Full platform-specific name of socket for client ")
+                PTXT("connection"),
+            PTXT("<name>"),
+            dropt_handle_string, &opts->raw_socket, },
 
         { PTXT('f'), PTXT("force"),
             PTXT("Overwrite existing shared memory given by --name and/or ")
@@ -325,6 +341,64 @@ exit:
 }
 
 
+static void check_socket_name(const TCHAR *name, bool use_raw,
+        struct partake_daemon_config *config) {
+    if (name == NULL) {
+        error_exit(PTXT("Socket must be given with option -s/--socket\n"));
+    }
+
+    size_t len = tcslen(name);
+
+    if (use_raw) {
+#ifdef _WIN32
+        if (tcsncmp(name, PTXT("\\\\.\\pipe\\"), 9) != 0 ||
+                len < 10 || tcschr(name + 9, PTXT('\\')) != NULL ||
+                len > 256) {
+            error_exit(PTXT("Windows named pipe name must consist of the ")
+                   PTXT("prefix \"\\\\.\\pipe\\\", followed by one or more ")
+                   PTXT("characters, none of which are backslashes, with a ")
+                   PTXT("total length of no more than 256 characters\n"));
+        }
+#else
+        struct sockaddr_un dummy;
+        if (len < 1 || len > sizeof(dummy.sun_path) - 1) {
+            error_exit(PTXT("Unix domain socket name must not be empty and ")
+                    PTXT("must not exceed the platform-dependent length ")
+                    PTXT("limit\n"));
+        }
+#endif
+
+        config->socket = name;
+        return;
+    }
+
+    // Unix domain socket path names have a lower length limit than Windows
+    // named pipe names. Linux limit is 107, (some?) BSDs are 103, and
+    // apparently some Unices have limits as low as 91. We choose 80 chars as
+    // our limit, because it remains under 91 after prefixing with "/tmp/" (and
+    // 86 is harder to remember).
+    if (len < 1 || len > 80) {
+        error_exit(PTXT("Non-raw socket name must not be empty and must not ")
+                PTXT("exceed 80 characters\n"));
+    }
+
+    if (tcschr(name, PTXT('/')) != NULL || tcschr(name, PTXT('\\')) != NULL) {
+        error_exit(PTXT("Non-raw socket name must not contain slashes or ")
+                PTXT("backslashes\n"));
+    }
+
+    const char *format =
+#ifndef _WIN32
+        "/tmp/%s"
+#else
+        "\\\\.\\pipe\\%s"
+#endif
+        ;
+    sntprintf(config->socket_buf, sizeof(config->socket_buf), format, name);
+    config->socket = config->socket_buf;
+}
+
+
 // Perform checks that can be done without calling OS API and fill struct
 // partake_daemon_config. All strings are still pointers to the static argv
 // strings.
@@ -332,15 +406,13 @@ static void check_options(const struct parsed_options *opts,
         struct partake_daemon_config *config) {
     memset(config, 0, sizeof(struct partake_daemon_config));
 
-    if (opts->socket == NULL) {
-        error_exit(PTXT("Socket must be given with option -s/--socket\n"));
+    if (opts->socket != NULL && opts->raw_socket != NULL) {
+        error_exit(PTXT("Not both of -s/--socket and --socket-fullname may ")
+                PTXT("be given\n"));
     }
-#ifdef _WIN32
-    if (tcsncmp(opts->socket, PTXT("\\\\.\\pipe\\"), 9) != 0) {
-        error_exit(PTXT("Socket name must begin with \"\\\\.\\pipe\\\"\n"));
-    }
-#endif
-    config->socket = opts->socket;
+    bool raw_sockname = opts->socket == NULL;
+    const TCHAR *sockname = raw_sockname ? opts->raw_socket : opts->socket;
+    check_socket_name(sockname, raw_sockname, config);
 
     config->size = opts->memory;
     config->force = opts->force;

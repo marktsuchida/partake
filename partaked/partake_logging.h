@@ -41,6 +41,24 @@
 #endif
 
 
+// zf_log does not support wide char strings. For now, we convert TCHAR* to
+// char* for logging. A more rebust way would be to convert TCHAR* to UTF-8,
+// and use a custom logging handler that converts back to UTF-16 in a Unicode
+// build.
+static inline const char *partake_strtolog(const TCHAR *s, char *buf,
+        size_t size) {
+#if defined(_WIN32) && defined(_UNICODE)
+    size_t r = wcstombs(buf, size, s);
+    if (r == (size_t)-1) {
+        snprintf(buf, size, "(string unavailable)");
+    }
+#else
+    snprintf(buf, size, "%s", s);
+#endif
+    return buf;
+}
+
+
 #ifndef _WIN32
 
 static inline char *partake_strerror(int errno, char *buf, size_t size) {
@@ -51,23 +69,6 @@ static inline char *partake_strerror(int errno, char *buf, size_t size) {
 }
 
 #else // _WIN32
-
-// zf_log does not support wide char strings. For now, we convert TCHAR* to
-// char* for logging. A more rebust way would be to convert TCHAR* to UTF-8,
-// and use a custom logging handler that converts back to UTF-16 in a Unicode
-// build.
-static inline const char *partake_strtolog(const TCHAR *s, char *buf,
-        size_t size) {
-#ifdef _UNICODE
-    size_t r = wcstombs(buf, size, s);
-    if (r == (size_t)-1) {
-        snprintf(buf, size, "(string unavailable)");
-    }
-#else
-    snprintf(buf, size, "%s", s);
-#endif
-    return buf;
-}
 
 // On Windows this takes Windows system error codes from GetLastError().
 static inline char *partake_strerror(DWORD code, char *buf, size_t size) {

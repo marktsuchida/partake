@@ -45,7 +45,9 @@ enum partake_shmem_type {
 
 
 struct partake_daemon_config {
-    TCHAR *socket;
+    const TCHAR *socket;
+    // 'socket' may point to 'socket_buf' or elsewhere
+    TCHAR socket_buf[96];
 
     size_t size;
     bool force;
