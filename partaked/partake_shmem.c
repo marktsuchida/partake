@@ -103,11 +103,11 @@ int partake_generate_random_int(void) {
 // Return a partake_malloc()ed tstring consisting of prefix followed by
 // NAME_INFIX followed by random_len characters of random hex digits.
 TCHAR *partake_alloc_random_name(TCHAR *prefix, size_t random_len) {
-    size_t len = tcslen(prefix) + tcslen(NAME_INFIX) + random_len;
+    size_t prefix_infix_len = tcslen(prefix) + tcslen(NAME_INFIX);
+    size_t len = prefix_infix_len + random_len;
     TCHAR *ret = partake_malloc(sizeof(TCHAR) * (len + 1));
 
-    int prefix_infix_len =
-        sntprintf(ret, len, PARTAKE_TEXT("%s") NAME_INFIX, prefix);
+    sntprintf(ret, len, PARTAKE_TEXT("%s") NAME_INFIX, prefix);
 
     size_t randbufsize = (random_len + 1) / 2;
     char *randbuf = alloc_random_bytes(randbufsize);
@@ -117,7 +117,8 @@ TCHAR *partake_alloc_random_name(TCHAR *prefix, size_t random_len) {
     TCHAR *p = ret + prefix_infix_len;
     size_t space_left = len + 1 - prefix_infix_len;
     while (space_left > 1) {
-        int n = sntprintf(p, space_left, "%hhx", *byte++);
+        sntprintf(p, space_left, "%hhx", *byte++);
+        size_t n = space_left > 1 ? 2 : 1;
         p += n;
         space_left -= n;
 
