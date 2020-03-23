@@ -78,6 +78,10 @@ partake_protocol_AnyRequest_union_type_t partake_request_type(
         struct partake_request *req);
 
 
+uint32_t partake_request_Hello_pid(struct partake_request *req);
+
+const char *partake_request_Hello_name(struct partake_request *req);
+
 uint32_t partake_request_GetSegment_segment(struct partake_request *req);
 
 uint64_t partake_request_Alloc_size(struct partake_request *req);

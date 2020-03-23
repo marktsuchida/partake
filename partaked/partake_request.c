@@ -174,6 +174,16 @@ static inline flatbuffers_generic_t anyrequest(struct partake_request *req) {
 }
 
 
+uint32_t partake_request_Hello_pid(struct partake_request *req) {
+    return partake_protocol_HelloRequest_pid_get(anyrequest(req));
+}
+
+
+const char *partake_request_Hello_name(struct partake_request *req) {
+    return partake_protocol_HelloRequest_name_get(anyrequest(req));
+}
+
+
 uint32_t partake_request_GetSegment_segment(struct partake_request *req) {
     return partake_protocol_GetSegmentRequest_segment_get(anyrequest(req));
 }

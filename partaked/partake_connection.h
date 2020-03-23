@@ -33,6 +33,9 @@
 #include <uthash.h>
 #include <uv.h>
 
+#include <stdbool.h>
+#include <stdint.h>
+
 struct partake_pool;
 
 
@@ -45,12 +48,18 @@ struct partake_connection {
     struct partake_iobuf *readbuf;
     size_t readbuf_start;
 
+    bool has_said_hello;
+
+    uint32_t conn_no;
+    uint32_t pid;
+    char *name; // UTF-8
+
     UT_hash_handle hh; // Key == ptr to this struct
 };
 
 
-struct partake_connection *partake_connection_create(uv_loop_t *loop,
-        struct partake_pool *pool);
+struct partake_connection *partake_connection_create(uint32_t conn_no,
+        uv_loop_t *loop, struct partake_pool *pool);
 
 void partake_connection_destroy(struct partake_connection *conn);
 

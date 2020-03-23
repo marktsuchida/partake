@@ -45,8 +45,8 @@
 #include <zf_log.h>
 
 
-struct partake_connection *partake_connection_create(uv_loop_t *loop,
-        struct partake_pool *pool) {
+struct partake_connection *partake_connection_create(uint32_t conn_no,
+        uv_loop_t *loop, struct partake_pool *pool) {
     struct partake_connection *conn = partake_malloc(sizeof(*conn));
 
     conn->chan = partake_channel_create(pool);
@@ -62,6 +62,8 @@ struct partake_connection *partake_connection_create(uv_loop_t *loop,
     conn->readbuf = NULL;
     conn->readbuf_start = 0;
 
+    conn->conn_no = conn_no;
+
     return conn;
 }
 
@@ -70,6 +72,7 @@ static void on_client_close(uv_handle_t *handle) {
     struct partake_connection *conn = handle->data;
     partake_iobuf_release(conn->readbuf);
     partake_channel_destroy(conn->chan);
+    partake_free(conn->name);
     partake_free(conn);
 }
 
@@ -114,56 +117,6 @@ void partake_connection_alloc_cb(uv_handle_t *client, size_t size,
 }
 
 
-static bool handle_request(struct partake_connection *conn,
-        struct partake_request *req, struct partake_sender *sender) {
-    partake_protocol_AnyRequest_union_type_t type = partake_request_type(req);
-
-    void (*func)(struct partake_channel *, struct partake_request *,
-            struct partake_sender *);
-    switch (type) {
-        case partake_protocol_AnyRequest_GetSegmentRequest:
-            func = partake_task_GetSegment;
-            break;
-
-        case partake_protocol_AnyRequest_AllocRequest:
-            func = partake_task_Alloc;
-            break;
-
-        case partake_protocol_AnyRequest_ReallocRequest:
-            func = partake_task_Realloc;
-            break;
-
-        case partake_protocol_AnyRequest_OpenRequest:
-            func = partake_task_Open;
-            break;
-
-        case partake_protocol_AnyRequest_CloseRequest:
-            func = partake_task_Close;
-            break;
-
-        case partake_protocol_AnyRequest_PublishRequest:
-            func = partake_task_Publish;
-            break;
-
-        case partake_protocol_AnyRequest_UnpublishRequest:
-            func = partake_task_Unpublish;
-            break;
-
-        case partake_protocol_AnyRequest_QuitRequest:
-            func = partake_task_Quit;
-            break;
-
-        default:
-            func = partake_task_Unknown;
-            break;
-    }
-
-    func(conn->chan, req, sender);
-
-    return type != partake_protocol_AnyRequest_QuitRequest;
-}
-
-
 void partake_connection_read_cb(uv_stream_t *client, ssize_t nread,
         const uv_buf_t *buf) {
     struct partake_connection *conn = client->data;
@@ -202,10 +155,11 @@ void partake_connection_read_cb(uv_stream_t *client, ssize_t nread,
 
         uint32_t count = partake_reqarray_count(reqarr);
         for (uint32_t i = 0; i < count; ++i) {
-            quit = !handle_request(conn, partake_reqarray_request(reqarr, i),
-                    sender);
-            if (quit)
+            struct partake_request *req = partake_reqarray_request(reqarr, i);
+            if (partake_task_handle(conn, req, sender) != 0) {
+                quit = true;
                 break;
+            }
         }
 
         partake_reqarray_destroy(reqarr);

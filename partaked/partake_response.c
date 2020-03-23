@@ -113,6 +113,23 @@ static inline void finish_response(struct partake_resparray *resparr) {
 }
 
 
+void partake_resparray_append_Hello_response(
+        struct partake_resparray *resparr, struct partake_request *req,
+        int status, uint32_t conn_no) {
+    flatcc_builder_t *b = &resparr->builder;
+
+    start_response(resparr, req, status);
+    partake_protocol_Response_response_HelloResponse_start(b);
+
+    if (status == partake_protocol_Status_OK) {
+        partake_protocol_HelloResponse_conn_no_add(b, conn_no);
+    }
+
+    partake_protocol_Response_response_HelloResponse_end(b);
+    finish_response(resparr);
+}
+
+
 void partake_resparray_append_GetSegment_response(
         struct partake_resparray *resparr, struct partake_request *req,
         int status, struct partake_segment *segment) {

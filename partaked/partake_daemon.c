@@ -55,6 +55,8 @@ struct partake_daemon {
     // We need to keep track of all clients so that we can close them when we
     // are forced to exit by a signal.
     struct partake_connection *conns; // Hash table
+
+    uint32_t last_conn_no;
 };
 
 
@@ -66,8 +68,8 @@ static void on_connect(uv_stream_t *server, int status) {
 
     struct partake_daemon *daemon = server->loop->data;
 
-    struct partake_connection *conn = partake_connection_create(server->loop,
-            daemon->pool);
+    struct partake_connection *conn = partake_connection_create(
+            ++daemon->last_conn_no, server->loop, daemon->pool);
     if (conn == NULL) {
         return;
     }

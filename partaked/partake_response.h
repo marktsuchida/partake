@@ -46,6 +46,10 @@ struct partake_iobuf *partake_resparray_finish(
         struct partake_resparray *resparr, size_t *size);
 
 
+void partake_resparray_append_Hello_response(
+        struct partake_resparray *resparr, struct partake_request *req,
+        int status, uint32_t client_no);
+
 void partake_resparray_append_GetSegment_response(
         struct partake_resparray *resparr, struct partake_request *req,
         int status, struct partake_segment *segment);

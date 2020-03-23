@@ -103,6 +103,56 @@ struct Mapping {
 }
 
 
+table HelloRequest {
+    pid: uint32;
+    name: string;
+
+    /*
+     * A newly connected client should issue a HelloRequest as the first
+     * request. (Otherwise partaked will drop the connection.) This request
+     * must not be sent more than once per connection.
+     *
+     * The client should send its process id: this is only used for logging so
+     * that it is easier to identify errors caused by a particular client. The
+     * optional 'name' should be a short, user-supplied string that describes
+     * the client's role; it is again only used for logging purposes; long
+     * names may be truncated.
+     */
+}
+
+
+table HelloResponse {
+    conn_no: uint32;
+
+    /*
+     * The connection number assigned by partaked is intended for diagnostic
+     * use only (e.g. to match partaked logging to a particular client).
+     */
+}
+
+
+table QuitRequest {
+    /*
+     * Clients should send this request when intentionally disconnecting. It
+     * has no effect (other than that partaked may initiate the disconnection),
+     * but allows partaked to log the disconnection as intentional, potentially
+     * helping with diagnosing issues.
+     *
+     * No response is sent by partaked to a QuitRequest, and all subsequent
+     * requests are discarded (the client should not send any). Any pending
+     * requests may be canceled without response.
+     */
+}
+
+
+table QuitResponse {
+    /*
+     * This response is NOT ACTUALLY SENT. It is defined here so that the
+     * AnyResponse union and AnyRequest union can have corresponding type ids.
+     */
+}
+
+
 table GetSegmentRequest {
     segment: uint32;
 
@@ -300,17 +350,9 @@ table UnpublishResponse {
 }
 
 
-table QuitRequest {
-    /*
-     * Clients should send this request when intentionally disconnecting. It
-     * has no effect (other than that partaked may initiate the disconnection),
-     * but allows partaked to log the disconnection as intentional, potentially
-     * helping with diagnosing issues.
-     */
-}
-
-
 union AnyRequest {
+    HelloRequest,
+    QuitRequest,
     GetSegmentRequest,
     AllocRequest,
     ReallocRequest,
@@ -318,11 +360,12 @@ union AnyRequest {
     CloseRequest,
     PublishRequest,
     UnpublishRequest,
-    QuitRequest,
 }
 
 
 union AnyResponse {
+    HelloResponse,
+    QuitResponse, // Never actually sent!
     GetSegmentResponse,
     AllocResponse,
     ReallocResponse,
@@ -330,7 +373,6 @@ union AnyResponse {
     CloseResponse,
     PublishResponse,
     UnpublishResponse,
-    // No response to Quit
 }
 
 
