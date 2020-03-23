@@ -40,6 +40,8 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <libgen.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -154,22 +156,82 @@ static int unlink_posix_shm(struct mmap_private_data *d) {
 }
 
 
+// On return, *canonical is set to either 'name' or an allocated string.
+static int canonicalize_filename(const char *name, const char **canonical) {
+    if (strcmp(name, "/") == 0) { // Get edge case out of the way
+        *canonical = name;
+        return 0;
+    }
+
+    int ret = 0;
+    char *name1 = NULL, *name2 = NULL, *rdname = NULL;
+
+    // We need to run realpath() on the directory, since the file may not
+    // exist yet. Some implementations of dirname() and basename() can modify
+    // the given path, so we need to make copies.
+
+    name1 = partake_malloc(strlen(name) + 1);
+    strcpy(name1, name);
+    errno = 0;
+    char *dirnm = dirname(name1);
+    if (dirnm == NULL) {
+        ret = errno;
+        char emsg[1024];
+        ZF_LOGE("dirname: %s: %s", name,
+                partake_strerror(ret, emsg, sizeof(emsg)));
+        goto exit;
+    }
+
+    name2 = partake_malloc(strlen(name) + 1);
+    strcpy(name2, name);
+    errno = 0;
+    char *basnm = basename(name2);
+    if (basnm == NULL) {
+        ret = errno;
+        char emsg[1024];
+        ZF_LOGE("basename: %s: %s", name,
+                partake_strerror(ret, emsg, sizeof(emsg)));
+        goto exit;
+    }
+
+    rdname = partake_malloc(PATH_MAX + 1);
+    errno = 0;
+    char *realdirnm = realpath(dirnm, rdname);
+    if (realdirnm == NULL) {
+        ret = errno;
+        char emsg[1024];
+        ZF_LOGE("realpath: %s: %s", dirnm,
+                partake_strerror(ret, emsg, sizeof(emsg)));
+        goto exit;
+    }
+
+    *canonical = partake_malloc(strlen(realdirnm) + 1 + strlen(basnm) + 1);
+    char *c = (char *)*canonical;
+    strcpy(c, realdirnm);
+    strcat(c, "/");
+    strcat(c, basnm);
+
+exit:
+    partake_free(rdname);
+    partake_free(name2);
+    partake_free(name1);
+    return ret;
+}
+
+
 static int create_file_shm(const struct partake_daemon_config *config,
         struct mmap_private_data *d) {
     if (d->must_free_shmname) {
         partake_free((void *)d->shmname);
     }
-    errno = 0;
-    d->shmname = realpath(config->shmem.mmap.filename, NULL);
-    d->must_free_shmname = true;
-    int ret = errno;
-    if (d->shmname == NULL) {
-        char emsg[1024];
-        ZF_LOGE("realpath: %s: %s",
-                config->shmem.mmap.filename,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+
+    // We need to use a canonicalized path, because it will be passed to
+    // clients for them to also open.
+    int ret = canonicalize_filename(config->shmem.mmap.filename,
+            &d->shmname);
+    if (ret != 0)
         return ret;
-    }
+    d->must_free_shmname = d->shmname != config->shmem.mmap.filename;
 
     errno = 0;
     d->fd = open(d->shmname,
