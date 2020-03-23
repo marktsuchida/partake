@@ -150,7 +150,8 @@ struct parsed_options {
 
 
 static void print_help_prolog(FILE *file) {
-    fputts(PTXT("Usage: partaked -m <size> -s <name> [more options]\n"), file);
+    fputts(PTXT("Usage: partaked -m <size> -s <name> [advanced options]\n"),
+            file);
     fputts(PTXT("\n"), file);
     fputts(PTXT("Options:\n"), file);
 }
@@ -192,8 +193,8 @@ PTXT("      start with \"Local\\\" and contain no further backslashes.\n")
 PTXT("  --file=myfile [--name=Local\\myshmem]: A named file mapping backed\n")
 PTXT("      by the given file is created. Usage of --name is the same as\n")
 PTXT("      with --windows.\n")
-PTXT("  On Windows, --large-pages can be specified with either of the above\n")
-PTXT("  options. This requires the user to have SeLockMemoryPrivilege. In\n")
+PTXT("  On Windows, --large-pages can be specified with --windows (but not\n")
+PTXT("  --file). This requires the user to have SeLockMemoryPrivilege. In\n")
 PTXT("  this case, --memory must be a multiple of the large page size.\n")
 PTXT("\n")
 PTXT("In all cases, partaked will exit with an error if the the filename\n")
