@@ -226,8 +226,9 @@ int partake_daemon_run(const struct partake_daemon_config *config) {
 
     ret = run_event_loop(&daemon);
 
-exit:
     shutdown_server(&daemon);
+
+exit:
     partake_pool_destroy(daemon.pool);
     partake_segment_destroy(daemon.segment);
     return ret;
