@@ -42,7 +42,11 @@ if not libuv.found()
     iphlpapi = cc.find_library('Iphlpapi', required: libuv_needs_win32_libs)
     userenv = cc.find_library('Userenv', required: libuv_needs_win32_libs)
 
-    libuv_proj = cmake.subproject('libuv')
+    libuv_proj = cmake.subproject('libuv',
+        cmake_options: [
+            '-DBUILD_TESTING=NO',
+        ],
+    )
 
     libuv = declare_dependency(
         include_directories: libuv_proj.include_directories('uv_a'),
