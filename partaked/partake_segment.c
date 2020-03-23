@@ -100,6 +100,7 @@ void partake_segment_destroy(struct partake_segment *segment) {
 
     segment->shmem_impl->deallocate(segment->config, segment->shmem_data);
     segment->shmem_impl->deinitialize(segment->shmem_data);
+    partake_free(segment);
 }
 
 
