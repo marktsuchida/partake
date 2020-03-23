@@ -102,8 +102,10 @@ static void on_server_close(uv_handle_t *handle) {
 
     struct partake_connection *conn, *tmp;
     DL_FOREACH_SAFE(daemon->conns, conn, tmp) {
-        // TODO We should skip clean destruction of the channel in this case
-
+        // Skipping channel is not only faster, but also avoids firing pending
+        // unpublish tasks (although they would probably be harmless if they
+        // do).
+        conn->skip_channel_destruction = true;
         partake_connection_destroy(conn);
     }
 }

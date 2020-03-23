@@ -58,6 +58,9 @@ struct partake_connection {
     // shutdown.
     struct partake_connection *prev;
     struct partake_connection *next;
+
+    // Used to skip extra work when the server is shutting down anyway.
+    bool skip_channel_destruction;
 };
 
 

@@ -71,7 +71,8 @@ struct partake_connection *partake_connection_create(uint32_t conn_no,
 static void on_client_close(uv_handle_t *handle) {
     struct partake_connection *conn = handle->data;
     partake_iobuf_release(conn->readbuf);
-    partake_channel_destroy(conn->chan);
+    if (!conn->skip_channel_destruction)
+        partake_channel_destroy(conn->chan);
     partake_free(conn->name);
     partake_free(conn);
 }
