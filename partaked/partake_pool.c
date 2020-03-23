@@ -69,6 +69,9 @@ struct partake_pool *partake_pool_create(struct partake_segment *segment) {
 
 
 void partake_pool_destroy(struct partake_pool *pool) {
+    if (pool == NULL)
+        return;
+
     assert (pool->objects == NULL);
     partake_free(pool);
 }
