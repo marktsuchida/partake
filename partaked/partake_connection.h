@@ -30,7 +30,7 @@
 
 #pragma once
 
-#include <uthash.h>
+#include <utlist.h>
 #include <uv.h>
 
 #include <stdbool.h>
@@ -54,7 +54,10 @@ struct partake_connection {
     uint32_t pid;
     char *name; // UTF-8
 
-    UT_hash_handle hh; // Key == ptr to this struct
+    // We keep a list of connections so that we can close them upon server
+    // shutdown.
+    struct partake_connection *prev;
+    struct partake_connection *next;
 };
 
 

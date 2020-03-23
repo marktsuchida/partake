@@ -33,7 +33,7 @@
 #include "partake_pool.h"
 #include "partake_segment.h"
 
-#include <uthash.h>
+#include <utlist.h>
 #include <uv.h>
 #include <zf_log.h>
 
@@ -52,9 +52,8 @@ struct partake_daemon {
 
     uv_signal_t signal[3]; // INT, HUP, TERM
 
-    // We need to keep track of all clients so that we can close them when we
-    // are forced to exit by a signal.
-    struct partake_connection *conns; // Hash table
+    // All connections (created and note yet removed)
+    struct partake_connection *conns; // doubly-linked list
 
     uint32_t last_conn_no;
 };
@@ -73,7 +72,7 @@ static void on_connect(uv_stream_t *server, int status) {
     if (conn == NULL) {
         return;
     }
-    HASH_ADD_KEYPTR(hh, daemon->conns, &conn, sizeof(conn), conn);
+    DL_PREPEND(daemon->conns, conn);
 
     int err = uv_accept((uv_stream_t *)server, (uv_stream_t *)&conn->client);
     if (err != 0) {
@@ -94,7 +93,7 @@ static void on_connect(uv_stream_t *server, int status) {
 
 void partake_daemon_remove_connection(struct partake_daemon *daemon,
         struct partake_connection *conn) {
-    HASH_DELETE(hh, daemon->conns, conn);
+    DL_DELETE(daemon->conns, conn);
 }
 
 
@@ -102,7 +101,7 @@ static void on_server_close(uv_handle_t *handle) {
     struct partake_daemon *daemon = handle->loop->data;
 
     struct partake_connection *conn, *tmp;
-    HASH_ITER(hh, daemon->conns, conn, tmp) {
+    DL_FOREACH_SAFE(daemon->conns, conn, tmp) {
         // TODO We should skip clean destruction of the channel in this case
 
         partake_connection_destroy(conn);
