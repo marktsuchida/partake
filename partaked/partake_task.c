@@ -229,10 +229,10 @@ struct task_Open_continuation_data {
 
 
 static void continue_task_Open(struct partake_handle *handle, void *data) {
+    struct task_Open_continuation_data *d = data;
+
     if (handle == NULL) // Canceled
         goto exit;
-
-    struct task_Open_continuation_data *d = data;
 
     int status = partake_channel_resume_open_object(d->conn->chan, handle);
     if (status != 0) {
@@ -340,10 +340,10 @@ struct task_Unpublish_continuation_data {
 
 static void continue_task_Unpublish(struct partake_handle *handle,
         void *data) {
+    struct task_Unpublish_continuation_data *d = data;
+
     if (handle == NULL) // Canceled
         goto exit;
-
-    struct task_Unpublish_continuation_data *d = data;
 
     int status = partake_channel_resume_unpublish_object(d->conn->chan, handle,
             d->clear);
