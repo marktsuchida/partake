@@ -199,7 +199,7 @@ static int run_event_loop(struct partake_daemon *daemon) {
     int err = uv_run(&daemon->loop, UV_RUN_DEFAULT);
     ZF_LOGI("uv_run exited");
 
-    return 0;
+    return err;
 }
 
 
