@@ -249,8 +249,6 @@ void partake_resparray_append_Unpublish_response(
 void partake_resparray_append_empty_response(
         struct partake_resparray *resparr, struct partake_request *req,
         int status) {
-    flatcc_builder_t *b = &resparr->builder;
-
     start_response(resparr, req, status);
     finish_response(resparr);
 }
