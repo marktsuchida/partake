@@ -30,6 +30,9 @@ cc = meson.get_compiler('c')
 # POSIX shm_open() and shm_unlink()
 librt = cc.find_library('rt', required: false)
 
+# arc4random() on Linux
+libbsd = cc.find_library('bsd', required: false)
+
 libbcrypt = cc.find_library('bcrypt', required: false)
 
 libuv = dependency('libuv', required: false) # pkg-config on Unix

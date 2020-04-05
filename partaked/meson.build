@@ -60,6 +60,7 @@ executable('partaked',
     ],
     dependencies: [
         libbcrypt,
+        libbsd,
         libflatccrt,
         librt,
         libuv,
