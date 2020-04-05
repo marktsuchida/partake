@@ -96,7 +96,7 @@ TCHAR *partake_alloc_random_name(TCHAR *prefix, size_t random_len) {
     TCHAR *p = ret + prefix_infix_len;
     size_t space_left = len + 1 - prefix_infix_len;
     while (space_left > 1) {
-        sntprintf(p, space_left, "%hhx", *byte++);
+        sntprintf(p, space_left, "%02hhx", *byte++);
         size_t n = space_left > 1 ? 2 : 1;
         p += n;
         space_left -= n;
