@@ -453,6 +453,9 @@ static void check_options(const struct parsed_options *opts,
     }
 
     // Check/convert name depending on type
+    // TODO It turns out that the maximum length of even POSIX shared memory is
+    // platform-dependent, so all these checks should be moved into each of the
+    // shmem implementations.
     if (opts->name != NULL) {
         if (opts->posix) {
             size_t len = tcslen(opts->name);

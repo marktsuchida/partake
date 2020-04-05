@@ -48,7 +48,7 @@
 #include <stdlib.h>
 
 
-#define NAME_INFIX PARTAKE_TEXT("partake-shmem-")
+#define NAME_INFIX PARTAKE_TEXT("partake-")
 
 
 static char *alloc_random_bytes(size_t size) {
@@ -81,9 +81,20 @@ int partake_generate_random_int(void) {
 
 // Return a partake_malloc()ed tstring consisting of prefix followed by
 // NAME_INFIX followed by random_len characters of random hex digits.
-TCHAR *partake_alloc_random_name(TCHAR *prefix, size_t random_len) {
+TCHAR *partake_alloc_random_name(TCHAR *prefix, size_t random_len,
+        size_t max_total_len) {
     size_t prefix_infix_len = tcslen(prefix) + tcslen(NAME_INFIX);
+    if (prefix_infix_len >= max_total_len) {
+        ZF_LOGF("Random name total length too short to fit random chars");
+        abort();
+    }
+
     size_t len = prefix_infix_len + random_len;
+    if (len > max_total_len) {
+        len = max_total_len;
+        random_len = len - prefix_infix_len;
+    }
+
     TCHAR *ret = partake_malloc(sizeof(TCHAR) * (len + 1));
 
     sntprintf(ret, len, PARTAKE_TEXT("%s") NAME_INFIX, prefix);

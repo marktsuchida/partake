@@ -49,6 +49,15 @@
 #include <unistd.h>
 
 
+// Limit generated name to platform maximum.
+#if defined(__APPLE__)
+#   include <sys/posix_shm.h>
+#   define MAX_SHM_OPEN_NAME_LEN (PSHMNAMLEN > 255 ? 255 : PSHMNAMLEN)
+#else
+#   define MAX_SHM_OPEN_NAME_LEN 255
+#endif
+
+
 struct mmap_private_data {
     bool use_posix; // Or else filesystem
     int fd;
@@ -101,7 +110,8 @@ static int create_posix_shm(const struct partake_daemon_config *config,
     int NUM_RETRIES = 100;
     for (int i = 0; i < NUM_RETRIES; ++i) {
         if (generate_name) {
-            name = generated_name = partake_alloc_random_name("/", 32);
+            name = generated_name = partake_alloc_random_name("/", 32,
+                    MAX_SHM_OPEN_NAME_LEN);
         }
 
         errno = 0;

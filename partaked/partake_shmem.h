@@ -60,4 +60,5 @@ struct partake_shmem_impl *partake_shmem_win32_impl(void);
 
 int partake_generate_random_int(void);
 
-TCHAR *partake_alloc_random_name(TCHAR *prefix, size_t random_len);
+TCHAR *partake_alloc_random_name(TCHAR *prefix, size_t random_len,
+        size_t max_total_len);

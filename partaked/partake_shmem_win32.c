@@ -180,7 +180,7 @@ static int create_file_mapping(const struct partake_daemon_config *config,
     for (int i = 0; i < NUM_RETRIES; ++i) {
         if (generate_name) {
             name = generated_name = partake_alloc_random_name(
-                    PARTAKE_TEXT("Local\\"), 32);
+                    PARTAKE_TEXT("Local\\"), 32, 255);
         }
 
         d->h_mapping = CreateFileMapping(d->h_file,
