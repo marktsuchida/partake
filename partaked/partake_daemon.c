@@ -54,7 +54,7 @@ struct partake_daemon {
 
     uv_signal_t signal[3]; // INT, HUP, TERM
 
-    // All connections (created and note yet removed)
+    // All connections (created and not yet removed)
     struct partake_connection *conns; // doubly-linked list
 
     uint32_t last_conn_no;
