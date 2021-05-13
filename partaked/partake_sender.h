@@ -37,9 +37,9 @@ struct partake_resparray;
 
 struct partake_sender *partake_sender_create(uv_stream_t *client);
 
-void partake_sender_retain(struct partake_sender *sender);
+struct partake_sender *partake_sender_incref(struct partake_sender *sender);
 
-void partake_sender_release(struct partake_sender *sender);
+void partake_sender_decref(struct partake_sender *sender);
 
 
 // Send any accumulated responses.

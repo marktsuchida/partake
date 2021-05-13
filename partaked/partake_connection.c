@@ -70,7 +70,7 @@ struct partake_connection *partake_connection_create(uint32_t conn_no,
 
 static void on_client_close(uv_handle_t *handle) {
     struct partake_connection *conn = handle->data;
-    partake_iobuf_release(conn->readbuf);
+    partake_iobuf_decref(conn->readbuf);
     if (!conn->skip_channel_destruction)
         partake_channel_destroy(conn->chan);
     partake_free(conn->name);
@@ -174,7 +174,7 @@ void partake_connection_read_cb(uv_stream_t *client, ssize_t nread,
 
     partake_sender_flush(sender);
     partake_sender_set_autoflush(sender, true);
-    partake_sender_release(sender);
+    partake_sender_decref(sender);
 
     if (!frame_complete && !quit) {
         conn->readbuf = partake_requestframe_maybe_move(conn->readbuf,
@@ -182,7 +182,7 @@ void partake_connection_read_cb(uv_stream_t *client, ssize_t nread,
         conn->readbuf_start = start + size;
     }
     else {
-        partake_iobuf_release(conn->readbuf);
+        partake_iobuf_decref(conn->readbuf);
         conn->readbuf = NULL;
         conn->readbuf_start = 0;
     }

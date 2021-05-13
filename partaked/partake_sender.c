@@ -64,14 +64,14 @@ struct partake_sender *partake_sender_create(uv_stream_t *client) {
 }
 
 
-void partake_sender_retain(struct partake_sender *sender) {
+struct partake_sender *partake_sender_incref(struct partake_sender *sender) {
     ++sender->refcount;
+    return sender;
 }
 
 
-void partake_sender_release(struct partake_sender *sender) {
-    --sender->refcount;
-    if (sender->refcount == 0) {
+void partake_sender_decref(struct partake_sender *sender) {
+    if (--sender->refcount == 0) {
         assert (sender->resparr == NULL);
         partake_free(sender);
     }
@@ -83,7 +83,7 @@ static void on_write_finish(uv_write_t *writereq, int status) {
         ZF_LOGE("uv_write_cb: %s", uv_strerror(status));
 
     struct partake_iobuf *iobuf = writereq->data;
-    partake_iobuf_release(iobuf);
+    partake_iobuf_decref(iobuf);
     partake_free(writereq);
 }
 

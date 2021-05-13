@@ -248,7 +248,7 @@ static void continue_task_Open(struct partake_handle *handle, void *data) {
     partake_sender_checkin_resparray(d->sender, resparr);
 
 exit:
-    partake_sender_release(d->sender);
+    partake_sender_decref(d->sender);
     partake_request_destroy(d->req);
     partake_free(d);
 }
@@ -268,8 +268,7 @@ int partake_task_Open(struct partake_connection *conn,
             partake_malloc(sizeof(*data));
         data->conn = conn;
         data->req = req;
-        data->sender = sender;
-        partake_sender_retain(sender);
+        data->sender = partake_sender_incref(sender);
 
         partake_handle_register_continue_on_publish(handle, req,
                 continue_task_Open, data);
@@ -359,7 +358,7 @@ static void continue_task_Unpublish(struct partake_handle *handle,
     partake_channel_release_handle(d->conn->chan, handle);
 
 exit:
-    partake_sender_release(d->sender);
+    partake_sender_decref(d->sender);
     partake_request_destroy(d->req);
     partake_free(d);
 }
@@ -381,9 +380,8 @@ int partake_task_Unpublish(struct partake_connection *conn,
             partake_malloc(sizeof(*data));
         data->conn = conn;
         data->req = req;
-        data->sender = sender;
+        data->sender = partake_sender_incref(sender);
         data->clear = clear;
-        partake_sender_retain(sender);
 
         partake_handle_register_continue_on_sole_ownership(handle, req,
                 continue_task_Unpublish, data);

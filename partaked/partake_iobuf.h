@@ -109,14 +109,16 @@ struct partake_iobuf {
 
 struct partake_iobuf *partake_iobuf_create(size_t size);
 
-// Do not call directly; use partake_iobuf_release().
+// Do not call directly; use partake_iobuf_decref().
 void partake_iobuf_destroy(struct partake_iobuf *iobuf);
 
-static inline void partake_iobuf_retain(struct partake_iobuf *iobuf) {
+static inline struct partake_iobuf *partake_iobuf_incref(
+    struct partake_iobuf *iobuf) {
     ++iobuf->management.refcount;
+    return iobuf;
 }
 
-static inline void partake_iobuf_release(struct partake_iobuf *iobuf) {
+static inline void partake_iobuf_decref(struct partake_iobuf *iobuf) {
     if (iobuf != NULL && --iobuf->management.refcount == 0) {
         partake_iobuf_destroy(iobuf);
     }

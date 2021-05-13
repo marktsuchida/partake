@@ -85,7 +85,7 @@ struct partake_iobuf *partake_requestframe_maybe_move(
         struct partake_iobuf *newbuf =
             partake_iobuf_create(PARTAKE_IOBUF_STD_SIZE);
         memcpy(newbuf->buffer, (char *)iobuf->buffer + *start, size);
-        partake_iobuf_release(iobuf);
+        partake_iobuf_decref(iobuf);
         *start = 0;
         return newbuf;
     }
@@ -111,8 +111,7 @@ struct partake_reqarray *partake_reqarray_create(struct partake_iobuf *iobuf,
     }
 
     struct partake_reqarray *reqarr = partake_malloc(sizeof(*reqarr));
-    partake_iobuf_retain(iobuf);
-    reqarr->iobuf = iobuf;
+    reqarr->iobuf = partake_iobuf_incref(iobuf);
     reqarr->offset = offset;
     reqarr->table = partake_protocol_RequestMessage_as_root(msg);
 
@@ -124,7 +123,7 @@ void partake_reqarray_destroy(struct partake_reqarray *reqarr) {
     if (reqarr == NULL)
         return;
 
-    partake_iobuf_release(reqarr->iobuf);
+    partake_iobuf_decref(reqarr->iobuf);
     partake_free(reqarr);
 }
 
@@ -139,8 +138,7 @@ struct partake_request *partake_reqarray_request(
         struct partake_reqarray *reqarr, uint32_t index) {
     struct partake_request *req = partake_malloc(sizeof(*req));
 
-    partake_iobuf_retain(reqarr->iobuf);
-    req->iobuf = reqarr->iobuf;
+    req->iobuf = partake_iobuf_incref(reqarr->iobuf);
     req->table = partake_protocol_Request_vec_at(
             partake_protocol_RequestMessage_requests_get(reqarr->table),
             index);
@@ -153,7 +151,7 @@ void partake_request_destroy(struct partake_request *req) {
     if (req == NULL)
         return;
 
-    partake_iobuf_release(req->iobuf);
+    partake_iobuf_decref(req->iobuf);
     partake_free(req);
 }
 
