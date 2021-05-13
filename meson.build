@@ -53,7 +53,7 @@ if not libuv.found()
 
     libuv = declare_dependency(
         include_directories: libuv_proj.include_directories('uv_a'),
-        link_with: libuv_proj.get_variable('uv_a'),
+        link_with: libuv_proj.target('uv_a'),
         dependencies: [ # Needed for the static version (uv_a)
             winsock,
             iphlpapi,
