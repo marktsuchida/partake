@@ -165,8 +165,6 @@ int partake_task_GetSegment(struct partake_connection *conn,
 int partake_task_Alloc(struct partake_connection *conn,
         struct partake_request *req, struct partake_sender *sender) {
     uint64_t size = partake_request_Alloc_size(req);
-    bool share_mutable = partake_request_Alloc_share_mutable(req);
-    bool clear = partake_request_Alloc_clear(req);
 
     int status;
     struct partake_handle *handle = NULL;
@@ -175,8 +173,10 @@ int partake_task_Alloc(struct partake_connection *conn,
         status = partake_protocol_Status_OUT_OF_MEMORY;
     }
     else {
+        uint8_t policy = partake_request_Alloc_policy(req);
+        bool clear = partake_request_Alloc_clear(req);
         status = partake_channel_alloc_object(conn->chan, size, clear,
-                share_mutable, &handle);
+                policy, &handle);
     }
 
     struct partake_resparray *resparr =
@@ -258,10 +258,10 @@ int partake_task_Open(struct partake_connection *conn,
         struct partake_request *req, struct partake_sender *sender) {
     partake_token token = partake_request_Open_token(req);
     bool wait = partake_request_Open_wait(req);
-    bool share_mutable = partake_request_Open_share_mutable(req);
+    uint8_t policy = partake_request_Open_policy(req);
 
     struct partake_handle *handle = NULL;
-    int status = partake_channel_open_object(conn->chan, token, share_mutable,
+    int status = partake_channel_open_object(conn->chan, token, policy,
             &handle);
     if (wait && status == partake_protocol_Status_OBJECT_BUSY) {
         struct task_Open_continuation_data *data =

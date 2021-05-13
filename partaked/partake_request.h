@@ -88,7 +88,7 @@ uint64_t partake_request_Alloc_size(struct partake_request *req);
 
 bool partake_request_Alloc_clear(struct partake_request *req);
 
-bool partake_request_Alloc_share_mutable(struct partake_request *req);
+uint8_t partake_request_Alloc_policy(struct partake_request *req);
 
 uint64_t partake_request_Realloc_token(struct partake_request *req);
 
@@ -98,7 +98,7 @@ uint64_t partake_request_Open_token(struct partake_request *req);
 
 bool partake_request_Open_wait(struct partake_request *req);
 
-bool partake_request_Open_share_mutable(struct partake_request *req);
+uint8_t partake_request_Open_policy(struct partake_request *req);
 
 uint64_t partake_request_Close_token(struct partake_request *req);
 

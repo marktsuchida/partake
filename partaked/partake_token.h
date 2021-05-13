@@ -36,10 +36,9 @@
 
 // A token is a key used by partaked to locate an object. To clients it is an
 // opaque byte string. Within the lifetime of a partaked instance, tokens are
-// unique and never reused; unless objects are created with the share_mutable
-// flag, a token uniquely identifies published object content. (There are
-// enough unique 64-bit numbers that we will never loop around.) The null
-// (zero) token is not used.
+// unique and never reused; for STANDARD policy objects, tokens uniquely
+// identifies published object content. (There are enough unique 64-bit numbers
+// that we will never loop around.) The null (zero) token is not used.
 typedef uint64_t partake_token;
 
 

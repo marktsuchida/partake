@@ -51,7 +51,7 @@ int partake_channel_get_segment(struct partake_channel *chan, uint32_t segno,
 
 // If successful, *handle has refcount 1, open_count 1.
 int partake_channel_alloc_object(struct partake_channel *chan,
-        size_t size, bool clear, bool share_mutable,
+        size_t size, bool clear, uint8_t policy,
         struct partake_handle **handle);
 
 
@@ -67,7 +67,7 @@ int partake_channel_resume_open_object(struct partake_channel *chan,
 // If successful, *handle refcount and open_count are incremented; if busy,
 // only refcount is incremented.
 int partake_channel_open_object(struct partake_channel *chan,
-        partake_token token, bool share_mutable,
+        partake_token token, uint8_t policy,
         struct partake_handle **handle);
 
 

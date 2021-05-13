@@ -119,7 +119,7 @@ int partake_channel_get_segment(struct partake_channel *chan, uint32_t segno,
 
 
 int partake_channel_alloc_object(struct partake_channel *chan,
-        size_t size, bool clear, bool share_mutable,
+        size_t size, bool clear, uint8_t policy,
         struct partake_handle **handle) {
     struct partake_object *object =
         partake_pool_create_object(chan->pool, size, clear,
@@ -127,9 +127,9 @@ int partake_channel_alloc_object(struct partake_channel *chan,
     if (object == NULL)
         return partake_protocol_Status_OUT_OF_MEMORY;
 
-    if (share_mutable)
-        object->flags |= PARTAKE_OBJECT_SHARE_MUTABLE;
-    else
+    partake_object_flags_set_policy(&object->flags, policy);
+
+    if (policy == partake_protocol_Policy_STANDARD)
         object->exclusive_writer = chan;
 
     object->open_count = 1;
@@ -171,17 +171,14 @@ int partake_channel_resume_open_object(struct partake_channel *chan,
 
 
 int partake_channel_open_object(struct partake_channel *chan,
-        partake_token token, bool share_mutable,
+        partake_token token, uint8_t policy,
         struct partake_handle **handle) {
     *handle = find_handle_in_channel(chan, token);
     struct partake_object *object;
     if (*handle == NULL) {
         object = partake_pool_find_object(chan->pool, token);
-        if (object == NULL) {
-            return partake_protocol_Status_NO_SUCH_OBJECT;
-        }
-        if (!!(object->flags & PARTAKE_OBJECT_SHARE_MUTABLE) !=
-                !!share_mutable) {
+        if (object == NULL ||
+            policy != partake_object_flags_get_policy(object->flags)) {
             return partake_protocol_Status_NO_SUCH_OBJECT;
         }
 
@@ -194,15 +191,15 @@ int partake_channel_open_object(struct partake_channel *chan,
     }
     else {
         object = (*handle)->object;
-        if (!!(object->flags & PARTAKE_OBJECT_SHARE_MUTABLE) !=
-                !!share_mutable) {
+        if (policy != partake_object_flags_get_policy(object->flags)) {
             return partake_protocol_Status_NO_SUCH_OBJECT;
         }
 
         ++(*handle)->refcount;
     }
 
-    if (!share_mutable && !(object->flags & PARTAKE_OBJECT_PUBLISHED))
+    if (policy == partake_protocol_Policy_STANDARD &&
+        !(object->flags & PARTAKE_OBJECT_PUBLISHED))
         return partake_protocol_Status_OBJECT_BUSY;
 
     return partake_channel_resume_open_object(chan, *handle);

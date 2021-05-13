@@ -41,25 +41,39 @@ struct partake_channel;
 
 
 /*
- * Objects start their life unpublished. They may get published once. Objects
- * are reference counted, and they are deallocated when the count reaches zero.
- * Unpublished objects are not sharable, but their reference count may become
- * greater than 1 if others are waiting for publication.  Unpublishing is
- * equivalent to deallocating and allocating a new object, except that the old
- * object's buffer is reused; therefore it can only be performed when the
- * reference count is 1.
+ * STANDARD objects start their life unpublished. They may get published once.
+ * Objects are reference counted, and they are deallocated when the count
+ * reaches zero. Unpublished objects are not sharable, but their reference count
+ * may become greater than 1 if others are waiting for publication.
+ * Unpublishing is equivalent to deallocating and allocating a new object,
+ * except that the old object's buffer is reused; therefore it can only be
+ * performed when the reference count is 1.
  *
- * Alternatively, objects can be allocated with the 'share mutable' flag set.
- * In this case the object is immediately sharable and cannot be published or
- * unpublished. Acquiring the object returns a writable reference in this case.
+ * PRIMITIVE objects are immediately sharable and cannot be published or
+ * unpublished. Acquiring the object returns a writable reference.
  */
 
 
 // Object flags
 enum {
     PARTAKE_OBJECT_PUBLISHED = 1 << 0,
-    PARTAKE_OBJECT_SHARE_MUTABLE = 1 << 1,
+
+    // Currently we only have 2 possible values for policy, so we use 1 bit.
+    // The 1-bit values are defined by the protocol.
+    PARTAKE_OBJECT_POLICY_SHIFT = 1,
+    PARTAKE_OBJECT_POLICY_MASK = 1 << PARTAKE_OBJECT_POLICY_SHIFT,
 };
+
+static inline uint8_t partake_object_flags_get_policy(short flags) {
+    return (flags & PARTAKE_OBJECT_POLICY_MASK) >> PARTAKE_OBJECT_POLICY_SHIFT;
+}
+
+static inline void partake_object_flags_set_policy(short *flags,
+    uint8_t policy) {
+    *flags &= ~PARTAKE_OBJECT_POLICY_MASK;
+    *flags |= (policy << PARTAKE_OBJECT_POLICY_SHIFT) &
+        PARTAKE_OBJECT_POLICY_MASK;
+}
 
 
 // Object descriptor
@@ -81,7 +95,7 @@ struct partake_object {
     unsigned open_count;
 
     // The channel currently holding a writable reference. Always NULL for
-    // published or share-mutable objects.
+    // published or PRIMITIVE objects.
     struct partake_channel *exclusive_writer;
 
     // Object descriptors are kept in a global hash table for their entire

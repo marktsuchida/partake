@@ -62,6 +62,12 @@ enum Status : int32 {
 }
 
 
+enum Policy : int8 {
+    STANDARD, // Write once exclusively; share as immutable buffer
+    PRIMITIVE, // Share with simultaneous write access
+}
+
+
 table PosixMmapSpec {
     // shm_open() or open() and mmap()
     name: string (required);
@@ -172,26 +178,25 @@ table GetSegmentResponse {
 table AllocRequest {
     size: uint64;
     clear: bool = false;
-    share_mutable: bool = false;
+    policy: Policy = STANDARD;
 
     /*
      * An object of the given size is allocated, and optionally cleared. If
      * there was not enough space in the shared memory pool, status is
      * OUT_OF_MEMORY.
      *
-     * If 'share_mutable' is false, the returned object is in the "unpublished"
+     * If 'policy' is STANDARD, the returned object is in the "unpublished"
      * state and opened for writing by this connection. It can later be
      * published to allow access by (this and) other connections.
      *
-     * If 'share_mutable' is true, the returned object is a shared-mutable
-     * object. This means that (this and) other connections can immediately
-     * open the object, and all openers have read and write access. However,
-     * Open requests on shared-mutable objects must also specify
-     * 'share_mutable' to ensure consistent usage by the client. Shared-
-     * mutable objects are intended for use cases where some other mechanism
-     * exists to coordinate object read and write access.
+     * If 'policy' is PRIMITIVE, the returned object does not distinguish
+     * between unpublished and published state. Other connections (as well as
+     * the current one) can immediately open the object, and all openers have
+     * read and write access. PRIMITIVE objects are intended for use cases
+     * where some other mechanism exists to coordinate object read and write
+     * access.
      *
-     * Both normal and shared-mutable objects need to be closed when done with.
+     * All allocated objects need to be closed when done with.
      */
 }
 
@@ -206,12 +211,13 @@ table ReallocRequest {
     size: uint64;
 
     /*
-     * The token must exist, be unpublished, not be shared-mutable, and opened
+     * The token must refer to a STANDARD object that is unpublished and opened
      * by this connection for writing, or else status is NO_SUCH_OBJECT.
-     * Otherwise the object's buffer is resized to the requested size,
-     * preserving its contents. If there is not enough space in the shared
-     * memory pool, status is OUT_OF_MEMORY. On success, the object buffer may
-     * move, requiring the client to remap it.
+     *
+     * The object's buffer is resized to the requested size, preserving its
+     * contents. If there is not enough space in the shared memory pool, status
+     * is OUT_OF_MEMORY. On success, the object buffer may move, requiring the
+     * client to remap it.
      */
 }
 
@@ -223,15 +229,15 @@ table ReallocResponse {
 
 table OpenRequest {
     token: uint64;
+    policy: Policy = STANDARD;
     wait: bool = true;
-    share_mutable: bool = false;
 
     /*
-     * The token must exist and its type must match 'share_mutable', or else
-     * status is NO_SUCH_OBJECT.
+     * The token must exist and its type must match 'policy', or else status is
+     * NO_SUCH_OBJECT.
      *
-     * If 'share_mutable' is false and the token refers to a published object,
-     * the object is opened for read-only access. If the token refers to an
+     * If 'policy' is STANDARD and the token refers to a published object, the
+     * object is opened for read-only access. If the token refers to an
      * unpublished object, behavior depends on the 'wait' flag. If 'wait' is
      * false, status is OBJECT_BUSY. If 'wait' is true, partaked waits for the
      * object to be published and opens it for read-only access before
@@ -239,8 +245,8 @@ table OpenRequest {
      * published, the wait is canceled and a status of NO_SUCH_OBJECT is
      * returned.
      *
-     * If 'share_mutable' is true and the token refers to a shared-mutable
-     * object, the object is opened for read and write access.
+     * If 'policy' is PRIMITIVE, the object is opened for read and write
+     * access.
      *
      * In all cases, successfully opened objects must be closed when done with.
      */
@@ -261,7 +267,7 @@ table CloseRequest {
      *
      * The number of times a given object is opened by a connection is counted
      * by partaked, and a corresponding number of Close requests must be
-     * issued.
+     * issued by the same client.
      *
      * If a client disconnects (intentionally or otherwise), all objects that
      * were opened by the connection are automatically closed; use of a
@@ -280,10 +286,10 @@ table PublishRequest {
     token: uint64;
 
     /*
-     * The token must exist, be unpublished, not be shared-mutable, and opened
-     * by this connection for writing, or else status is NO_SUCH_OBJECT.
+     * The token must refer to a STANDARD, unpublished object that is opened
+     * for writing by this client, or else status is NO_SUCH_OBJECT.
      *
-     * Otherwise the object is marked published, which allows (this and) other
+     * The object is marked published, which allows (this and) other
      * connections to open it for read-only access. The access already held by
      * this connection also changes to read-only.
      */
@@ -300,8 +306,8 @@ table UnpublishRequest {
     clear: bool = false;
 
     /*
-     * The token must exist, be published, not be shared-mutable, and opened by
-     * this connection (for reading), or else status is NO_SUCH_OBJECT.
+     * The token must refer to a STANDARD, published object that is opened by
+     * this client (for reading), or else status is NO_SUCH_OBJECT.
      *
      * If the object is exclusively opened by this connection (i.e., opened
      * exactly once by this connection, and not opened by any other
@@ -326,14 +332,14 @@ table UnpublishRequest {
      * buffer by writing new content to it and publishing it again. The fact
      * that an Unpublish (rather than a Close followed by a fresh Alloc) is
      * taking place is not visible to any other clients. Note that for
-     * non-shared-mutable objects, a given token is guaranteed to only ever
-     * refer to the same content.
+     * STANDARD objects, a given token is guaranteed to only ever refer to the
+     * same content.
      *
      * Unpublishing is intended for two types of advanced and
-     * performance-critical applications: (1) streaming data from one process
-     * to one or more consumers without incurring the overhead of allocating
-     * new buffers, and (2) passing data from one process to second, which
-     * modifies the data in place (and potentially passes it to other
+     * performance-critical applications: (1) streaming data from a producer to
+     * one or more consumers without incurring the overhead of allocating new
+     * buffers, and (2) passing data from one process to another, which
+     * modifies the data in place (and potentially passes it to yet other
      * processes) without incurring the overhead of copying data (and
      * allocating a new object). Whatever system that coordinates access to the
      * objects must ensure that deadlock or premature unpublishing does not
