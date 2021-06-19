@@ -56,5 +56,6 @@ if not libflatccrt.found() or not prog_flatcc.found()
 endif
 
 subdir('thirdparty')
+subdir('common')
 subdir('protocol')
 subdir('partaked')

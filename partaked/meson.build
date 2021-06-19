@@ -26,12 +26,14 @@ partaked_sources = [
 
 executable('partaked',
     sources: [
+        common_sources,
         partaked_sources,
         protocol_headers,
         dropt_sources,
         zf_log_sources,
     ],
     include_directories: [
+        common_incdir,
         dlmalloc_incdir,
         dropt_incdir,
         uthash_incdir,

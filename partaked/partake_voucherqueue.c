@@ -12,6 +12,7 @@
 #include "partake_malloc.h"
 #include "partake_object.h"
 #include "partake_pool.h"
+#include "partake_proquint.h"
 
 #include <zf_log.h>
 
@@ -65,7 +66,12 @@ struct partake_voucherqueue *partake_voucherqueue_create(
 static void expire_voucher(struct partake_voucherqueue *queue,
         struct partake_object *voucher, const char *reason) {
     // TODO Print voucher and target tokens in proquint
-    ZF_LOGW("voucher expired (%s)", reason);
+    char voucher_token_pq[24];
+    partake_proquint_from_uint64(voucher->token, voucher_token_pq);
+    char target_token_pq[24];
+    partake_proquint_from_uint64(voucher->target->token, target_token_pq);
+    ZF_LOGW("voucher expired (%s): %s (for object %s)", reason,
+            voucher_token_pq, target_token_pq);
     --voucher->target->refcount;
     partake_pool_destroy_object(queue->pool, voucher);
 }
