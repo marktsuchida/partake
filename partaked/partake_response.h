@@ -78,6 +78,14 @@ void partake_resparray_append_Unpublish_response(
         struct partake_resparray *resparr, struct partake_request *req,
         int status, partake_token token);
 
+void partake_resparray_append_CreateVoucher_response(
+        struct partake_resparray *resparr, struct partake_request *req,
+        int status, partake_token token);
+
+void partake_resparray_append_DiscardVoucher_response(
+        struct partake_resparray *resparr, struct partake_request *req,
+        int status, partake_token token);
+
 void partake_resparray_append_empty_response(
         struct partake_resparray *resparr, struct partake_request *req,
         int status);

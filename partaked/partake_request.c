@@ -250,3 +250,13 @@ bool partake_request_Unpublish_wait(struct partake_request *req) {
 bool partake_request_Unpublish_clear(struct partake_request *req) {
     return partake_protocol_UnpublishRequest_clear_get(anyrequest(req));
 }
+
+
+uint64_t partake_request_CreateVoucher_token(struct partake_request *req) {
+    return partake_protocol_CreateVoucherRequest_token_get(anyrequest(req));
+}
+
+
+uint64_t partake_request_DiscardVoucher_token(struct partake_request *req) {
+    return partake_protocol_DiscardVoucherRequest_token_get(anyrequest(req));
+}

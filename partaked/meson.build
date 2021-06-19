@@ -43,6 +43,7 @@ partaked_sources = [
     'partake_shmem_win32.c',
     'partake_task.c',
     'partake_token.c',
+    'partake_voucherqueue.c',
 ]
 
 executable('partaked',

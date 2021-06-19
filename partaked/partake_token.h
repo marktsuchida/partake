@@ -49,7 +49,7 @@ extern partake_token partake_prev_token;
 #define PARTAKE_TOKEN_SEED 0xffffffffffffffffULL
 
 
-static inline partake_token partake_generate_token() {
+static inline partake_token partake_generate_token(void) {
     // Tokens are generated using a pseudorandom sequence that will emit
     // 2^64 - 1 different non-zero values before looping around. (Sequential
     // numbers would also work, but this prevents users from making assumptions

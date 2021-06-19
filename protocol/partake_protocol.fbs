@@ -102,7 +102,7 @@ table SegmentSpec {
 
 
 struct Mapping {
-    token: uint64;
+    token: uint64; // Always an object token (not a voucher)
     segment: uint32;
     offset: uint64;
     size: uint64;
@@ -211,8 +211,9 @@ table ReallocRequest {
     size: uint64;
 
     /*
-     * The token must refer to a STANDARD object that is unpublished and opened
-     * by this connection for writing, or else status is NO_SUCH_OBJECT.
+     * The token must not be a voucher and must refer to a STANDARD object that
+     * is unpublished and opened by this connection for writing, or else status
+     * is NO_SUCH_OBJECT.
      *
      * The object's buffer is resized to the requested size, preserving its
      * contents. If there is not enough space in the shared memory pool, status
@@ -234,7 +235,7 @@ table OpenRequest {
 
     /*
      * The token must exist and its type must match 'policy', or else status is
-     * NO_SUCH_OBJECT.
+     * NO_SUCH_OBJECT. The token may be a voucher.
      *
      * If 'policy' is STANDARD and the token refers to a published object, the
      * object is opened for read-only access. If the token refers to an
@@ -247,6 +248,9 @@ table OpenRequest {
      *
      * If 'policy' is PRIMITIVE, the object is opened for read and write
      * access.
+     *
+     * If the token is a voucher, it is prevented from expiring during any wait
+     * and it always expires upon successful opening.
      *
      * In all cases, successfully opened objects must be closed when done with.
      */
@@ -262,8 +266,9 @@ table CloseRequest {
     token: uint64;
 
     /*
-     * The token must exist and be opened by this connection, whether by Alloc
-     * or by Open, or else status is NO_SUCH_OBJECT.
+     * The token must not be a voucher and must exist and be opened by this
+     * connection, whether by Alloc or by Open, or else status is
+     * NO_SUCH_OBJECT.
      *
      * The number of times a given object is opened by a connection is counted
      * by partaked, and a corresponding number of Close requests must be
@@ -286,8 +291,9 @@ table PublishRequest {
     token: uint64;
 
     /*
-     * The token must refer to a STANDARD, unpublished object that is opened
-     * for writing by this client, or else status is NO_SUCH_OBJECT.
+     * The token must not be a voucher and must refer to a STANDARD,
+     * unpublished object that is opened for writing by this client, or else
+     * status is NO_SUCH_OBJECT.
      *
      * The object is marked published, which allows (this and) other
      * connections to open it for read-only access. The access already held by
@@ -306,15 +312,16 @@ table UnpublishRequest {
     clear: bool = false;
 
     /*
-     * The token must refer to a STANDARD, published object that is opened by
-     * this client (for reading), or else status is NO_SUCH_OBJECT.
+     * The token must not be a voucher and must refer to a STANDARD, published
+     * object that is opened by this client (for reading), or else status is
+     * NO_SUCH_OBJECT.
      *
      * If the object is exclusively opened by this connection (i.e., opened
-     * exactly once by this connection, and not opened by any other
-     * connections), the object is removed from circulation, marked
-     * unpublished, given a new token, and reopened by this connection with
-     * read and write access. Otherwise, behavior depends on the 'wait' flag.
-     * If 'wait' is false, status is OBJECT_BUSY. If 'wait' is true, the
+     * exactly once by this connection, not opened by any other connections,
+     * and no vouchers outstanding), the object is removed from circulation,
+     * marked unpublished, given a new token, and reopened by this connection
+     * with read and write access. Otherwise, behavior depends on the 'wait'
+     * flag. If 'wait' is false, status is OBJECT_BUSY. If 'wait' is true, the
      * request is suspended until this connection becomes the exclusive holder
      * of access to the object, so that unpublishing can take place.
      *
@@ -325,6 +332,9 @@ table UnpublishRequest {
      * A pending Unpublish request can fail with a NO_SUCH_OBJECT status if
      * this connection (erroneously) closes all of its access to the object
      * (while other connections still hold access).
+     *
+     * A pending Unpublish request does not, however, prevent this or another
+     * client from opening the object or creating vouchers for the object.
      *
      * Upon successful completion of an Unpublish, the old token of the object
      * is completely removed from partaked and no client can ever open it
@@ -352,7 +362,72 @@ table UnpublishRequest {
 
 
 table UnpublishResponse {
-    token: uint64; // Null if status is not OK
+    token: uint64; // The new token; null or zero if status is not OK
+}
+
+
+table CreateVoucherRequest {
+    token: uint64;
+
+    /*
+     * The token must refer to an existing object, or else status is
+     * NO_SUCH_OBJECT. The token may be a voucher.
+     *
+     * A voucher token that refers to the given object is issued and returned.
+     *
+     * A voucher is an alternative token that can be generated for an object
+     * and passed between partake clients. When one or more valid vouchers
+     * exist for an object, the object is kept alive even if it is not kept
+     * open by any client. This is advantageous in certain applications where
+     * an object is handed off from one client to another, and the first client
+     * does not want to wait for an acknowledgment from the second client
+     * before it can close the object.
+     *
+     * The only possible operations on a voucher are Open and DiscardVoucher.
+     *
+     * To prevent lost vouchers from causing shared memory to fill up with
+     * unused objects (for example when a process handling vouchers crashes),
+     * each voucher expires after a set timeout (measured from when the voucher
+     * is created). Thus, a voucher should be created just before sending it
+     * off to its destination, and the receiver of a voucher should open it (or
+     * discard it) without delay. Voucher expiry should not be relied upon for
+     * normal operation.
+     *
+     * Voucher tokens live in the same namespace as ordinary tokens. Thus they
+     * are guaranteed to be unique during the lifetime of the partaked
+     * instance.
+     */
+}
+
+
+table CreateVoucherResponse {
+    token: uint64; // The voucher token; null or zero if status is not OK
+}
+
+
+table DiscardVoucherRequest {
+    token: uint64;
+
+    /*
+     * The token must exist, or else status is NO_SUCH_OBJECT.
+     *
+     * If the token is a voucher, it is caused to immediately expire. If the
+     * voucher is the only remaining reference to an object, the object is
+     * accordingly deallocated without waiting for the voucher to time out.
+     *
+     * If the token is not a voucher but an ordinary object token, this is a
+     * no-op. (This allows clients to be agnostic about whether tokens it
+     * receives from elsewhere are vouchers or not.)
+     */
+}
+
+
+table DiscardVoucherResponse {
+    token: uint64; // The object token; null or zero if status is not OK
+
+    /*
+     * The object token is returned for debugging and logging purposes only.
+     */
 }
 
 
@@ -366,6 +441,8 @@ union AnyRequest {
     CloseRequest,
     PublishRequest,
     UnpublishRequest,
+    CreateVoucherRequest,
+    DiscardVoucherRequest,
 }
 
 
@@ -379,6 +456,8 @@ union AnyResponse {
     CloseResponse,
     PublishResponse,
     UnpublishResponse,
+    CreateVoucherResponse,
+    DiscardVoucherResponse,
 }
 
 

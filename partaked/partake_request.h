@@ -109,3 +109,7 @@ uint64_t partake_request_Unpublish_token(struct partake_request *req);
 bool partake_request_Unpublish_wait(struct partake_request *req);
 
 bool partake_request_Unpublish_clear(struct partake_request *req);
+
+uint64_t partake_request_CreateVoucher_token(struct partake_request *req);
+
+uint64_t partake_request_DiscardVoucher_token(struct partake_request *req);

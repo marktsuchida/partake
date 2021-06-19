@@ -246,6 +246,38 @@ void partake_resparray_append_Unpublish_response(
 }
 
 
+void partake_resparray_append_CreateVoucher_response(
+        struct partake_resparray *resparr, struct partake_request *req,
+        int status, partake_token token) {
+    flatcc_builder_t *b = &resparr->builder;
+
+    start_response(resparr, req, status);
+    partake_protocol_Response_response_CreateVoucherResponse_start(b);
+
+    if (status == partake_protocol_Status_OK)
+        partake_protocol_CreateVoucherResponse_token_add(b, token);
+
+    partake_protocol_Response_response_CreateVoucherResponse_end(b);
+    finish_response(resparr);
+}
+
+
+void partake_resparray_append_DiscardVoucher_response(
+        struct partake_resparray *resparr, struct partake_request *req,
+        int status, partake_token token) {
+    flatcc_builder_t *b = &resparr->builder;
+
+    start_response(resparr, req, status);
+    partake_protocol_Response_response_DiscardVoucherResponse_start(b);
+
+    if (status == partake_protocol_Status_OK)
+        partake_protocol_DiscardVoucherResponse_token_add(b, token);
+
+    partake_protocol_Response_response_DiscardVoucherResponse_end(b);
+    finish_response(resparr);
+}
+
+
 void partake_resparray_append_empty_response(
         struct partake_resparray *resparr, struct partake_request *req,
         int status) {

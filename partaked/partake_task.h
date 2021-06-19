@@ -66,5 +66,11 @@ int partake_task_Publish(struct partake_connection *conn,
 int partake_task_Unpublish(struct partake_connection *conn,
         struct partake_request *req, struct partake_sender *sender);
 
+int partake_task_CreateVoucher(struct partake_connection *conn,
+        struct partake_request *req, struct partake_sender *sender);
+
+int partake_task_DiscardVoucher(struct partake_connection *conn,
+        struct partake_request *req, struct partake_sender *sender);
+
 int partake_task_Unknown(struct partake_connection *conn,
         struct partake_request *req, struct partake_sender *sender);

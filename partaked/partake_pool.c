@@ -35,6 +35,7 @@
 #include "partake_object.h"
 #include "partake_pool.h"
 #include "partake_segment.h"
+#include "partake_voucherqueue.h"
 
 #include <uthash.h>
 
@@ -48,10 +49,12 @@ struct partake_pool {
     void *addr;
     partake_allocator allocator;
     struct partake_object *objects; // Hash table
+    struct partake_voucherqueue *voucher_expiration_queue;
 };
 
 
-struct partake_pool *partake_pool_create(struct partake_segment *segment) {
+struct partake_pool *partake_pool_create(uv_loop_t *event_loop,
+        struct partake_segment *segment) {
     struct partake_pool *ret = partake_malloc(sizeof(*ret));
 
     ret->segment = segment;
@@ -64,6 +67,13 @@ struct partake_pool *partake_pool_create(struct partake_segment *segment) {
 
     ret->objects = NULL;
 
+    ret->voucher_expiration_queue =
+            partake_voucherqueue_create(event_loop, ret);
+    if (!ret->voucher_expiration_queue) {
+        partake_free(ret);
+        return NULL;
+    }
+
     return ret;
 }
 
@@ -73,6 +83,8 @@ void partake_pool_destroy(struct partake_pool *pool) {
         return;
 
     assert (pool->objects == NULL);
+
+    partake_voucherqueue_destroy(pool->voucher_expiration_queue);
     partake_free(pool);
 }
 
@@ -101,12 +113,14 @@ struct partake_object *partake_pool_create_object(struct partake_pool *pool,
     }
 
     object->token = token;
+    object->flags = 0;
     object->offset = block - (char *)pool->addr;
     object->size = size;
-    object->flags = 0;
     object->refcount = 1;
     object->open_count = 0;
     object->exclusive_writer = NULL;
+    object->handles_waiting_for_publish = NULL;
+    object->handle_waiting_for_sole_ownership = NULL;
 
     HASH_ADD(hh, pool->objects, token, sizeof(partake_token), object);
 
@@ -114,18 +128,42 @@ struct partake_object *partake_pool_create_object(struct partake_pool *pool,
 }
 
 
+struct partake_object *partake_pool_create_voucher(struct partake_pool *pool,
+        partake_token voucher_token, struct partake_object *target) {
+    struct partake_object *voucher = partake_malloc(sizeof(*voucher));
+
+    voucher->token = voucher_token;
+    voucher->flags = PARTAKE_OBJECT_IS_VOUCHER;
+    voucher->target = target;
+    voucher->expiration = 0;
+    voucher->next = voucher->prev = NULL;
+
+    HASH_ADD(hh, pool->objects, token, sizeof(partake_token), voucher);
+
+    return voucher;
+}
+
+
 void partake_pool_destroy_object(struct partake_pool *pool,
         struct partake_object *object) {
-    assert (object->refcount == 0);
+    assert (object->refcount == 0 ||
+            (object->flags & PARTAKE_OBJECT_IS_VOUCHER));
 
     HASH_DELETE(hh, pool->objects, object);
-    partake_deallocate(pool->allocator, (char *)pool->addr + object->offset);
+
+    if (!(object->flags & PARTAKE_OBJECT_IS_VOUCHER)) {
+        partake_deallocate(pool->allocator,
+                (char *)pool->addr + object->offset);
+    }
+
     partake_free(object);
 }
 
 
 int partake_pool_resize_object(struct partake_pool *pool,
         struct partake_object *object, size_t size) {
+    assert (!(object->flags & PARTAKE_OBJECT_IS_VOUCHER));
+
     char *block = partake_reallocate(pool->allocator,
             (char *)pool->addr + object->offset, size);
     if (block == NULL)
@@ -138,6 +176,8 @@ int partake_pool_resize_object(struct partake_pool *pool,
 
 void partake_pool_rekey_object(struct partake_pool *pool,
         struct partake_object *object, partake_token token) {
+    assert (!(object->flags & PARTAKE_OBJECT_IS_VOUCHER));
+
     HASH_DELETE(hh, pool->objects, object);
     object->token = token;
     HASH_ADD(hh, pool->objects, token, sizeof(partake_token), object);
@@ -146,5 +186,13 @@ void partake_pool_rekey_object(struct partake_pool *pool,
 
 void partake_pool_clear_object(struct partake_pool *pool,
         struct partake_object *object) {
+    assert (!(object->flags & PARTAKE_OBJECT_IS_VOUCHER));
+
     memset((char *)pool->addr + object->offset, 0, object->size);
+}
+
+
+struct partake_voucherqueue *partake_pool_get_voucherqueue(
+        struct partake_pool *pool) {
+    return pool->voucher_expiration_queue;
 }

@@ -35,11 +35,13 @@
 #include "partake_handle.h"
 #include "partake_malloc.h"
 #include "partake_object.h"
+#include "partake_pool.h"
 #include "partake_protocol_reader.h"
 #include "partake_request.h"
 #include "partake_response.h"
 #include "partake_sender.h"
 #include "partake_task.h"
+#include "partake_voucherqueue.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -225,6 +227,7 @@ struct task_Open_continuation_data {
     struct partake_connection *conn;
     struct partake_request *req;
     struct partake_sender *sender;
+    struct partake_object *voucher;
 };
 
 
@@ -234,7 +237,8 @@ static void continue_task_Open(struct partake_handle *handle, void *data) {
     if (handle == NULL) // Canceled
         goto exit;
 
-    int status = partake_channel_resume_open_object(d->conn->chan, handle);
+    int status = partake_channel_resume_open_object(d->conn->chan, handle,
+            d->voucher);
     if (status != 0) {
         partake_channel_release_handle(d->conn->chan, handle);
         handle = NULL;
@@ -261,14 +265,22 @@ int partake_task_Open(struct partake_connection *conn,
     uint8_t policy = partake_request_Open_policy(req);
 
     struct partake_handle *handle = NULL;
+    struct partake_object *voucher = NULL;
     int status = partake_channel_open_object(conn->chan, token, policy,
-            &handle);
+            &handle, &voucher);
     if (wait && status == partake_protocol_Status_OBJECT_BUSY) {
         struct task_Open_continuation_data *data =
             partake_malloc(sizeof(*data));
         data->conn = conn;
         data->req = req;
         data->sender = partake_sender_incref(sender);
+        data->voucher = voucher;
+
+        if (voucher) {
+            struct partake_pool *pool = partake_channel_get_pool(conn->chan);
+            partake_voucherqueue_remove(partake_pool_get_voucherqueue(pool),
+                    voucher);
+        }
 
         partake_handle_register_continue_on_publish(handle, req,
                 continue_task_Open, data);
@@ -398,6 +410,49 @@ int partake_task_Unpublish(struct partake_connection *conn,
         partake_request_destroy(req);
     }
 
+    return 0;
+}
+
+
+int partake_task_CreateVoucher(struct partake_connection *conn,
+        struct partake_request *req, struct partake_sender *sender) {
+    partake_token target_token = partake_request_CreateVoucher_token(req);
+
+    struct partake_object *voucher;
+    int status = partake_channel_create_voucher(conn->chan, target_token,
+            &voucher);
+
+    struct partake_resparray *resparr =
+        partake_sender_checkout_resparray(sender);
+
+    partake_token voucher_token = voucher ? voucher->token : 0;
+    partake_resparray_append_CreateVoucher_response(resparr, req, status,
+            voucher_token);
+
+    partake_sender_checkin_resparray(sender, resparr);
+
+    partake_request_destroy(req);
+    return 0;
+}
+
+
+int partake_task_DiscardVoucher(struct partake_connection *conn,
+        struct partake_request *req, struct partake_sender *sender) {
+    partake_token token = partake_request_DiscardVoucher_token(req);
+
+    struct partake_object *target;
+    int status = partake_channel_discard_voucher(conn->chan, token, &target);
+
+    struct partake_resparray *resparr =
+        partake_sender_checkout_resparray(sender);
+
+    partake_token target_token = target ? target->token : 0;
+    partake_resparray_append_DiscardVoucher_response(resparr, req, status,
+            target_token);
+
+    partake_sender_checkin_resparray(sender, resparr);
+
+    partake_request_destroy(req);
     return 0;
 }
 

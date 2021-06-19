@@ -219,7 +219,7 @@ int partake_daemon_run(const struct partake_daemon_config *config) {
         goto exit;
     }
 
-    daemon.pool = partake_pool_create(daemon.segment);
+    daemon.pool = partake_pool_create(&daemon.loop, daemon.segment);
     if (daemon.pool == NULL) {
         ret = -1;
         goto exit;

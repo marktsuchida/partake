@@ -37,6 +37,7 @@
 #include "partake_pool.h"
 #include "partake_protocol_reader.h"
 #include "partake_token.h"
+#include "partake_voucherqueue.h"
 
 #include <uthash.h>
 #include <utlist.h>
@@ -118,6 +119,11 @@ int partake_channel_get_segment(struct partake_channel *chan, uint32_t segno,
 }
 
 
+struct partake_pool *partake_channel_get_pool(struct partake_channel *chan) {
+    return chan->pool;
+}
+
+
 int partake_channel_alloc_object(struct partake_channel *chan,
         size_t size, bool clear, uint8_t policy,
         struct partake_handle **handle) {
@@ -158,7 +164,12 @@ int partake_channel_realloc_object(struct partake_channel *chan,
 
 
 int partake_channel_resume_open_object(struct partake_channel *chan,
-        struct partake_handle *handle) {
+        struct partake_handle *handle, struct partake_object *voucher) {
+    if (voucher) {
+        --voucher->target->refcount;
+        partake_pool_destroy_object(chan->pool, voucher);
+    }
+
     if (!(handle->object->flags & PARTAKE_OBJECT_PUBLISHED))
         return partake_protocol_Status_NO_SUCH_OBJECT;
 
@@ -172,13 +183,20 @@ int partake_channel_resume_open_object(struct partake_channel *chan,
 
 int partake_channel_open_object(struct partake_channel *chan,
         partake_token token, uint8_t policy,
-        struct partake_handle **handle) {
+        struct partake_handle **handle, struct partake_object **voucher) {
     *handle = find_handle_in_channel(chan, token);
+    *voucher = NULL;
     struct partake_object *object;
     if (*handle == NULL) {
         object = partake_pool_find_object(chan->pool, token);
-        if (object == NULL ||
-            policy != partake_object_flags_get_policy(object->flags)) {
+        if (object == NULL) {
+            return partake_protocol_Status_NO_SUCH_OBJECT;
+        }
+        if (object->flags & PARTAKE_OBJECT_IS_VOUCHER) {
+            *voucher = object;
+            object = (*voucher)->target;
+        }
+        if (policy != partake_object_flags_get_policy(object->flags)) {
             return partake_protocol_Status_NO_SUCH_OBJECT;
         }
 
@@ -202,7 +220,14 @@ int partake_channel_open_object(struct partake_channel *chan,
         !(object->flags & PARTAKE_OBJECT_PUBLISHED))
         return partake_protocol_Status_OBJECT_BUSY;
 
-    return partake_channel_resume_open_object(chan, *handle);
+    if (*voucher) {
+        partake_voucherqueue_remove(partake_pool_get_voucherqueue(chan->pool),
+                *voucher);
+    }
+
+    int status = partake_channel_resume_open_object(chan, *handle, *voucher);
+    *voucher = NULL;
+    return status;
 }
 
 
@@ -296,6 +321,61 @@ int partake_channel_unpublish_object(struct partake_channel *chan,
         return partake_protocol_Status_OBJECT_BUSY;
 
     return partake_channel_resume_unpublish_object(chan, *handle, clear);
+}
+
+
+int partake_channel_create_voucher(struct partake_channel *chan,
+        partake_token target_token, struct partake_object **voucher) {
+    // There is no logical need to search within this channel, but it is
+    // expected that in most cases the object will be found in this channel.
+    struct partake_handle *handle = find_handle_in_channel(chan, target_token);
+    struct partake_object *object;
+    if (handle == NULL) {
+        object = partake_pool_find_object(chan->pool, target_token);
+        if (object == NULL) {
+            return partake_protocol_Status_NO_SUCH_OBJECT;
+        }
+
+        if (object->flags & PARTAKE_OBJECT_IS_VOUCHER) {
+            object = object->target;
+        }
+    }
+    else {
+        object = handle->object;
+        // If found in the channel, we know it is not a voucher.
+    }
+
+    partake_token token = partake_generate_token();
+    *voucher = partake_pool_create_voucher(chan->pool, token, object);
+
+    ++object->refcount;
+
+    partake_voucherqueue_enqueue(partake_pool_get_voucherqueue(chan->pool),
+            *voucher);
+
+    return 0;
+}
+
+
+int partake_channel_discard_voucher(struct partake_channel *chan,
+        partake_token token, struct partake_object **target) {
+    struct partake_object *object = partake_pool_find_object(chan->pool, token);
+    if (object == NULL) {
+        return partake_protocol_Status_NO_SUCH_OBJECT;
+    }
+
+    if (object->flags & PARTAKE_OBJECT_IS_VOUCHER) {
+        partake_voucherqueue_remove(partake_pool_get_voucherqueue(chan->pool),
+                object);
+        *target = object->target;
+        --(*target)->refcount;
+        partake_pool_destroy_object(chan->pool, object);
+    }
+    else {
+        *target = object;
+    }
+
+    return 0;
 }
 
 
