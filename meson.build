@@ -55,6 +55,8 @@ if not libflatccrt.found() or not prog_flatcc.found()
     prog_flatcc = flatcc_proj.get_variable('flatcc')
 endif
 
+unity_dep = dependency('unity', fallback: ['unity', 'unity_dep'])
+
 subdir('thirdparty')
 subdir('common')
 subdir('protocol')

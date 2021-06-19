@@ -6,3 +6,9 @@ common_incdir = include_directories('.')
 common_sources = files([
     'partake_proquint.c',
 ])
+
+proquint_test = executable('test_proquint', 'test_proquint.c',
+    dependencies: [
+        unity_dep,
+    ])
+test('proquint test', proquint_test)

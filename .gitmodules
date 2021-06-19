@@ -13,3 +13,6 @@
 [submodule "subprojects/libuv"]
 	path = subprojects/libuv
 	url = https://github.com/libuv/libuv.git
+[submodule "subprojects/unity"]
+	path = subprojects/unity
+	url = https://github.com/ThrowTheSwitch/Unity.git
