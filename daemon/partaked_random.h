@@ -1,0 +1,16 @@
+/*
+ * Random string generation
+ *
+ * Copyright 2020-2021 Board of Regents of the University of Wisconsin System
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+#pragma once
+
+#include "partaked_tchar.h"
+
+
+int partake_generate_random_int(void);
+
+TCHAR *partake_alloc_random_name(TCHAR *prefix, size_t random_len,
+        size_t max_total_len);

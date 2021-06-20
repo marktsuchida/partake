@@ -1,5 +1,5 @@
 /*
- * Shared memory allocation for partaked
+ * Random string generation
  *
  * Copyright 2020-2021 Board of Regents of the University of Wisconsin System
  * SPDX-License-Identifier: BSD-2-Clause
@@ -7,9 +7,10 @@
 
 #include "partaked_prefix.h"
 
+#include "partaked_random.h"
+
 #include "partaked_logging.h"
 #include "partaked_malloc.h"
-#include "partaked_shmem.h"
 #include "partaked_tchar.h"
 
 #include <zf_log.h>

@@ -8,7 +8,6 @@
 #pragma once
 
 #include "partaked_daemon.h"
-#include "partaked_tchar.h"
 
 #include "partake_protocol_builder.h"
 
@@ -34,9 +33,3 @@ struct partake_shmem_impl *partake_shmem_mmap_impl(void);
 struct partake_shmem_impl *partake_shmem_shmget_impl(void);
 
 struct partake_shmem_impl *partake_shmem_win32_impl(void);
-
-
-int partake_generate_random_int(void);
-
-TCHAR *partake_alloc_random_name(TCHAR *prefix, size_t random_len,
-        size_t max_total_len);
