@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "partake_tchar.h" // TCHAR
+#include "partaked_tchar.h" // TCHAR
 
 #include <stdio.h> // snprintf
 #include <stdlib.h> // size_t, wcstombs

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "partake_tchar.h"
+#include "partaked_tchar.h"
 
 #include <stdbool.h>
 #include <stddef.h>

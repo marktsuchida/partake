@@ -5,9 +5,9 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#include "prefix.h"
+#include "partaked_prefix.h"
 
-#include "partake_allocator.h"
+#include "partaked_allocator.h"
 
 #include <stdbool.h>
 

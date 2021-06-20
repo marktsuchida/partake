@@ -7,8 +7,8 @@
 
 #pragma once
 
-#include "partake_malloc.h" // before uthash.h
-#include "partake_token.h"
+#include "partaked_malloc.h" // before uthash.h
+#include "partaked_token.h"
 
 #include <uthash.h>
 

@@ -5,12 +5,12 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#include "prefix.h"
+#include "partaked_prefix.h"
 
-#include "partake_logging.h"
-#include "partake_malloc.h"
-#include "partake_shmem.h"
-#include "partake_tchar.h"
+#include "partaked_logging.h"
+#include "partaked_malloc.h"
+#include "partaked_shmem.h"
+#include "partaked_tchar.h"
 
 #ifdef _WIN32
 

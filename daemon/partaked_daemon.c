@@ -3,15 +3,15 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#include "prefix.h"
+#include "partaked_prefix.h"
 
-#include "partake_connection.h"
-#include "partake_daemon.h"
-#include "partake_logging.h"
-#include "partake_malloc.h"
-#include "partake_pool.h"
-#include "partake_segment.h"
-#include "partake_tchar.h"
+#include "partaked_connection.h"
+#include "partaked_daemon.h"
+#include "partaked_logging.h"
+#include "partaked_malloc.h"
+#include "partaked_pool.h"
+#include "partaked_segment.h"
+#include "partaked_tchar.h"
 
 #include <utlist.h>
 #include <uv.h>

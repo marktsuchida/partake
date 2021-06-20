@@ -5,9 +5,9 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#include "prefix.h"
+#include "partaked_prefix.h"
 
-#include "partake_token.h"
+#include "partaked_token.h"
 
 
 partake_token partake_prev_token = PARTAKE_TOKEN_SEED;

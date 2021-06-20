@@ -5,10 +5,10 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#include "prefix.h"
+#include "partaked_prefix.h"
 
-#include "partake_daemon.h"
-#include "partake_tchar.h"
+#include "partaked_daemon.h"
+#include "partaked_tchar.h"
 
 #include <dropt.h>
 

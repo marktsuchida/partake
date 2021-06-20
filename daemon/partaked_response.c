@@ -5,17 +5,18 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#include "prefix.h"
+#include "partaked_prefix.h"
 
-#include "partake_handle.h"
-#include "partake_iobuf.h"
-#include "partake_malloc.h"
-#include "partake_object.h"
+#include "partaked_handle.h"
+#include "partaked_iobuf.h"
+#include "partaked_malloc.h"
+#include "partaked_object.h"
+#include "partaked_request.h"
+#include "partaked_response.h"
+#include "partaked_segment.h"
+#include "partaked_token.h"
+
 #include "partake_protocol_builder.h"
-#include "partake_request.h"
-#include "partake_response.h"
-#include "partake_segment.h"
-#include "partake_token.h"
 
 #include <string.h>
 

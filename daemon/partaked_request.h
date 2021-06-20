@@ -7,7 +7,8 @@
 
 #pragma once
 
-#include "partake_iobuf.h"
+#include "partaked_iobuf.h"
+
 #include "partake_protocol_reader.h"
 
 #include <stdbool.h>

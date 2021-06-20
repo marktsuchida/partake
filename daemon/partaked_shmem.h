@@ -7,9 +7,10 @@
 
 #pragma once
 
-#include "partake_daemon.h"
+#include "partaked_daemon.h"
+#include "partaked_tchar.h"
+
 #include "partake_protocol_builder.h"
-#include "partake_tchar.h"
 
 
 struct partake_shmem_impl {

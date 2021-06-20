@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "partake_token.h"
+#include "partaked_token.h"
 
 #include <stdint.h>
 
