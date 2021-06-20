@@ -1,7 +1,9 @@
 # Copyright 2020-2021 Board of Regents of the University of Wisconsin System
 # SPDX-License-Identifier: BSD-2-Clause
 
-project('partake', 'c')
+project('partake', 'c',
+    license: 'BSD-2-Clause',
+)
 
 cc = meson.get_compiler('c')
 
