@@ -15,7 +15,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-struct partake_channel;
+struct partaked_channel;
 
 
 /*
@@ -34,31 +34,31 @@ struct partake_channel;
 
 // Object flags
 enum {
-    PARTAKE_OBJECT_IS_VOUCHER = 1 << 0,
+    PARTAKED_OBJECT_IS_VOUCHER = 1 << 0,
 
     // Currently we only have 2 possible values for policy, so we use 1 bit.
     // The 1-bit values are defined by the protocol.
-    PARTAKE_OBJECT_POLICY_SHIFT = 1,
-    PARTAKE_OBJECT_POLICY_MASK = 1 << PARTAKE_OBJECT_POLICY_SHIFT,
+    PARTAKED_OBJECT_POLICY_SHIFT = 1,
+    PARTAKED_OBJECT_POLICY_MASK = 1 << PARTAKED_OBJECT_POLICY_SHIFT,
 
-    PARTAKE_OBJECT_PUBLISHED = 1 << 2,
+    PARTAKED_OBJECT_PUBLISHED = 1 << 2,
 };
 
-static inline uint8_t partake_object_flags_get_policy(short flags) {
-    return (flags & PARTAKE_OBJECT_POLICY_MASK) >> PARTAKE_OBJECT_POLICY_SHIFT;
+static inline uint8_t partaked_object_flags_get_policy(short flags) {
+    return (flags & PARTAKED_OBJECT_POLICY_MASK) >> PARTAKED_OBJECT_POLICY_SHIFT;
 }
 
-static inline void partake_object_flags_set_policy(short *flags,
+static inline void partaked_object_flags_set_policy(short *flags,
     uint8_t policy) {
-    *flags &= ~PARTAKE_OBJECT_POLICY_MASK;
-    *flags |= (policy << PARTAKE_OBJECT_POLICY_SHIFT) &
-        PARTAKE_OBJECT_POLICY_MASK;
+    *flags &= ~PARTAKED_OBJECT_POLICY_MASK;
+    *flags |= (policy << PARTAKED_OBJECT_POLICY_SHIFT) &
+        PARTAKED_OBJECT_POLICY_MASK;
 }
 
 
 // Object descriptor
-struct partake_object {
-    partake_token token;
+struct partaked_object {
+    partaked_token token;
 
     // Object type, policy, and state.
     short flags;
@@ -67,7 +67,7 @@ struct partake_object {
     // lifetime. This reference is _not_ included in the refcount field.
     UT_hash_handle hh; // Key == token
 
-    // The remaining fields depend on (flags & PARTAKE_OBJECT_IS_VOUCHER).
+    // The remaining fields depend on (flags & PARTAKED_OBJECT_IS_VOUCHER).
     union {
         // Object
         struct {
@@ -88,7 +88,7 @@ struct partake_object {
 
             // The channel currently holding a writable reference. Always NULL
             // for published or PRIMITIVE objects and for vouchers.
-            struct partake_channel *exclusive_writer;
+            struct partaked_channel *exclusive_writer;
 
             // Some request handling requires waiting on objects to change
             // state. Here we only manage handles waiting on this object;
@@ -98,27 +98,27 @@ struct partake_object {
             // released by the creator without publishing. The list is empty
             // unless this object is unpublished. Handles are stored in a
             // singly-linked list (utlist).
-            struct partake_handle *handles_waiting_for_publish;
+            struct partaked_handle *handles_waiting_for_publish;
 
             // This handle is notified when this object is published _and_ the
             // total number of owning handles and vouchers goes from 2 to 1. It
             // will be NULL unless the object is published and there is more
             // than 1 owning handle.
-            struct partake_handle *handle_waiting_for_sole_ownership;
+            struct partaked_handle *handle_waiting_for_sole_ownership;
         };
 
         // Voucher
         struct {
             // Target object of the voucher. The target is a regular object,
             // never a voucher itself.
-            struct partake_object *target;
+            struct partaked_object *target;
 
             // Expiration time in ms (uv_now() value).
             uint64_t expiration;
 
             // Doubly-linked list pointers for voucher queue.
-            struct partake_object *next;
-            struct partake_object *prev;
+            struct partaked_object *next;
+            struct partaked_object *prev;
         };
     };
 };

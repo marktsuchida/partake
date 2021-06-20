@@ -24,14 +24,14 @@
 #define MESSAGE_ALIGNMENT 8
 
 
-struct partake_resparray {
+struct partaked_resparray {
     flatcc_builder_t builder;
     uint32_t count;
 };
 
 
-struct partake_resparray *partake_resparray_create(void) {
-    struct partake_resparray *resparr = partake_malloc(sizeof(*resparr));
+struct partaked_resparray *partaked_resparray_create(void) {
+    struct partaked_resparray *resparr = partaked_malloc(sizeof(*resparr));
     resparr->count = 0;
 
     flatcc_builder_t *b = &resparr->builder;
@@ -44,22 +44,22 @@ struct partake_resparray *partake_resparray_create(void) {
 }
 
 
-struct partake_iobuf *partake_resparray_finish(
-        struct partake_resparray *resparr, size_t *size) {
+struct partaked_iobuf *partaked_resparray_finish(
+        struct partaked_resparray *resparr, size_t *size) {
     flatcc_builder_t *b = &resparr->builder;
 
     partake_protocol_ResponseMessage_responses_end(b);
     partake_protocol_ResponseMessage_end_as_root(b);
 
-    struct partake_iobuf *iobuf = NULL;
+    struct partaked_iobuf *iobuf = NULL;
     *size = 0;
     if (resparr->count > 0) {
         size_t fbsize = flatcc_builder_get_buffer_size(b);
         *size = (fbsize + MESSAGE_ALIGNMENT - 1) & ~(MESSAGE_ALIGNMENT - 1);
 
-        iobuf = partake_iobuf_create(PARTAKE_IOBUF_STD_SIZE);
+        iobuf = partaked_iobuf_create(PARTAKED_IOBUF_STD_SIZE);
         void *buf = flatcc_builder_copy_buffer(b, iobuf->buffer,
-                PARTAKE_IOBUF_STD_SIZE);
+                PARTAKED_IOBUF_STD_SIZE);
         assert (buf != NULL);
 
         size_t padding = *size - fbsize;
@@ -67,32 +67,32 @@ struct partake_iobuf *partake_resparray_finish(
     }
 
     flatcc_builder_clear(b);
-    partake_free(resparr);
+    partaked_free(resparr);
 
     return iobuf;
 }
 
 
-static inline void start_response(struct partake_resparray *resparr,
-        struct partake_request *req, int status) {
+static inline void start_response(struct partaked_resparray *resparr,
+        struct partaked_request *req, int status) {
     ++resparr->count;
 
     flatcc_builder_t *b = &resparr->builder;
     partake_protocol_ResponseMessage_responses_push_start(b);
 
-    partake_protocol_Response_seqno_add(b, partake_request_seqno(req));
+    partake_protocol_Response_seqno_add(b, partaked_request_seqno(req));
     partake_protocol_Response_status_add(b, status);
 }
 
 
-static inline void finish_response(struct partake_resparray *resparr) {
+static inline void finish_response(struct partaked_resparray *resparr) {
     flatcc_builder_t *b = &resparr->builder;
     partake_protocol_ResponseMessage_responses_push_end(b);
 }
 
 
-void partake_resparray_append_Hello_response(
-        struct partake_resparray *resparr, struct partake_request *req,
+void partaked_resparray_append_Hello_response(
+        struct partaked_resparray *resparr, struct partaked_request *req,
         int status, uint32_t conn_no) {
     flatcc_builder_t *b = &resparr->builder;
 
@@ -108,9 +108,9 @@ void partake_resparray_append_Hello_response(
 }
 
 
-void partake_resparray_append_GetSegment_response(
-        struct partake_resparray *resparr, struct partake_request *req,
-        int status, struct partake_segment *segment) {
+void partaked_resparray_append_GetSegment_response(
+        struct partaked_resparray *resparr, struct partaked_request *req,
+        int status, struct partaked_segment *segment) {
     flatcc_builder_t *b = &resparr->builder;
 
     start_response(resparr, req, status);
@@ -119,8 +119,8 @@ void partake_resparray_append_GetSegment_response(
     if (status == partake_protocol_Status_OK) {
         partake_protocol_GetSegmentResponse_segment_start(b);
         partake_protocol_SegmentSpec_size_add(b,
-                partake_segment_size(segment));
-        partake_segment_add_mapping_spec(segment, b);
+                partaked_segment_size(segment));
+        partaked_segment_add_mapping_spec(segment, b);
         partake_protocol_GetSegmentResponse_segment_end(b);
     }
 
@@ -129,9 +129,9 @@ void partake_resparray_append_GetSegment_response(
 }
 
 
-void partake_resparray_append_Alloc_response(
-        struct partake_resparray *resparr, struct partake_request *req,
-        int status, struct partake_handle *handle) {
+void partaked_resparray_append_Alloc_response(
+        struct partaked_resparray *resparr, struct partaked_request *req,
+        int status, struct partaked_handle *handle) {
     flatcc_builder_t *b = &resparr->builder;
 
     start_response(resparr, req, status);
@@ -147,9 +147,9 @@ void partake_resparray_append_Alloc_response(
 }
 
 
-void partake_resparray_append_Realloc_response(
-        struct partake_resparray *resparr, struct partake_request *req,
-        int status, struct partake_handle *handle) {
+void partaked_resparray_append_Realloc_response(
+        struct partaked_resparray *resparr, struct partaked_request *req,
+        int status, struct partaked_handle *handle) {
     flatcc_builder_t *b = &resparr->builder;
 
     start_response(resparr, req, status);
@@ -166,9 +166,9 @@ void partake_resparray_append_Realloc_response(
 }
 
 
-void partake_resparray_append_Open_response(
-        struct partake_resparray *resparr, struct partake_request *req,
-        int status, struct partake_handle *handle) {
+void partaked_resparray_append_Open_response(
+        struct partaked_resparray *resparr, struct partaked_request *req,
+        int status, struct partaked_handle *handle) {
     flatcc_builder_t *b = &resparr->builder;
 
     start_response(resparr, req, status);
@@ -184,8 +184,8 @@ void partake_resparray_append_Open_response(
 }
 
 
-void partake_resparray_append_Close_response(
-        struct partake_resparray *resparr, struct partake_request *req,
+void partaked_resparray_append_Close_response(
+        struct partaked_resparray *resparr, struct partaked_request *req,
         int status) {
     flatcc_builder_t *b = &resparr->builder;
 
@@ -196,8 +196,8 @@ void partake_resparray_append_Close_response(
 }
 
 
-void partake_resparray_append_Publish_response(
-        struct partake_resparray *resparr, struct partake_request *req,
+void partaked_resparray_append_Publish_response(
+        struct partaked_resparray *resparr, struct partaked_request *req,
         int status) {
     flatcc_builder_t *b = &resparr->builder;
 
@@ -208,9 +208,9 @@ void partake_resparray_append_Publish_response(
 }
 
 
-void partake_resparray_append_Unpublish_response(
-        struct partake_resparray *resparr, struct partake_request *req,
-        int status, partake_token token) {
+void partaked_resparray_append_Unpublish_response(
+        struct partaked_resparray *resparr, struct partaked_request *req,
+        int status, partaked_token token) {
     flatcc_builder_t *b = &resparr->builder;
 
     start_response(resparr, req, status);
@@ -224,9 +224,9 @@ void partake_resparray_append_Unpublish_response(
 }
 
 
-void partake_resparray_append_CreateVoucher_response(
-        struct partake_resparray *resparr, struct partake_request *req,
-        int status, partake_token token) {
+void partaked_resparray_append_CreateVoucher_response(
+        struct partaked_resparray *resparr, struct partaked_request *req,
+        int status, partaked_token token) {
     flatcc_builder_t *b = &resparr->builder;
 
     start_response(resparr, req, status);
@@ -240,9 +240,9 @@ void partake_resparray_append_CreateVoucher_response(
 }
 
 
-void partake_resparray_append_DiscardVoucher_response(
-        struct partake_resparray *resparr, struct partake_request *req,
-        int status, partake_token token) {
+void partaked_resparray_append_DiscardVoucher_response(
+        struct partaked_resparray *resparr, struct partaked_request *req,
+        int status, partaked_token token) {
     flatcc_builder_t *b = &resparr->builder;
 
     start_response(resparr, req, status);
@@ -256,8 +256,8 @@ void partake_resparray_append_DiscardVoucher_response(
 }
 
 
-void partake_resparray_append_empty_response(
-        struct partake_resparray *resparr, struct partake_request *req,
+void partaked_resparray_append_empty_response(
+        struct partaked_resparray *resparr, struct partaked_request *req,
         int status) {
     start_response(resparr, req, status);
     finish_response(resparr);

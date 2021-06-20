@@ -9,19 +9,19 @@
 
 #include <uv.h>
 
-struct partake_object;
-struct partake_pool;
-struct partake_voucherqueue;
+struct partaked_object;
+struct partaked_pool;
+struct partaked_voucherqueue;
 
 
-struct partake_voucherqueue *partake_voucherqueue_create(uv_loop_t *event_loop,
-        struct partake_pool *pool);
+struct partaked_voucherqueue *partaked_voucherqueue_create(uv_loop_t *event_loop,
+        struct partaked_pool *pool);
 
-void partake_voucherqueue_destroy(struct partake_voucherqueue *queue);
+void partaked_voucherqueue_destroy(struct partaked_voucherqueue *queue);
 
 
-void partake_voucherqueue_enqueue(struct partake_voucherqueue *queue,
-        struct partake_object *voucher);
+void partaked_voucherqueue_enqueue(struct partaked_voucherqueue *queue,
+        struct partaked_object *voucher);
 
-void partake_voucherqueue_remove(struct partake_voucherqueue *queue,
-        struct partake_object *voucher);
+void partaked_voucherqueue_remove(struct partaked_voucherqueue *queue,
+        struct partaked_object *voucher);

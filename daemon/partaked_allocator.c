@@ -55,7 +55,7 @@
 #include "dlmalloc/malloc.c"
 
 
-partake_allocator partake_create_allocator(void *base, size_t size) {
+partaked_allocator partaked_create_allocator(void *base, size_t size) {
     mspace allocator = create_mspace_with_base(base, size, 0);
     if (allocator != NULL) {
         mspace_track_large_chunks(allocator, 1);
@@ -64,7 +64,7 @@ partake_allocator partake_create_allocator(void *base, size_t size) {
 }
 
 
-void *partake_allocate(partake_allocator allocator, size_t size, bool clear) {
+void *partaked_allocate(partaked_allocator allocator, size_t size, bool clear) {
     if (allocator == NULL) {
         return NULL;
     }
@@ -74,7 +74,7 @@ void *partake_allocate(partake_allocator allocator, size_t size, bool clear) {
 }
 
 
-void partake_deallocate(partake_allocator allocator, void *addr) {
+void partaked_deallocate(partaked_allocator allocator, void *addr) {
     if (allocator == NULL) {
         return;
     }
@@ -82,7 +82,7 @@ void partake_deallocate(partake_allocator allocator, void *addr) {
 }
 
 
-void *partake_reallocate(partake_allocator allocator,
+void *partaked_reallocate(partaked_allocator allocator,
         void *addr, size_t newsize) {
     if (allocator == NULL) {
         return NULL;
@@ -91,7 +91,7 @@ void *partake_reallocate(partake_allocator allocator,
 }
 
 
-void **partake_allocate_many(partake_allocator allocator,
+void **partaked_allocate_many(partaked_allocator allocator,
         size_t n, size_t elem_size, void **addrs, bool clear) {
     if (allocator == NULL) {
         if (addrs != NULL) {
@@ -104,7 +104,7 @@ void **partake_allocate_many(partake_allocator allocator,
 }
 
 
-void **partake_allocate_many_sizes(partake_allocator allocator,
+void **partaked_allocate_many_sizes(partaked_allocator allocator,
         size_t n, size_t *sizes, void **addrs, bool clear) {
     if (allocator == NULL) {
         if (addrs != NULL) {

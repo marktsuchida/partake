@@ -47,7 +47,7 @@ struct mmap_private_data {
 
 
 static int mmap_initialize(void **data) {
-    *data = partake_malloc(sizeof(struct mmap_private_data));
+    *data = partaked_malloc(sizeof(struct mmap_private_data));
     memset(*data, 0, sizeof(struct mmap_private_data));
     return 0;
 }
@@ -69,11 +69,11 @@ static void mmap_deinitialize(void *data) {
         ZF_LOGF("Deinitializing mmap segment whose shm/file still exists!");
     }
 
-    partake_free(data);
+    partaked_free(data);
 }
 
 
-static int create_posix_shm(const struct partake_daemon_config *config,
+static int create_posix_shm(const struct partaked_daemon_config *config,
         struct mmap_private_data *d) {
     bool generate_name = config->shmem.mmap.shmname == NULL;
     bool force = config->force && !generate_name;
@@ -88,7 +88,7 @@ static int create_posix_shm(const struct partake_daemon_config *config,
     int NUM_RETRIES = 100;
     for (int i = 0; i < NUM_RETRIES; ++i) {
         if (generate_name) {
-            name = generated_name = partake_alloc_random_name("/", 32,
+            name = generated_name = partaked_alloc_random_name("/", 32,
                     MAX_SHM_OPEN_NAME_LEN);
         }
 
@@ -98,8 +98,8 @@ static int create_posix_shm(const struct partake_daemon_config *config,
         if (d->fd < 0) {
             char emsg[1024];
             ZF_LOGE("shm_open: %s: %s", name,
-                    partake_strerror(ret, emsg, sizeof(emsg)));
-            partake_free(generated_name);
+                    partaked_strerror(ret, emsg, sizeof(emsg)));
+            partaked_free(generated_name);
 
             if (generate_name && ret == EEXIST) {
                 continue;
@@ -130,13 +130,13 @@ static int unlink_posix_shm(struct mmap_private_data *d) {
         ret = errno;
         char emsg[1024];
         ZF_LOGE("shm_unlink: %s: %s", d->shmname,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
     }
     ZF_LOGI("shm_unlink: %s", d->shmname);
 
     // Marked unlinked even on error; there is nothing further we can do.
     if (d->must_free_shmname) {
-        partake_free((void *)d->shmname);
+        partaked_free((void *)d->shmname);
     }
     d->shmname = NULL;
 
@@ -158,7 +158,7 @@ static int canonicalize_filename(const char *name, const char **canonical) {
     // exist yet. Some implementations of dirname() and basename() can modify
     // the given path, so we need to make copies.
 
-    name1 = partake_malloc(strlen(name) + 1);
+    name1 = partaked_malloc(strlen(name) + 1);
     strcpy(name1, name);
     errno = 0;
     char *dirnm = dirname(name1);
@@ -166,11 +166,11 @@ static int canonicalize_filename(const char *name, const char **canonical) {
         ret = errno;
         char emsg[1024];
         ZF_LOGE("dirname: %s: %s", name,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
         goto exit;
     }
 
-    name2 = partake_malloc(strlen(name) + 1);
+    name2 = partaked_malloc(strlen(name) + 1);
     strcpy(name2, name);
     errno = 0;
     char *basnm = basename(name2);
@@ -178,39 +178,39 @@ static int canonicalize_filename(const char *name, const char **canonical) {
         ret = errno;
         char emsg[1024];
         ZF_LOGE("basename: %s: %s", name,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
         goto exit;
     }
 
-    rdname = partake_malloc(PATH_MAX + 1);
+    rdname = partaked_malloc(PATH_MAX + 1);
     errno = 0;
     char *realdirnm = realpath(dirnm, rdname);
     if (realdirnm == NULL) {
         ret = errno;
         char emsg[1024];
         ZF_LOGE("realpath: %s: %s", dirnm,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
         goto exit;
     }
 
-    *canonical = partake_malloc(strlen(realdirnm) + 1 + strlen(basnm) + 1);
+    *canonical = partaked_malloc(strlen(realdirnm) + 1 + strlen(basnm) + 1);
     char *c = (char *)*canonical;
     strcpy(c, realdirnm);
     strcat(c, "/");
     strcat(c, basnm);
 
 exit:
-    partake_free(rdname);
-    partake_free(name2);
-    partake_free(name1);
+    partaked_free(rdname);
+    partaked_free(name2);
+    partaked_free(name1);
     return ret;
 }
 
 
-static int create_file_shm(const struct partake_daemon_config *config,
+static int create_file_shm(const struct partaked_daemon_config *config,
         struct mmap_private_data *d) {
     if (d->must_free_shmname) {
-        partake_free((void *)d->shmname);
+        partaked_free((void *)d->shmname);
     }
 
     // We need to use a canonicalized path, because it will be passed to
@@ -229,9 +229,9 @@ static int create_file_shm(const struct partake_daemon_config *config,
     if (d->fd < 0) {
         char emsg[1024];
         ZF_LOGE("open: %s: %s", d->shmname,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
         if (d->must_free_shmname) {
-            partake_free((void *)d->shmname);
+            partaked_free((void *)d->shmname);
         }
         d->shmname = NULL;
         return ret;
@@ -254,13 +254,13 @@ static int unlink_file_shm(struct mmap_private_data *d) {
         ret = errno;
         char emsg[1024];
         ZF_LOGE("unlink: %s: %s", d->shmname,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
     }
     ZF_LOGI("unlink: %s", d->shmname);
 
     // Marked unlinked even on error; there is nothing further we can do.
     if (d->must_free_shmname) {
-        partake_free((void *)d->shmname);
+        partaked_free((void *)d->shmname);
     }
     d->shmname = NULL;
 
@@ -278,7 +278,7 @@ static int close_fd(struct mmap_private_data *d) {
         int ret = errno;
         char emsg[1024];
         ZF_LOGE("close: %d: %s", d->fd,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
     }
     else {
         ZF_LOGI("close: %d", d->fd);
@@ -291,7 +291,7 @@ static int close_fd(struct mmap_private_data *d) {
 }
 
 
-static int mmap_allocate(const struct partake_daemon_config *config,
+static int mmap_allocate(const struct partaked_daemon_config *config,
         void *data) {
     struct mmap_private_data *d = data;
 
@@ -307,7 +307,7 @@ static int mmap_allocate(const struct partake_daemon_config *config,
         ret = errno;
         char emsg[1024];
         ZF_LOGE("ftruncate: fd %d, %zu bytes: %s", d->fd, config->size,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
         goto error;
     }
     ZF_LOGI("ftruncate: fd %d, %zu bytes", d->fd, config->size);
@@ -320,7 +320,7 @@ static int mmap_allocate(const struct partake_daemon_config *config,
             ret = errno;
             char emsg[1024];
             ZF_LOGE("mmap: fd %d: %s", d->fd,
-                    partake_strerror(ret, emsg, sizeof(emsg)));
+                    partaked_strerror(ret, emsg, sizeof(emsg)));
             goto error;
         }
         ZF_LOGI("mmap: fd %d: %zu bytes at %p", d->fd, config->size, d->addr);
@@ -339,7 +339,7 @@ error:
 }
 
 
-static void mmap_deallocate(const struct partake_daemon_config *config,
+static void mmap_deallocate(const struct partaked_daemon_config *config,
         void *data) {
     struct mmap_private_data *d = data;
 
@@ -355,7 +355,7 @@ static void mmap_deallocate(const struct partake_daemon_config *config,
             int ret = errno;
             char emsg[1024];
             ZF_LOGE("munmap: %zu bytes at %p: %s", config->size, d->addr,
-                    partake_strerror(ret, emsg, sizeof(emsg)));
+                    partaked_strerror(ret, emsg, sizeof(emsg)));
         }
         else {
             ZF_LOGI("munmap: %zu bytes at %p", config->size, d->addr);
@@ -383,7 +383,7 @@ static void mmap_add_mapping_spec(flatcc_builder_t *b, void *data) {
 #endif // _WIN32
 
 
-static struct partake_shmem_impl mmap_impl = {
+static struct partaked_shmem_impl mmap_impl = {
     .name = "mmap-based shared memory",
 #ifndef _WIN32
     .initialize = mmap_initialize,
@@ -396,6 +396,6 @@ static struct partake_shmem_impl mmap_impl = {
 };
 
 
-struct partake_shmem_impl *partake_shmem_mmap_impl(void) {
+struct partaked_shmem_impl *partaked_shmem_mmap_impl(void) {
     return &mmap_impl;
 }

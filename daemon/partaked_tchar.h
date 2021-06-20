@@ -21,7 +21,7 @@
 #   include <tchar.h>
 #   include <Windows.h>
 
-#   define PARTAKE_TEXT(x) _TEXT(x)
+#   define PARTAKED_TEXT(x) _TEXT(x)
 
 #   define fputts _fputts
 #   define ftprintf _ftprintf
@@ -31,7 +31,7 @@
 #   define tcsncmp _tcsncmp
 #   define tcstol _tcstol
 
-static inline const char *partake_tstrtoutf8(const TCHAR *s, char *buf,
+static inline const char *partaked_tstrtoutf8(const TCHAR *s, char *buf,
         size_t size) {
 #ifdef UNICODE
     WideCharToMultiByte(CP_UTF8, 0, s, -1, buf, (int)size, NULL, NULL);
@@ -45,7 +45,7 @@ static inline const char *partake_tstrtoutf8(const TCHAR *s, char *buf,
 
 typedef char TCHAR;
 
-#   define PARTAKE_TEXT(x) x
+#   define PARTAKED_TEXT(x) x
 
 #   define fputts fputs
 #   define ftprintf fprintf
@@ -55,7 +55,7 @@ typedef char TCHAR;
 #   define tcsncmp strncmp
 #   define tcstol strtol
 
-static inline const char *partake_tstrtoutf8(const TCHAR *s, char *buf,
+static inline const char *partaked_tstrtoutf8(const TCHAR *s, char *buf,
         size_t size) {
     snprintf(buf, size, "%s", s);
     return buf;

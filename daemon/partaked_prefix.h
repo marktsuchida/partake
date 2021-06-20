@@ -7,5 +7,5 @@
 
 #pragma once
 
-#define uthash_malloc(s) partake_malloc(s)
-#define uthash_free(p, s) partake_free(p)
+#define uthash_malloc(s) partaked_malloc(s)
+#define uthash_free(p, s) partaked_free(p)

@@ -9,20 +9,20 @@
 
 #include <stdbool.h>
 
-struct partake_resparray;
+struct partaked_resparray;
 
 
-struct partake_sender *partake_sender_create(uv_stream_t *client);
+struct partaked_sender *partaked_sender_create(uv_stream_t *client);
 
-struct partake_sender *partake_sender_incref(struct partake_sender *sender);
+struct partaked_sender *partaked_sender_incref(struct partaked_sender *sender);
 
-void partake_sender_decref(struct partake_sender *sender);
+void partaked_sender_decref(struct partaked_sender *sender);
 
 
 // Send any accumulated responses.
-void partake_sender_flush(struct partake_sender *sender);
+void partaked_sender_flush(struct partaked_sender *sender);
 
-void partake_sender_set_autoflush(struct partake_sender *sender,
+void partaked_sender_set_autoflush(struct partaked_sender *sender,
         bool autoflush);
 
 
@@ -31,12 +31,12 @@ void partake_sender_set_autoflush(struct partake_sender *sender,
  * record their response. A checkout always returns a valid resparray. A
  * checkin indicates that the caller is done adding a response(s). If the
  * sender is set to autoflush, the response(s) will be sent upon checking in;
- * otherwise some other code should call partake_sender_flush() at an
+ * otherwise some other code should call partaked_sender_flush() at an
  * appropriate moment.
  */
 
-struct partake_resparray *partake_sender_checkout_resparray(
-        struct partake_sender *sender);
+struct partaked_resparray *partaked_sender_checkout_resparray(
+        struct partaked_sender *sender);
 
-void partake_sender_checkin_resparray(struct partake_sender *sender,
-        struct partake_resparray *resparr);
+void partaked_sender_checkin_resparray(struct partaked_sender *sender,
+        struct partaked_resparray *resparr);

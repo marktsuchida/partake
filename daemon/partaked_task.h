@@ -7,47 +7,47 @@
 
 #pragma once
 
-struct partake_channel;
-struct partake_request;
-struct partake_sender;
+struct partaked_channel;
+struct partaked_request;
+struct partaked_sender;
 
 
-int partake_task_handle(struct partake_connection *conn,
-        struct partake_request *req, struct partake_sender *sender);
+int partaked_task_handle(struct partaked_connection *conn,
+        struct partaked_request *req, struct partaked_sender *sender);
 
 
-int partake_task_Hello(struct partake_connection *conn,
-        struct partake_request *req, struct partake_sender *sender);
+int partaked_task_Hello(struct partaked_connection *conn,
+        struct partaked_request *req, struct partaked_sender *sender);
 
-int partake_task_Quit(struct partake_connection *conn,
-        struct partake_request *req, struct partake_sender *sender);
+int partaked_task_Quit(struct partaked_connection *conn,
+        struct partaked_request *req, struct partaked_sender *sender);
 
-int partake_task_GetSegment(struct partake_connection *conn,
-        struct partake_request *req, struct partake_sender *sender);
+int partaked_task_GetSegment(struct partaked_connection *conn,
+        struct partaked_request *req, struct partaked_sender *sender);
 
-int partake_task_Alloc(struct partake_connection *conn,
-        struct partake_request *req, struct partake_sender *sender);
+int partaked_task_Alloc(struct partaked_connection *conn,
+        struct partaked_request *req, struct partaked_sender *sender);
 
-int partake_task_Realloc(struct partake_connection *conn,
-        struct partake_request *req, struct partake_sender *sender);
+int partaked_task_Realloc(struct partaked_connection *conn,
+        struct partaked_request *req, struct partaked_sender *sender);
 
-int partake_task_Open(struct partake_connection *conn,
-        struct partake_request *req, struct partake_sender *sender);
+int partaked_task_Open(struct partaked_connection *conn,
+        struct partaked_request *req, struct partaked_sender *sender);
 
-int partake_task_Close(struct partake_connection *conn,
-        struct partake_request *req, struct partake_sender *sender);
+int partaked_task_Close(struct partaked_connection *conn,
+        struct partaked_request *req, struct partaked_sender *sender);
 
-int partake_task_Publish(struct partake_connection *conn,
-        struct partake_request *req, struct partake_sender *sender);
+int partaked_task_Publish(struct partaked_connection *conn,
+        struct partaked_request *req, struct partaked_sender *sender);
 
-int partake_task_Unpublish(struct partake_connection *conn,
-        struct partake_request *req, struct partake_sender *sender);
+int partaked_task_Unpublish(struct partaked_connection *conn,
+        struct partaked_request *req, struct partaked_sender *sender);
 
-int partake_task_CreateVoucher(struct partake_connection *conn,
-        struct partake_request *req, struct partake_sender *sender);
+int partaked_task_CreateVoucher(struct partaked_connection *conn,
+        struct partaked_request *req, struct partaked_sender *sender);
 
-int partake_task_DiscardVoucher(struct partake_connection *conn,
-        struct partake_request *req, struct partake_sender *sender);
+int partaked_task_DiscardVoucher(struct partaked_connection *conn,
+        struct partaked_request *req, struct partaked_sender *sender);
 
-int partake_task_Unknown(struct partake_connection *conn,
-        struct partake_request *req, struct partake_sender *sender);
+int partaked_task_Unknown(struct partaked_connection *conn,
+        struct partaked_request *req, struct partaked_sender *sender);

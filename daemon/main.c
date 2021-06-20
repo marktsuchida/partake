@@ -23,14 +23,14 @@
 #   include <sys/un.h> // For struct sockaddr_un
 #endif
 
-#define PTXT(x) PARTAKE_TEXT(x)
+#define PTXT(x) PARTAKED_TEXT(x)
 
 
 /*
  * The prefix myopt_ is used in this file for local extensions to dropt.
  * All such symbols follow dropt's support for wide char handling.
  *
- * We do not bother to use partake_malloc() for option parsing (dropt doesn't
+ * We do not bother to use partaked_malloc() for option parsing (dropt doesn't
  * support replacing malloc()).
  */
 
@@ -320,7 +320,7 @@ exit:
 
 
 static void check_socket_name(const TCHAR *name, bool use_raw,
-        struct partake_daemon_config *config) {
+        struct partaked_daemon_config *config) {
     if (name == NULL) {
         error_exit(PTXT("Socket must be given with option -s/--socket\n"));
     }
@@ -378,11 +378,11 @@ static void check_socket_name(const TCHAR *name, bool use_raw,
 
 
 // Perform checks that can be done without calling OS API and fill struct
-// partake_daemon_config. All strings are still pointers to the static argv
+// partaked_daemon_config. All strings are still pointers to the static argv
 // strings.
 static void check_options(const struct parsed_options *opts,
-        struct partake_daemon_config *config) {
-    memset(config, 0, sizeof(struct partake_daemon_config));
+        struct partaked_daemon_config *config) {
+    memset(config, 0, sizeof(struct partaked_daemon_config));
 
     if (opts->socket != NULL && opts->raw_socket != NULL) {
         error_exit(PTXT("Not both of -s/--socket and --socket-fullname may ")
@@ -404,28 +404,28 @@ static void check_options(const struct parsed_options *opts,
     }
 
     if (opts->posix) {
-        config->type = PARTAKE_SHMEM_MMAP;
+        config->type = PARTAKED_SHMEM_MMAP;
         config->shmem.mmap.shm_open = true;
     }
     else if (opts->systemv) {
-        config->type = PARTAKE_SHMEM_SHMGET;
+        config->type = PARTAKED_SHMEM_SHMGET;
     }
     else if (opts->file != NULL) {
 #ifndef _WIN32
-        config->type = PARTAKE_SHMEM_MMAP;
+        config->type = PARTAKED_SHMEM_MMAP;
 #else
-        config->type = PARTAKE_SHMEM_WIN32;
+        config->type = PARTAKED_SHMEM_WIN32;
 #endif
     }
     else if (opts->windows) {
-        config->type = PARTAKE_SHMEM_WIN32;
+        config->type = PARTAKED_SHMEM_WIN32;
     }
     else { // default
 #ifndef _WIN32
-        config->type = PARTAKE_SHMEM_MMAP;
+        config->type = PARTAKED_SHMEM_MMAP;
         config->shmem.mmap.shm_open = true;
 #else
-        config->type = PARTAKE_SHMEM_WIN32;
+        config->type = PARTAKED_SHMEM_WIN32;
 #endif
     }
 
@@ -459,7 +459,7 @@ static void check_options(const struct parsed_options *opts,
             }
             config->shmem.shmget.key = (int)key;
         }
-        else if (config->type == PARTAKE_SHMEM_WIN32) {
+        else if (config->type == PARTAKED_SHMEM_WIN32) {
             size_t len = tcslen(opts->name);
             if (tcsncmp(opts->name, PTXT("Local\\"), 6) != 0 ||
                     len < 7 || tcschr(opts->name + 6, PTXT('\\')) != NULL) {
@@ -476,15 +476,15 @@ static void check_options(const struct parsed_options *opts,
         if (opts->file[0] == PTXT('\0')) {
             error_exit(PTXT("Filename must not be empty\n"));
         }
-        if (config->type == PARTAKE_SHMEM_MMAP) {
+        if (config->type == PARTAKED_SHMEM_MMAP) {
             config->shmem.mmap.filename = opts->file;
         }
-        else if (config->type == PARTAKE_SHMEM_WIN32) {
+        else if (config->type == PARTAKED_SHMEM_WIN32) {
             config->shmem.win32.filename = opts->file;
         }
     }
 
-    if (config->type == PARTAKE_SHMEM_SHMGET) {
+    if (config->type == PARTAKED_SHMEM_SHMGET) {
         config->shmem.shmget.huge_pages = opts->huge_pages;
     }
     else if (opts->huge_pages) {
@@ -492,7 +492,7 @@ static void check_options(const struct parsed_options *opts,
                 PTXT("shared memory\n"));
     }
 
-    if (config->type == PARTAKE_SHMEM_WIN32) {
+    if (config->type == PARTAKED_SHMEM_WIN32) {
         config->shmem.win32.large_pages = opts->large_pages;
     }
     else if (opts->large_pages) {
@@ -514,12 +514,12 @@ int main(int argc, TCHAR **argv)
 
     parse_options(argc, argv, &opts);
 
-    struct partake_daemon_config config;
+    struct partaked_daemon_config config;
     memset(&config, 0, sizeof(config));
 
     check_options(&opts, &config);
 
-    int ret = partake_daemon_run(&config);
+    int ret = partaked_daemon_run(&config);
 
     return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

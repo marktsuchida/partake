@@ -16,23 +16,23 @@
 #include <stdbool.h>
 
 
-struct partake_handle_continuation {
-    struct partake_handle_continuation *next; // utlist, singly-linked
+struct partaked_handle_continuation {
+    struct partaked_handle_continuation *next; // utlist, singly-linked
     void *key; // Identifier for cancellation
-    partake_handle_continuation_func func;
+    partaked_handle_continuation_func func;
     void *data;
 };
 
 
-void partake_handle_register_continue_on_publish(
-        struct partake_handle *handle, void *registration_key,
-        partake_handle_continuation_func func, void *data) {
+void partaked_handle_register_continue_on_publish(
+        struct partaked_handle *handle, void *registration_key,
+        partaked_handle_continuation_func func, void *data) {
     if (handle->continuations_on_publish == NULL) {
         LL_PREPEND2(handle->object->handles_waiting_for_publish, handle,
                 next_waiting_for_publish);
     }
 
-    struct partake_handle_continuation *cont = partake_malloc(sizeof(*cont));
+    struct partaked_handle_continuation *cont = partaked_malloc(sizeof(*cont));
     cont->key = registration_key;
     cont->func = func;
     cont->data = data;
@@ -41,9 +41,9 @@ void partake_handle_register_continue_on_publish(
 }
 
 
-void partake_handle_cancel_continue_on_publish(struct partake_handle *handle,
+void partaked_handle_cancel_continue_on_publish(struct partaked_handle *handle,
         void *registration_key) {
-    struct partake_handle_continuation *cont = NULL;
+    struct partaked_handle_continuation *cont = NULL;
     LL_SEARCH_SCALAR(handle->continuations_on_publish, cont, key,
             registration_key);
     assert (cont != NULL);
@@ -56,33 +56,33 @@ void partake_handle_cancel_continue_on_publish(struct partake_handle *handle,
     }
 
     cont->func(NULL, cont->data); // Release data
-    partake_free(cont);
+    partaked_free(cont);
 }
 
 
-static void do_handle_on_publish(struct partake_handle *handle, bool cancel) {
+static void do_handle_on_publish(struct partaked_handle *handle, bool cancel) {
     LL_DELETE2(handle->object->handles_waiting_for_publish, handle,
             next_waiting_for_publish);
     handle->next_waiting_for_publish = NULL;
 
-    struct partake_handle_continuation *cont, *tmpc;
+    struct partaked_handle_continuation *cont, *tmpc;
     LL_FOREACH_SAFE(handle->continuations_on_publish, cont, tmpc) {
         LL_DELETE(handle->continuations_on_publish, cont);
 
         cont->func(cancel ? NULL : handle, cont->data);
-        partake_free(cont);
+        partaked_free(cont);
     }
 }
 
 
-void partake_handle_cancel_all_continue_on_publish(
-        struct partake_handle *handle) {
+void partaked_handle_cancel_all_continue_on_publish(
+        struct partaked_handle *handle) {
     do_handle_on_publish(handle, true);
 }
 
 
-void partake_handle_fire_on_publish(struct partake_object *object) {
-    struct partake_handle *handle, *tmph;
+void partaked_handle_fire_on_publish(struct partaked_object *object) {
+    struct partaked_handle *handle, *tmph;
     LL_FOREACH_SAFE2(object->handles_waiting_for_publish, handle, tmph,
             next_waiting_for_publish) {
         do_handle_on_publish(handle, false);
@@ -90,20 +90,20 @@ void partake_handle_fire_on_publish(struct partake_object *object) {
 }
 
 
-void partake_handle_local_fire_on_publish(struct partake_handle *handle) {
+void partaked_handle_local_fire_on_publish(struct partaked_handle *handle) {
     do_handle_on_publish(handle, false);
 }
 
 
-void partake_handle_register_continue_on_sole_ownership(
-        struct partake_handle *handle, void *registration_key,
-        partake_handle_continuation_func func, void *data) {
+void partaked_handle_register_continue_on_sole_ownership(
+        struct partaked_handle *handle, void *registration_key,
+        partaked_handle_continuation_func func, void *data) {
     if (handle->continuation_on_sole_ownership == NULL) {
         assert (handle->object->handle_waiting_for_sole_ownership == NULL);
         handle->object->handle_waiting_for_sole_ownership = handle;
     }
 
-    struct partake_handle_continuation *cont = partake_malloc(sizeof(*cont));
+    struct partaked_handle_continuation *cont = partaked_malloc(sizeof(*cont));
     cont->key = registration_key;
     cont->func = func;
     cont->data = data;
@@ -112,10 +112,10 @@ void partake_handle_register_continue_on_sole_ownership(
 }
 
 
-void partake_handle_cancel_continue_on_sole_ownership(
-        struct partake_handle *handle, void *registration_key) {
+void partaked_handle_cancel_continue_on_sole_ownership(
+        struct partaked_handle *handle, void *registration_key) {
     assert (handle->continuation_on_sole_ownership->key == registration_key);
-    struct partake_handle_continuation *cont =
+    struct partaked_handle_continuation *cont =
         handle->continuation_on_sole_ownership;
     handle->continuation_on_sole_ownership = NULL;
 
@@ -123,13 +123,13 @@ void partake_handle_cancel_continue_on_sole_ownership(
     handle->object->handle_waiting_for_sole_ownership = NULL;
 
     cont->func(NULL, cont->data); // Release data
-    partake_free(cont);
+    partaked_free(cont);
 }
 
 
-void partake_handle_cancel_any_continue_on_sole_ownership(
-        struct partake_handle *handle) {
-    struct partake_handle_continuation *cont =
+void partaked_handle_cancel_any_continue_on_sole_ownership(
+        struct partaked_handle *handle) {
+    struct partaked_handle_continuation *cont =
         handle->continuation_on_sole_ownership;
     if (cont == NULL)
         return;
@@ -140,29 +140,29 @@ void partake_handle_cancel_any_continue_on_sole_ownership(
     handle->object->handle_waiting_for_sole_ownership = NULL;
 
     cont->func(NULL, cont->data); // Release data
-    partake_free(cont);
+    partaked_free(cont);
 }
 
 
-void partake_handle_fire_on_sole_ownership(struct partake_object *object) {
-    struct partake_handle *handle = object->handle_waiting_for_sole_ownership;
+void partaked_handle_fire_on_sole_ownership(struct partaked_object *object) {
+    struct partaked_handle *handle = object->handle_waiting_for_sole_ownership;
     if (handle == NULL)
         return;
     assert (handle->continuation_on_sole_ownership != NULL);
     object->handle_waiting_for_sole_ownership = NULL;
 
-    struct partake_handle_continuation *cont =
+    struct partaked_handle_continuation *cont =
         handle->continuation_on_sole_ownership;
     handle->continuation_on_sole_ownership = NULL;
 
     cont->func(handle, cont->data);
-    partake_free(cont);
+    partaked_free(cont);
 }
 
 
-void partake_handle_local_fire_on_sole_ownership(
-        struct partake_handle *handle) {
-    struct partake_handle_continuation *cont =
+void partaked_handle_local_fire_on_sole_ownership(
+        struct partaked_handle *handle) {
+    struct partaked_handle_continuation *cont =
         handle->continuation_on_sole_ownership;
     if (cont == NULL)
         return;
@@ -173,5 +173,5 @@ void partake_handle_local_fire_on_sole_ownership(
     handle->object->handle_waiting_for_sole_ownership = NULL;
 
     cont->func(handle, cont->data);
-    partake_free(cont);
+    partaked_free(cont);
 }

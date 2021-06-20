@@ -10,19 +10,19 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-struct partake_connection;
-struct partake_daemon;
+struct partaked_connection;
+struct partaked_daemon;
 
 
-enum partake_shmem_type {
-    PARTAKE_SHMEM_UNKNOWN,
-    PARTAKE_SHMEM_MMAP,
-    PARTAKE_SHMEM_SHMGET,
-    PARTAKE_SHMEM_WIN32,
+enum partaked_shmem_type {
+    PARTAKED_SHMEM_UNKNOWN,
+    PARTAKED_SHMEM_MMAP,
+    PARTAKED_SHMEM_SHMGET,
+    PARTAKED_SHMEM_WIN32,
 };
 
 
-struct partake_daemon_config {
+struct partaked_daemon_config {
     const TCHAR *socket;
     // 'socket' may point to 'socket_buf' or elsewhere
     TCHAR socket_buf[96];
@@ -30,7 +30,7 @@ struct partake_daemon_config {
     size_t size;
     bool force;
 
-    enum partake_shmem_type type;
+    enum partaked_shmem_type type;
     union {
         struct {
             bool shm_open;
@@ -51,8 +51,8 @@ struct partake_daemon_config {
 
 
 // Remove connection from the list to be closed upon server shutdown
-void partake_daemon_remove_connection(struct partake_daemon *daemon,
-        struct partake_connection *conn);
+void partaked_daemon_remove_connection(struct partaked_daemon *daemon,
+        struct partaked_connection *conn);
 
 
-int partake_daemon_run(const struct partake_daemon_config *config);
+int partaked_daemon_run(const struct partaked_daemon_config *config);

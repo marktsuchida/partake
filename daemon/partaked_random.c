@@ -26,11 +26,11 @@
 #include <stdlib.h>
 
 
-#define NAME_INFIX PARTAKE_TEXT("partake-")
+#define NAME_INFIX PARTAKED_TEXT("partake-")
 
 
 static char *alloc_random_bytes(size_t size) {
-    char *buf = partake_malloc(size);
+    char *buf = partaked_malloc(size);
 
 #ifndef _WIN32
     // Not POSIX but available on Linux, macOS, most BSDs
@@ -48,18 +48,18 @@ static char *alloc_random_bytes(size_t size) {
 }
 
 
-int partake_generate_random_int(void) {
+int partaked_generate_random_int(void) {
     int ret;
     char *buf = alloc_random_bytes(sizeof(int));
     memcpy(&ret, buf, sizeof(int));
-    partake_free(buf);
+    partaked_free(buf);
     return ret;
 }
 
 
-// Return a partake_malloc()ed tstring consisting of prefix followed by
+// Return a partaked_malloc()ed tstring consisting of prefix followed by
 // NAME_INFIX followed by random_len characters of random hex digits.
-TCHAR *partake_alloc_random_name(TCHAR *prefix, size_t random_len,
+TCHAR *partaked_alloc_random_name(TCHAR *prefix, size_t random_len,
         size_t max_total_len) {
     size_t prefix_infix_len = tcslen(prefix) + tcslen(NAME_INFIX);
     if (prefix_infix_len >= max_total_len) {
@@ -73,9 +73,9 @@ TCHAR *partake_alloc_random_name(TCHAR *prefix, size_t random_len,
         random_len = len - prefix_infix_len;
     }
 
-    TCHAR *ret = partake_malloc(sizeof(TCHAR) * (len + 1));
+    TCHAR *ret = partaked_malloc(sizeof(TCHAR) * (len + 1));
 
-    sntprintf(ret, len, PARTAKE_TEXT("%s") NAME_INFIX, prefix);
+    sntprintf(ret, len, PARTAKED_TEXT("%s") NAME_INFIX, prefix);
 
     size_t randbufsize = (random_len + 1) / 2;
     char *randbuf = alloc_random_bytes(randbufsize);
@@ -91,11 +91,11 @@ TCHAR *partake_alloc_random_name(TCHAR *prefix, size_t random_len,
         space_left -= n;
 
         if (space_left == 0) { // Win32 _sntprintf doesn't null-terminate
-            *--p = PARTAKE_TEXT('\0');
+            *--p = PARTAKED_TEXT('\0');
         }
     }
 
-    partake_free(randbuf);
+    partaked_free(randbuf);
 
     return ret;
 }

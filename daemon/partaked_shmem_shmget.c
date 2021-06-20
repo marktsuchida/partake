@@ -33,7 +33,7 @@ struct shmget_private_data {
 
 
 static int shmget_initialize(void **data) {
-    *data = partake_malloc(sizeof(struct shmget_private_data));
+    *data = partaked_malloc(sizeof(struct shmget_private_data));
     memset(*data, 0, sizeof(struct shmget_private_data));
     return 0;
 }
@@ -52,11 +52,11 @@ static void shmget_deinitialize(void *data) {
         ZF_LOGF("Deinitializing shmget segment whose key still exists!");
     }
 
-    partake_free(data);
+    partaked_free(data);
 }
 
 
-static int create_sysv_shm(const struct partake_daemon_config *config,
+static int create_sysv_shm(const struct partaked_daemon_config *config,
         struct shmget_private_data *d) {
     if (sizeof(key_t) < sizeof(config->shmem.shmget.key)) {
         // Hopefully this check is pedantic.
@@ -76,7 +76,7 @@ static int create_sysv_shm(const struct partake_daemon_config *config,
     for (int i = 0; i < NUM_RETRIES; ++i) {
         if (generate_key) {
             while (d->key == 0 || d->key == IPC_PRIVATE) {
-                d->key = partake_generate_random_int();
+                d->key = partaked_generate_random_int();
             }
         }
 
@@ -93,7 +93,7 @@ static int create_sysv_shm(const struct partake_daemon_config *config,
             int ret = errno;
             char emsg[1024];
             ZF_LOGE("shmget: key %d: %s", d->key,
-                    partake_strerror(ret, emsg, sizeof(emsg)));
+                    partaked_strerror(ret, emsg, sizeof(emsg)));
 
             if (generate_key && ret == EEXIST) {
                 continue;
@@ -121,7 +121,7 @@ static int remove_sysv_shm(struct shmget_private_data *d) {
         int ret = errno;
         char emsg[1024];
         ZF_LOGE("shmctl: IPC_RMID id %d: %s", d->shmid,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
     }
     else {
         ZF_LOGI("shmctl IPC_RMID: id %d", d->shmid);
@@ -132,7 +132,7 @@ static int remove_sysv_shm(struct shmget_private_data *d) {
 }
 
 
-static int attach_sysv_shm(const struct partake_daemon_config *config,
+static int attach_sysv_shm(const struct partaked_daemon_config *config,
         struct shmget_private_data *d) {
     errno = 0;
     d->addr = shmat(d->shmid, NULL, 0);
@@ -140,7 +140,7 @@ static int attach_sysv_shm(const struct partake_daemon_config *config,
         int ret = errno;
         char emsg[1024];
         ZF_LOGE("shmat: id %d: %s", d->shmid,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
         return ret;
     }
     ZF_LOGI("shmat: id %d: addr = %p", d->shmid, d->addr);
@@ -158,7 +158,7 @@ static int detach_sysv_shm(struct shmget_private_data *d) {
         int ret = errno;
         char emsg[1024];
         ZF_LOGE("shmdt: %p: %s", d->addr,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
     }
     else {
         ZF_LOGI("shmdt: %p", d->addr);
@@ -169,7 +169,7 @@ static int detach_sysv_shm(struct shmget_private_data *d) {
 }
 
 
-static int shmget_allocate(const struct partake_daemon_config *config,
+static int shmget_allocate(const struct partaked_daemon_config *config,
         void *data) {
     struct shmget_private_data *d = data;
 
@@ -188,7 +188,7 @@ static int shmget_allocate(const struct partake_daemon_config *config,
 }
 
 
-static void shmget_deallocate(const struct partake_daemon_config *config,
+static void shmget_deallocate(const struct partaked_daemon_config *config,
         void *data) {
     struct shmget_private_data *d = data;
 
@@ -214,7 +214,7 @@ static void shmget_add_mapping_spec(flatcc_builder_t *b, void *data) {
 #endif // _WIN32
 
 
-static struct partake_shmem_impl shmget_impl = {
+static struct partaked_shmem_impl shmget_impl = {
     .name = "shmget-based shared memory",
 #ifndef _WIN32
     .initialize = shmget_initialize,
@@ -227,6 +227,6 @@ static struct partake_shmem_impl shmget_impl = {
 };
 
 
-struct partake_shmem_impl *partake_shmem_shmget_impl(void) {
+struct partaked_shmem_impl *partaked_shmem_shmget_impl(void) {
     return &shmget_impl;
 }

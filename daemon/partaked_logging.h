@@ -22,7 +22,7 @@
 // char* for logging. A more rebust way would be to convert TCHAR* to UTF-8,
 // and use a custom logging handler that converts back to UTF-16 in a Unicode
 // build.
-static inline const char *partake_strtolog(const TCHAR *s, char *buf,
+static inline const char *partaked_strtolog(const TCHAR *s, char *buf,
         size_t size) {
 #if defined(_WIN32) && defined(_UNICODE)
     size_t r = wcstombs(buf, size, s);
@@ -38,7 +38,7 @@ static inline const char *partake_strtolog(const TCHAR *s, char *buf,
 
 #ifndef _WIN32
 
-static inline char *partake_strerror(int errno, char *buf, size_t size) {
+static inline char *partaked_strerror(int errno, char *buf, size_t size) {
     if (strerror_r(errno, buf, size)) {
         snprintf(buf, size, "Unknown error %d", errno);
     }
@@ -48,7 +48,7 @@ static inline char *partake_strerror(int errno, char *buf, size_t size) {
 #else // _WIN32
 
 // On Windows this takes Windows system error codes from GetLastError().
-static inline char *partake_strerror(DWORD code, char *buf, size_t size) {
+static inline char *partaked_strerror(DWORD code, char *buf, size_t size) {
     TCHAR *msgbuf = NULL;
     if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
                 FORMAT_MESSAGE_FROM_SYSTEM |
@@ -56,7 +56,7 @@ static inline char *partake_strerror(DWORD code, char *buf, size_t size) {
                 NULL, code,
                 MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                 (LPTSTR)&msgbuf, 0, NULL) != 0) {
-        partake_strtolog(msgbuf, buf, size);
+        partaked_strtolog(msgbuf, buf, size);
         LocalFree(msgbuf);
     }
     else {

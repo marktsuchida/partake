@@ -18,11 +18,11 @@
 #include <assert.h>
 
 
-struct partake_sender {
+struct partaked_sender {
     size_t refcount;
 
     // Created lazily; destroyed on each flush.
-    struct partake_resparray *resparr; // Owning
+    struct partaked_resparray *resparr; // Owning
 
     // When true, send (flush) after each checkin.
     bool autoflush;
@@ -31,8 +31,8 @@ struct partake_sender {
 };
 
 
-struct partake_sender *partake_sender_create(uv_stream_t *client) {
-    struct partake_sender *sender = partake_malloc(sizeof(*sender));
+struct partaked_sender *partaked_sender_create(uv_stream_t *client) {
+    struct partaked_sender *sender = partaked_malloc(sizeof(*sender));
     sender->refcount = 1;
     sender->resparr = NULL;
     sender->autoflush = false;
@@ -41,16 +41,16 @@ struct partake_sender *partake_sender_create(uv_stream_t *client) {
 }
 
 
-struct partake_sender *partake_sender_incref(struct partake_sender *sender) {
+struct partaked_sender *partaked_sender_incref(struct partaked_sender *sender) {
     ++sender->refcount;
     return sender;
 }
 
 
-void partake_sender_decref(struct partake_sender *sender) {
+void partaked_sender_decref(struct partaked_sender *sender) {
     if (--sender->refcount == 0) {
         assert (sender->resparr == NULL);
-        partake_free(sender);
+        partaked_free(sender);
     }
 }
 
@@ -59,23 +59,23 @@ static void on_write_finish(uv_write_t *writereq, int status) {
     if (status < 0)
         ZF_LOGE("uv_write_cb: %s", uv_strerror(status));
 
-    struct partake_iobuf *iobuf = writereq->data;
-    partake_iobuf_decref(iobuf);
-    partake_free(writereq);
+    struct partaked_iobuf *iobuf = writereq->data;
+    partaked_iobuf_decref(iobuf);
+    partaked_free(writereq);
 }
 
 
-void partake_sender_flush(struct partake_sender *sender) {
+void partaked_sender_flush(struct partaked_sender *sender) {
     size_t msgsize;
-    struct partake_iobuf *iobuf =
-        partake_resparray_finish(sender->resparr, &msgsize);
+    struct partaked_iobuf *iobuf =
+        partaked_resparray_finish(sender->resparr, &msgsize);
     sender->resparr = NULL;
 
     if (iobuf != NULL) {
         iobuf->uvbuf.base = iobuf->buffer;
         iobuf->uvbuf.len = msgsize;
 
-        uv_write_t *writereq = partake_malloc(sizeof(*writereq));
+        uv_write_t *writereq = partaked_malloc(sizeof(*writereq));
         writereq->data = iobuf;
 
         int err = uv_write(writereq, sender->client, &iobuf->uvbuf, 1,
@@ -86,26 +86,26 @@ void partake_sender_flush(struct partake_sender *sender) {
 }
 
 
-void partake_sender_set_autoflush(struct partake_sender *sender,
+void partaked_sender_set_autoflush(struct partaked_sender *sender,
         bool autoflush) {
     sender->autoflush = autoflush;
 }
 
 
-struct partake_resparray *partake_sender_checkout_resparray(
-        struct partake_sender *sender) {
+struct partaked_resparray *partaked_sender_checkout_resparray(
+        struct partaked_sender *sender) {
     if (sender->resparr == NULL)
-        sender->resparr = partake_resparray_create();
+        sender->resparr = partaked_resparray_create();
 
     return sender->resparr;
 }
 
 
-void partake_sender_checkin_resparray(struct partake_sender *sender,
-        struct partake_resparray *resparr) {
+void partaked_sender_checkin_resparray(struct partaked_sender *sender,
+        struct partaked_resparray *resparr) {
     assert (sender->resparr != NULL);
     assert (resparr == sender->resparr);
 
     if (sender->autoflush)
-        partake_sender_flush(sender);
+        partaked_sender_flush(sender);
 }

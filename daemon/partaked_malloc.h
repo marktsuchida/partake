@@ -10,7 +10,7 @@
 #include <stddef.h>
 
 
-void partake_initialize_malloc(void);
+void partaked_initialize_malloc(void);
 
 
 /*
@@ -20,7 +20,7 @@ void partake_initialize_malloc(void);
  * NULL.
  */
 
-void *partake_malloc(size_t size);
-void *partake_realloc(void *ptr, size_t size);
-void *partake_calloc(size_t n, size_t size);
-void partake_free(const void *ptr);
+void *partaked_malloc(size_t size);
+void *partaked_realloc(void *ptr, size_t size);
+void *partaked_calloc(size_t n, size_t size);
+void partaked_free(const void *ptr);

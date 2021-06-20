@@ -13,16 +13,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-struct partake_pool;
+struct partaked_pool;
 
 
-struct partake_connection {
-    struct partake_channel *chan;
+struct partaked_connection {
+    struct partaked_channel *chan;
 
     uv_pipe_t client;
 
     // The buffer currently being read into, if any.
-    struct partake_iobuf *readbuf;
+    struct partaked_iobuf *readbuf;
     size_t readbuf_start;
 
     bool has_said_hello;
@@ -33,25 +33,25 @@ struct partake_connection {
 
     // We keep a list of connections so that we can close them upon server
     // shutdown.
-    struct partake_connection *prev;
-    struct partake_connection *next;
+    struct partaked_connection *prev;
+    struct partaked_connection *next;
 
     // Used to skip extra work when the server is shutting down anyway.
     bool skip_channel_destruction;
 };
 
 
-struct partake_connection *partake_connection_create(uint32_t conn_no,
-        uv_loop_t *loop, struct partake_pool *pool);
+struct partaked_connection *partaked_connection_create(uint32_t conn_no,
+        uv_loop_t *loop, struct partaked_pool *pool);
 
-void partake_connection_destroy(struct partake_connection *conn);
+void partaked_connection_destroy(struct partaked_connection *conn);
 
 // Like destroy, but waits for pending writes to complete.
-void partake_connection_shutdown(struct partake_connection *conn);
+void partaked_connection_shutdown(struct partaked_connection *conn);
 
 
-void partake_connection_alloc_cb(uv_handle_t *client, size_t size,
+void partaked_connection_alloc_cb(uv_handle_t *client, size_t size,
         uv_buf_t *buf);
 
-void partake_connection_read_cb(uv_stream_t *client, ssize_t nread,
+void partaked_connection_read_cb(uv_stream_t *client, ssize_t nread,
         const uv_buf_t *buf);

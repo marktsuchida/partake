@@ -29,7 +29,7 @@ struct win32_private_data {
 
 
 static int win32_initialize(void **data) {
-    *data = partake_malloc(sizeof(struct win32_private_data));
+    *data = partaked_malloc(sizeof(struct win32_private_data));
     memset(*data, 0, sizeof(struct win32_private_data));
 
     struct win32_private_data *d = *data;
@@ -57,10 +57,10 @@ static void win32_deinitialize(void *data) {
     }
 
     if (d->must_free_mapping_name) {
-        partake_free(d->mapping_name);
+        partaked_free(d->mapping_name);
     }
 
-    partake_free(data);
+    partaked_free(data);
 }
 
 
@@ -71,7 +71,7 @@ static int add_lock_memory_privilage(void) {
         DWORD ret = GetLastError();
         char emsg[1024];
         ZF_LOGE("OpenProcessToken: %s",
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
         return ret;
     }
 
@@ -80,8 +80,8 @@ static int add_lock_memory_privilage(void) {
         DWORD ret = GetLastError();
         char name[1024], emsg[1024];
         ZF_LOGE("LookupPrivilageValue: %s: %s",
-                partake_strtolog(SE_LOCK_MEMORY_NAME, name, sizeof(name)),
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strtolog(SE_LOCK_MEMORY_NAME, name, sizeof(name)),
+                partaked_strerror(ret, emsg, sizeof(emsg)));
         return ret;
     }
 
@@ -96,8 +96,8 @@ static int add_lock_memory_privilage(void) {
     if (!ok || ret == ERROR_NOT_ALL_ASSIGNED) {
         char name[1024], emsg[1024];
         ZF_LOGE("AdjustTokenPrivileges: %s: %s",
-                partake_strtolog(SE_LOCK_MEMORY_NAME, name, sizeof(name)),
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strtolog(SE_LOCK_MEMORY_NAME, name, sizeof(name)),
+                partaked_strerror(ret, emsg, sizeof(emsg)));
         return ret;
     }
 
@@ -106,7 +106,7 @@ static int add_lock_memory_privilage(void) {
 }
 
 
-static int create_file(const struct partake_daemon_config *config,
+static int create_file(const struct partaked_daemon_config *config,
         struct win32_private_data *d) {
     // We do not need to canonicalize the filename, since we never send it
     // to clients.
@@ -120,22 +120,22 @@ static int create_file(const struct partake_daemon_config *config,
         DWORD ret = GetLastError();
         char fname[1024], emsg[1024];
         ZF_LOGE("CreateFile: %s: %s",
-                partake_strtolog(config->shmem.win32.filename,
+                partaked_strtolog(config->shmem.win32.filename,
                     fname, sizeof(fname)),
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
         return ret;
     }
 
     char fname[1024];
     ZF_LOGI("CreateFile: %s: HANDLE %p",
-            partake_strtolog(config->shmem.win32.filename,
+            partaked_strtolog(config->shmem.win32.filename,
                 fname, sizeof(fname)),
             d->h_file);
     return 0;
 }
 
 
-static int create_file_mapping(const struct partake_daemon_config *config,
+static int create_file_mapping(const struct partaked_daemon_config *config,
         struct win32_private_data *d) {
     bool generate_name = config->shmem.win32.name == NULL;
     bool force = config->force && !generate_name;
@@ -157,8 +157,8 @@ static int create_file_mapping(const struct partake_daemon_config *config,
     int NUM_RETRIES = 100;
     for (int i = 0; i < NUM_RETRIES; ++i) {
         if (generate_name) {
-            name = generated_name = partake_alloc_random_name(
-                    PARTAKE_TEXT("Local\\"), 32, 255);
+            name = generated_name = partaked_alloc_random_name(
+                    PARTAKED_TEXT("Local\\"), 32, 255);
         }
 
         d->h_mapping = CreateFileMapping(d->h_file,
@@ -172,9 +172,9 @@ static int create_file_mapping(const struct partake_daemon_config *config,
         if (ret != 0) {
             char namebuf[1024], emsg[1024];
             ZF_LOGE("CreateFileMapping: %s: %s",
-                    partake_strtolog(name, namebuf, sizeof(namebuf)),
-                    partake_strerror(ret, emsg, sizeof(emsg)));
-            partake_free(generated_name);
+                    partaked_strtolog(name, namebuf, sizeof(namebuf)),
+                    partaked_strerror(ret, emsg, sizeof(emsg)));
+            partaked_free(generated_name);
             d->h_mapping = INVALID_HANDLE_VALUE;
 
             if (generate_name && ret == ERROR_ALREADY_EXISTS) {
@@ -186,7 +186,7 @@ static int create_file_mapping(const struct partake_daemon_config *config,
 
         char namebuf[1024];
         ZF_LOGI("CreateFileMapping: %s: HANDLE %p",
-                partake_strtolog(name, namebuf, sizeof(namebuf)),
+                partaked_strtolog(name, namebuf, sizeof(namebuf)),
                 d->h_mapping);
 
         d->mapping_name = name;
@@ -208,7 +208,7 @@ static void close_handle(HANDLE *h) {
         DWORD ret = GetLastError();
         char emsg[1024];
         ZF_LOGE("CloseHandle: HANDLE %p: %s", *h,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
     }
     else {
         ZF_LOGI("CloseHandle: HANDLE %p", *h);
@@ -220,7 +220,7 @@ static void close_handle(HANDLE *h) {
 }
 
 
-static int map_memory(const struct partake_daemon_config *config,
+static int map_memory(const struct partaked_daemon_config *config,
         struct win32_private_data *d) {
     if (config->size == 0) {
         ZF_LOGI("MapViewOfFile skipped due to zero size");
@@ -236,7 +236,7 @@ static int map_memory(const struct partake_daemon_config *config,
         char emsg[1024];
         ZF_LOGE("MapViewOfFile: HANDLE %p, %zu bytes: %s",
                 d->h_mapping, config->size,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
         return ret;
     }
 
@@ -256,7 +256,7 @@ static int unmap_memory(struct win32_private_data *d) {
         ret = GetLastError();
         char emsg[1024];
         ZF_LOGE("UnmapViewOfFile: %p: %s", d->addr,
-                partake_strerror(ret, emsg, sizeof(emsg)));
+                partaked_strerror(ret, emsg, sizeof(emsg)));
         return ret;
     }
     else {
@@ -269,7 +269,7 @@ static int unmap_memory(struct win32_private_data *d) {
 }
 
 
-static int win32_allocate(const struct partake_daemon_config *config,
+static int win32_allocate(const struct partaked_daemon_config *config,
         void *data) {
     struct win32_private_data *d = data;
 
@@ -307,7 +307,7 @@ static int win32_allocate(const struct partake_daemon_config *config,
 }
 
 
-static void win32_deallocate(const struct partake_daemon_config *config,
+static void win32_deallocate(const struct partaked_daemon_config *config,
         void *data) {
     struct win32_private_data *d = data;
 
@@ -332,7 +332,7 @@ static void win32_add_mapping_spec(flatcc_builder_t *b, void *data) {
 
     char buf[1024];
     partake_protocol_Win32FileMappingSpec_name_create_str(b,
-            partake_tstrtoutf8(d->mapping_name, buf, sizeof(buf)));
+            partaked_tstrtoutf8(d->mapping_name, buf, sizeof(buf)));
 
     partake_protocol_Win32FileMappingSpec_use_large_pages_add(b,
             d->large_pages);
@@ -343,7 +343,7 @@ static void win32_add_mapping_spec(flatcc_builder_t *b, void *data) {
 #endif // _WIN32
 
 
-static struct partake_shmem_impl win32_impl = {
+static struct partaked_shmem_impl win32_impl = {
     .name = "Win32 shared memory",
 #ifdef _WIN32
     .initialize = win32_initialize,
@@ -356,6 +356,6 @@ static struct partake_shmem_impl win32_impl = {
 };
 
 
-struct partake_shmem_impl *partake_shmem_win32_impl(void) {
+struct partaked_shmem_impl *partaked_shmem_win32_impl(void) {
     return &win32_impl;
 }

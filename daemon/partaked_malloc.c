@@ -18,7 +18,7 @@
 static void *rainy_day_page;
 
 
-void partake_initialize_malloc(void) {
+void partaked_initialize_malloc(void) {
     if (rainy_day_page == NULL) {
         rainy_day_page = malloc(4096);
     }
@@ -84,14 +84,14 @@ static void out_of_memory(const char *func, size_t n, size_t size) {
 }
 
 
-void *partake_malloc(size_t size) {
+void *partaked_malloc(size_t size) {
     void *p = malloc(size);
     if (p == NULL) {
         if (size == 0)
             p = malloc(1);
 
         if (p == NULL) {
-            partake_iobuf_release_freelist();
+            partaked_iobuf_release_freelist();
 
             p = malloc(size != 0 ? size : 1);
             if (p == NULL)
@@ -102,7 +102,7 @@ void *partake_malloc(size_t size) {
 }
 
 
-void *partake_realloc(void *ptr, size_t size) {
+void *partaked_realloc(void *ptr, size_t size) {
     void *p = realloc(ptr, size);
     if (p == NULL) {
         if (size == 0) {
@@ -112,7 +112,7 @@ void *partake_realloc(void *ptr, size_t size) {
         }
 
         if (p == NULL) {
-            partake_iobuf_release_freelist();
+            partaked_iobuf_release_freelist();
 
             p = realloc(ptr, size != 0 ? size : 1);
             if (p == NULL)
@@ -123,14 +123,14 @@ void *partake_realloc(void *ptr, size_t size) {
 }
 
 
-void *partake_calloc(size_t n, size_t size) {
+void *partaked_calloc(size_t n, size_t size) {
     void *p = calloc(n, size);
     if (p == NULL) {
         if (n == 0 || size == 0)
             p = malloc(1);
 
         if (p == NULL) {
-            partake_iobuf_release_freelist();
+            partaked_iobuf_release_freelist();
 
             p = calloc(n != 0 ? n : 1, size != 0 ? size : 1);
             if (p == NULL)
@@ -141,6 +141,6 @@ void *partake_calloc(size_t n, size_t size) {
 }
 
 
-void partake_free(const void *ptr) {
+void partaked_free(const void *ptr) {
     free((void *)ptr);
 }

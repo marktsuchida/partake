@@ -14,17 +14,17 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-struct partake_handle;
-struct partake_segment;
-struct partake_voucherqueue;
+struct partaked_handle;
+struct partaked_segment;
+struct partaked_voucherqueue;
 
 
-struct partake_pool *partake_pool_create(uv_loop_t *event_loop,
-        struct partake_segment *segment);
+struct partaked_pool *partaked_pool_create(uv_loop_t *event_loop,
+        struct partaked_segment *segment);
 
-void partake_pool_destroy(struct partake_pool *pool);
+void partaked_pool_destroy(struct partaked_pool *pool);
 
-struct partake_segment *partake_pool_segment(struct partake_pool *pool);
+struct partaked_segment *partaked_pool_segment(struct partaked_pool *pool);
 
 
 /*
@@ -32,26 +32,26 @@ struct partake_segment *partake_pool_segment(struct partake_pool *pool);
  * (refcounts, flags) of objects (those need to be managed per-connection).
  */
 
-struct partake_object *partake_pool_find_object(
-        struct partake_pool *pool, partake_token token);
+struct partaked_object *partaked_pool_find_object(
+        struct partaked_pool *pool, partaked_token token);
 
-struct partake_object *partake_pool_create_object(struct partake_pool *pool,
-        size_t size, bool clear, partake_token token);
+struct partaked_object *partaked_pool_create_object(struct partaked_pool *pool,
+        size_t size, bool clear, partaked_token token);
 
-struct partake_object *partake_pool_create_voucher(struct partake_pool *pool,
-        partake_token voucher_token, struct partake_object *target);
+struct partaked_object *partaked_pool_create_voucher(struct partaked_pool *pool,
+        partaked_token voucher_token, struct partaked_object *target);
 
-void partake_pool_destroy_object(struct partake_pool *pool,
-        struct partake_object *object);
+void partaked_pool_destroy_object(struct partaked_pool *pool,
+        struct partaked_object *object);
 
-int partake_pool_resize_object(struct partake_pool *pool,
-        struct partake_object *object, size_t size);
+int partaked_pool_resize_object(struct partaked_pool *pool,
+        struct partaked_object *object, size_t size);
 
-void partake_pool_rekey_object(struct partake_pool *pool,
-        struct partake_object *object, partake_token token);
+void partaked_pool_rekey_object(struct partaked_pool *pool,
+        struct partaked_object *object, partaked_token token);
 
-void partake_pool_clear_object(struct partake_pool *pool,
-        struct partake_object *object);
+void partaked_pool_clear_object(struct partaked_pool *pool,
+        struct partaked_object *object);
 
-struct partake_voucherqueue *partake_pool_get_voucherqueue(
-        struct partake_pool *pool);
+struct partaked_voucherqueue *partaked_pool_get_voucherqueue(
+        struct partaked_pool *pool);

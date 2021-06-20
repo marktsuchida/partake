@@ -12,24 +12,24 @@
 #include "partake_protocol_builder.h"
 
 
-struct partake_shmem_impl {
+struct partaked_shmem_impl {
     TCHAR *name; // Non-null even if not supported
 
     // int return values are platform error codes (success = 0)
     int (*initialize)(void **data);
     void (*deinitialize)(void *data);
-    int (*allocate)(const struct partake_daemon_config *config, void *data);
-    void (*deallocate)(const struct partake_daemon_config *config, void *data);
+    int (*allocate)(const struct partaked_daemon_config *config, void *data);
+    void (*deallocate)(const struct partaked_daemon_config *config, void *data);
     void *(*getaddr)(void *data);
     void (*add_mapping_spec)(flatcc_builder_t *b, void *data);
 };
 
 
-// partake_shmem_*_impl() return pointer to static impl struct (even if only
+// partaked_shmem_*_impl() return pointer to static impl struct (even if only
 // 'name' field is non-null).
 
-struct partake_shmem_impl *partake_shmem_mmap_impl(void);
+struct partaked_shmem_impl *partaked_shmem_mmap_impl(void);
 
-struct partake_shmem_impl *partake_shmem_shmget_impl(void);
+struct partaked_shmem_impl *partaked_shmem_shmget_impl(void);
 
-struct partake_shmem_impl *partake_shmem_win32_impl(void);
+struct partaked_shmem_impl *partaked_shmem_win32_impl(void);

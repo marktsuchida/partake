@@ -21,7 +21,7 @@
  * handling the request at a later time.
  *
  * In the case of a message spanning more than one buffer, we make a copy into
- * a dedicated partake_iobuf of sufficient size.
+ * a dedicated partaked_iobuf of sufficient size.
  *
  * We further improve efficiency by keeping "destroyed" buffers in a free list
  * for reuse.
@@ -35,7 +35,7 @@
 
 
 // Buffers of this size are recycled
-#define PARTAKE_IOBUF_STD_SIZE (49152 - 32)
+#define PARTAKED_IOBUF_STD_SIZE (49152 - 32)
 
 
 /*
@@ -66,10 +66,10 @@
  */
 
 
-struct partake_iobuf {
-    // We place this struct within the same partake_malloc()ed block as the
-    // buffer itself. Passing addr_to_free to partake_free() frees both the
-    // buffer and the struct partake_iobuf.
+struct partaked_iobuf {
+    // We place this struct within the same partaked_malloc()ed block as the
+    // buffer itself. Passing addr_to_free to partaked_free() frees both the
+    // buffer and the struct partaked_iobuf.
     void *addr_to_free;
 
     void *buffer; // Start of data buffer
@@ -79,26 +79,26 @@ struct partake_iobuf {
 
     union {
         size_t refcount;
-        struct partake_iobuf *next_free; // Freelist
+        struct partaked_iobuf *next_free; // Freelist
     } management;
 };
 
 
-struct partake_iobuf *partake_iobuf_create(size_t size);
+struct partaked_iobuf *partaked_iobuf_create(size_t size);
 
-// Do not call directly; use partake_iobuf_decref().
-void partake_iobuf_destroy(struct partake_iobuf *iobuf);
+// Do not call directly; use partaked_iobuf_decref().
+void partaked_iobuf_destroy(struct partaked_iobuf *iobuf);
 
-static inline struct partake_iobuf *partake_iobuf_incref(
-    struct partake_iobuf *iobuf) {
+static inline struct partaked_iobuf *partaked_iobuf_incref(
+    struct partaked_iobuf *iobuf) {
     ++iobuf->management.refcount;
     return iobuf;
 }
 
-static inline void partake_iobuf_decref(struct partake_iobuf *iobuf) {
+static inline void partaked_iobuf_decref(struct partaked_iobuf *iobuf) {
     if (iobuf != NULL && --iobuf->management.refcount == 0) {
-        partake_iobuf_destroy(iobuf);
+        partaked_iobuf_destroy(iobuf);
     }
 }
 
-void partake_iobuf_release_freelist(void);
+void partaked_iobuf_release_freelist(void);

@@ -20,10 +20,10 @@
 #include <assert.h>
 
 
-struct partake_voucherqueue {
+struct partaked_voucherqueue {
     uv_loop_t *event_loop;
 
-    struct partake_pool *pool;
+    struct partaked_pool *pool;
 
     // Milliseconds after which a voucher expires.
     uint64_t time_to_live;
@@ -39,13 +39,13 @@ struct partake_voucherqueue {
     // to the newest voucher. Other fields of the head are not used.
     // Probably a chuncked array-based deque is more efficient for large numbers
     // of vouchers.
-    struct partake_object dlist_head;
+    struct partaked_object dlist_head;
 };
 
 
-struct partake_voucherqueue *partake_voucherqueue_create(
-        uv_loop_t *event_loop, struct partake_pool *pool) {
-    struct partake_voucherqueue *ret = partake_malloc(sizeof(*ret));
+struct partaked_voucherqueue *partaked_voucherqueue_create(
+        uv_loop_t *event_loop, struct partaked_pool *pool) {
+    struct partaked_voucherqueue *ret = partaked_malloc(sizeof(*ret));
     ret->event_loop = event_loop;
     ret->pool = pool;
     ret->time_to_live = 60 * 1000; // Consider making configurable
@@ -53,7 +53,7 @@ struct partake_voucherqueue *partake_voucherqueue_create(
     int err = uv_timer_init(event_loop, &ret->expiry_timer);
     if (err != 0) {
         ZF_LOGE("uv_timer_init: %s", uv_strerror(err));
-        partake_free(ret);
+        partaked_free(ret);
         return NULL;
     }
     uv_handle_set_data((uv_handle_t *)&ret->expiry_timer, ret);
@@ -64,8 +64,8 @@ struct partake_voucherqueue *partake_voucherqueue_create(
 
 
 // Expire a voucher that has been removed from the queue.
-static void expire_voucher(struct partake_voucherqueue *queue,
-        struct partake_object *voucher, const char *reason) {
+static void expire_voucher(struct partaked_voucherqueue *queue,
+        struct partaked_object *voucher, const char *reason) {
     // TODO Print voucher and target tokens in proquint
     char voucher_token_pq[24];
     partake_proquint_from_uint64(voucher->token, voucher_token_pq);
@@ -74,11 +74,11 @@ static void expire_voucher(struct partake_voucherqueue *queue,
     ZF_LOGW("voucher expired (%s): %s (for object %s)", reason,
             voucher_token_pq, target_token_pq);
     --voucher->target->refcount;
-    partake_pool_destroy_object(queue->pool, voucher);
+    partaked_pool_destroy_object(queue->pool, voucher);
 }
 
 
-void partake_voucherqueue_destroy(struct partake_voucherqueue *queue) {
+void partaked_voucherqueue_destroy(struct partaked_voucherqueue *queue) {
     if (!queue)
         return;
 
@@ -87,27 +87,27 @@ void partake_voucherqueue_destroy(struct partake_voucherqueue *queue) {
         ZF_LOGE("uv_timer_stop: %s", uv_strerror(err));
 
     while (queue->dlist_head.next != &queue->dlist_head) {
-        struct partake_object *removed = queue->dlist_head.next;
+        struct partaked_object *removed = queue->dlist_head.next;
         queue->dlist_head.next = removed->next;
         removed->next->prev = &queue->dlist_head;
         expire_voucher(queue, removed, "shutdown");
     }
 
-    partake_free(queue);
+    partaked_free(queue);
 }
 
 
-static void schedule_timer(struct partake_voucherqueue *queue);
+static void schedule_timer(struct partaked_voucherqueue *queue);
 
 
 static void timer_callback(uv_timer_t *timer) {
-    struct partake_voucherqueue *queue =
+    struct partaked_voucherqueue *queue =
             uv_handle_get_data((uv_handle_t *)timer);
     uint64_t now = uv_now(queue->event_loop);
     while (queue->dlist_head.next != &queue->dlist_head) {
         if (queue->dlist_head.next->expiration > now)
             break;
-        struct partake_object *removed = queue->dlist_head.next;
+        struct partaked_object *removed = queue->dlist_head.next;
         queue->dlist_head.next = removed->next;
         removed->next->prev = &queue->dlist_head;
         expire_voucher(queue, removed, "timeout");
@@ -116,7 +116,7 @@ static void timer_callback(uv_timer_t *timer) {
 }
 
 
-static void schedule_timer(struct partake_voucherqueue *queue) {
+static void schedule_timer(struct partaked_voucherqueue *queue) {
     if (queue->dlist_head.next == &queue->dlist_head) { // empty
         int err = uv_timer_stop(&queue->expiry_timer);
         if (err != 0)
@@ -135,13 +135,13 @@ static void schedule_timer(struct partake_voucherqueue *queue) {
 }
 
 
-void partake_voucherqueue_enqueue(struct partake_voucherqueue *queue,
-        struct partake_object *voucher) {
+void partaked_voucherqueue_enqueue(struct partaked_voucherqueue *queue,
+        struct partaked_object *voucher) {
     assert (voucher->next == NULL && voucher->prev == NULL);
 
     voucher->expiration = uv_now(queue->event_loop) + queue->time_to_live;
 
-    struct partake_object *p = queue->dlist_head.prev;
+    struct partaked_object *p = queue->dlist_head.prev;
     voucher->next = &queue->dlist_head;
     voucher->prev = p;
     p->next = voucher;
@@ -152,10 +152,10 @@ void partake_voucherqueue_enqueue(struct partake_voucherqueue *queue,
 }
 
 
-void partake_voucherqueue_remove(struct partake_voucherqueue *queue,
-        struct partake_object *voucher) {
-    struct partake_object *n = voucher->next;
-    struct partake_object *p = voucher->prev;
+void partaked_voucherqueue_remove(struct partaked_voucherqueue *queue,
+        struct partaked_object *voucher) {
+    struct partaked_object *n = voucher->next;
+    struct partaked_object *p = voucher->prev;
     assert (n && p);
 
     n->prev = p;
