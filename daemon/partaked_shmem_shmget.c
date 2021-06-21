@@ -33,8 +33,7 @@ struct shmget_private_data {
 
 
 static int shmget_initialize(void **data) {
-    *data = partaked_malloc(sizeof(struct shmget_private_data));
-    memset(*data, 0, sizeof(struct shmget_private_data));
+    *data = partaked_calloc(1, sizeof(struct shmget_private_data));
     return 0;
 }
 
@@ -80,27 +79,32 @@ static int create_sysv_shm(const struct partaked_daemon_config *config,
             }
         }
 
-        errno = 0;
-        d->shmid = shmget(d->key, config->size,
-                IPC_CREAT |
-                (force ? 0 : IPC_EXCL) |
+        if (config->size > 0) {
+            errno = 0;
+            d->shmid = shmget(d->key, config->size,
+                    IPC_CREAT |
+                    (force ? 0 : IPC_EXCL) |
 #ifdef __linux__
-                // TODO We can also support different huge page sizes here
-                (config->shmem.shmget.huge_pages ? SHM_HUGETLB : 0) |
+                    // TODO We can also support different huge page sizes here
+                    (config->shmem.shmget.huge_pages ? SHM_HUGETLB : 0) |
 #endif
-                0666);
-        if (d->shmid == -1) {
-            int ret = errno;
-            char emsg[1024];
-            ZF_LOGE("shmget: key %d: %s", d->key,
-                    partaked_strerror(ret, emsg, sizeof(emsg)));
+                    0666);
+            if (d->shmid == -1) {
+                int ret = errno;
+                char emsg[1024];
+                ZF_LOGE("shmget: key %d: %s", d->key,
+                        partaked_strerror(ret, emsg, sizeof(emsg)));
 
-            if (generate_key && ret == EEXIST) {
-                continue;
+                if (generate_key && ret == EEXIST) {
+                    continue;
+                }
+                return ret;
             }
-            return ret;
+            ZF_LOGI("shmget: key %d: id = %d", d->key, d->shmid);
         }
-        ZF_LOGI("shmget: key %d: id = %d", d->key, d->shmid);
+        else {
+            ZF_LOGI("key %d: shmget skipped due to zero size", d->key);
+        }
 
         d->key_active = true;
         return 0;
@@ -116,15 +120,17 @@ static int remove_sysv_shm(struct shmget_private_data *d) {
         return 0;
     }
 
-    errno = 0;
-    if (shmctl(d->shmid, IPC_RMID, NULL) != 0) {
-        int ret = errno;
-        char emsg[1024];
-        ZF_LOGE("shmctl: IPC_RMID id %d: %s", d->shmid,
-                partaked_strerror(ret, emsg, sizeof(emsg)));
-    }
-    else {
-        ZF_LOGI("shmctl IPC_RMID: id %d", d->shmid);
+    if (d->addr != NULL) {
+        errno = 0;
+        if (shmctl(d->shmid, IPC_RMID, NULL) != 0) {
+            int ret = errno;
+            char emsg[1024];
+            ZF_LOGE("shmctl: IPC_RMID id %d: %s", d->shmid,
+                    partaked_strerror(ret, emsg, sizeof(emsg)));
+        }
+        else {
+            ZF_LOGI("shmctl IPC_RMID: id %d", d->shmid);
+        }
     }
 
     d->key_active = false;
@@ -134,16 +140,21 @@ static int remove_sysv_shm(struct shmget_private_data *d) {
 
 static int attach_sysv_shm(const struct partaked_daemon_config *config,
         struct shmget_private_data *d) {
-    errno = 0;
-    d->addr = shmat(d->shmid, NULL, 0);
-    if (d->addr == NULL) {
-        int ret = errno;
-        char emsg[1024];
-        ZF_LOGE("shmat: id %d: %s", d->shmid,
-                partaked_strerror(ret, emsg, sizeof(emsg)));
-        return ret;
+    if (config->size > 0) {
+        errno = 0;
+        d->addr = shmat(d->shmid, NULL, 0);
+        if (d->addr == NULL) {
+            int ret = errno;
+            char emsg[1024];
+            ZF_LOGE("shmat: id %d: %s", d->shmid,
+                    partaked_strerror(ret, emsg, sizeof(emsg)));
+            return ret;
+        }
+        ZF_LOGI("shmat: id %d: addr = %p", d->shmid, d->addr);
     }
-    ZF_LOGI("shmat: id %d: addr = %p", d->shmid, d->addr);
+    else {
+        ZF_LOGI("key %d: shmat skipped due to zero size", d->key);
+    }
 
     return 0;
 }
