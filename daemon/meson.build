@@ -46,4 +46,5 @@ executable('partaked',
         librt,
         libuv,
     ],
+    gnu_symbol_visibility: 'hidden',
 )
