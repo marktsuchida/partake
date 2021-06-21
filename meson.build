@@ -3,6 +3,7 @@
 
 project('partake', 'c',
     license: 'BSD-2-Clause',
+    meson_version: '>=0.56.0',
 )
 
 cc = meson.get_compiler('c')
@@ -25,11 +26,11 @@ if not libuv.found()
     iphlpapi = cc.find_library('Iphlpapi', required: libuv_needs_win32_libs)
     userenv = cc.find_library('Userenv', required: libuv_needs_win32_libs)
 
-    libuv_proj = cmake.subproject('libuv',
-        cmake_options: [
-            '-DBUILD_TESTING=NO',
-        ],
-    )
+    libuv_cmake_options = cmake.subproject_options()
+    libuv_cmake_options.add_cmake_defines({
+        'BUILD_TESTING': false,
+    })
+    libuv_proj = cmake.subproject('libuv', options: libuv_cmake_options)
 
     libuv = declare_dependency(
         include_directories: libuv_proj.include_directories('uv_a'),
