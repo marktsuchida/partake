@@ -15,6 +15,7 @@
 #include "partaked_voucherqueue.h"
 
 #include <uthash.h>
+#include <uv.h>
 
 #include <assert.h>
 #include <string.h>
@@ -26,6 +27,7 @@ struct partaked_pool {
     void *addr;
     partaked_allocator allocator;
     struct partaked_object *objects; // Hash table
+    uv_loop_t *event_loop;
     struct partaked_voucherqueue *voucher_expiration_queue;
 };
 
@@ -44,12 +46,12 @@ struct partaked_pool *partaked_pool_create(uv_loop_t *event_loop,
 
     ret->objects = NULL;
 
-    ret->voucher_expiration_queue =
-            partaked_voucherqueue_create(event_loop, ret);
-    if (!ret->voucher_expiration_queue) {
-        partaked_free(ret);
-        return NULL;
-    }
+    ret->event_loop = event_loop;
+
+    // The voucher queue is created lazily, because it requires the event loop
+    // to be running (whereas we allow the pool to be created before starting
+    // the event loop).
+    ret->voucher_expiration_queue = NULL;
 
     return ret;
 }
@@ -171,5 +173,9 @@ void partaked_pool_clear_object(struct partaked_pool *pool,
 
 struct partaked_voucherqueue *partaked_pool_get_voucherqueue(
         struct partaked_pool *pool) {
+    if (pool->voucher_expiration_queue == NULL) {
+        pool->voucher_expiration_queue =
+                partaked_voucherqueue_create(pool->event_loop, pool);
+    }
     return pool->voucher_expiration_queue;
 }
