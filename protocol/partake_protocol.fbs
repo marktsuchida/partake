@@ -26,6 +26,10 @@ namespace partake.protocol;
  *
  * - The size of a single RequestMessage or ResponseMessage, including the size
  *   prefix, must not exceed 32 KiB.
+ *
+ * - Although the possible error codes from each request is documented below,
+ *   clients should be prepared to receive other codes, including ones that
+ *   have not yet been defined.
  */
 
 
