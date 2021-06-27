@@ -17,7 +17,6 @@
 
 #include <assert.h>
 
-
 struct partaked_sender {
     size_t refcount;
 
@@ -30,7 +29,6 @@ struct partaked_sender {
     uv_stream_t *client; // Non-owning
 };
 
-
 struct partaked_sender *partaked_sender_create(uv_stream_t *client) {
     struct partaked_sender *sender = partaked_malloc(sizeof(*sender));
     sender->refcount = 1;
@@ -40,20 +38,17 @@ struct partaked_sender *partaked_sender_create(uv_stream_t *client) {
     return sender;
 }
 
-
 struct partaked_sender *partaked_sender_incref(struct partaked_sender *sender) {
     ++sender->refcount;
     return sender;
 }
 
-
 void partaked_sender_decref(struct partaked_sender *sender) {
     if (--sender->refcount == 0) {
-        assert (sender->resparr == NULL);
+        assert(sender->resparr == NULL);
         partaked_free(sender);
     }
 }
-
 
 static void on_write_finish(uv_write_t *writereq, int status) {
     if (status < 0)
@@ -63,7 +58,6 @@ static void on_write_finish(uv_write_t *writereq, int status) {
     partaked_iobuf_decref(iobuf);
     partaked_free(writereq);
 }
-
 
 void partaked_sender_flush(struct partaked_sender *sender) {
     size_t msgsize;
@@ -79,32 +73,29 @@ void partaked_sender_flush(struct partaked_sender *sender) {
         writereq->data = iobuf;
 
         int err = uv_write(writereq, sender->client, &iobuf->uvbuf, 1,
-                on_write_finish);
+                           on_write_finish);
         if (err != 0)
             ZF_LOGE("uv write: %s", uv_strerror(err));
     }
 }
 
-
 void partaked_sender_set_autoflush(struct partaked_sender *sender,
-        bool autoflush) {
+                                   bool autoflush) {
     sender->autoflush = autoflush;
 }
 
-
-struct partaked_resparray *partaked_sender_checkout_resparray(
-        struct partaked_sender *sender) {
+struct partaked_resparray *
+partaked_sender_checkout_resparray(struct partaked_sender *sender) {
     if (sender->resparr == NULL)
         sender->resparr = partaked_resparray_create();
 
     return sender->resparr;
 }
 
-
 void partaked_sender_checkin_resparray(struct partaked_sender *sender,
-        struct partaked_resparray *resparr) {
-    assert (sender->resparr != NULL);
-    assert (resparr == sender->resparr);
+                                       struct partaked_resparray *resparr) {
+    assert(sender->resparr != NULL);
+    assert(resparr == sender->resparr);
 
     if (sender->autoflush)
         partaked_sender_flush(sender);

@@ -11,20 +11,17 @@
 
 struct partaked_resparray;
 
-
 struct partaked_sender *partaked_sender_create(uv_stream_t *client);
 
 struct partaked_sender *partaked_sender_incref(struct partaked_sender *sender);
 
 void partaked_sender_decref(struct partaked_sender *sender);
 
-
 // Send any accumulated responses.
 void partaked_sender_flush(struct partaked_sender *sender);
 
 void partaked_sender_set_autoflush(struct partaked_sender *sender,
-        bool autoflush);
-
+                                   bool autoflush);
 
 /*
  * "Check out" and "check in" a/the response array: task handlers use these to
@@ -35,8 +32,8 @@ void partaked_sender_set_autoflush(struct partaked_sender *sender,
  * appropriate moment.
  */
 
-struct partaked_resparray *partaked_sender_checkout_resparray(
-        struct partaked_sender *sender);
+struct partaked_resparray *
+partaked_sender_checkout_resparray(struct partaked_sender *sender);
 
 void partaked_sender_checkin_resparray(struct partaked_sender *sender,
-        struct partaked_resparray *resparr);
+                                       struct partaked_resparray *resparr);

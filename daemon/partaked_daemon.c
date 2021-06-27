@@ -17,7 +17,6 @@
 #include <uv.h>
 #include <zf_log.h>
 
-
 struct partaked_daemon {
     const struct partaked_daemon_config *config;
 
@@ -38,7 +37,6 @@ struct partaked_daemon {
     uint32_t last_conn_no;
 };
 
-
 static void on_connect(uv_stream_t *server, int status) {
     if (status < 0) {
         ZF_LOGE("uv_connection_cb: %s", uv_strerror(status));
@@ -48,7 +46,7 @@ static void on_connect(uv_stream_t *server, int status) {
     struct partaked_daemon *daemon = server->loop->data;
 
     struct partaked_connection *conn = partaked_connection_create(
-            ++daemon->last_conn_no, server->loop, daemon->pool);
+        ++daemon->last_conn_no, server->loop, daemon->pool);
     if (conn == NULL) {
         return;
     }
@@ -62,7 +60,8 @@ static void on_connect(uv_stream_t *server, int status) {
     }
 
     err = uv_read_start((uv_stream_t *)&conn->client,
-            partaked_connection_alloc_cb, partaked_connection_read_cb);
+                        partaked_connection_alloc_cb,
+                        partaked_connection_read_cb);
     if (err != 0) {
         ZF_LOGE("uv_read_start: %s", uv_strerror(err));
         partaked_connection_destroy(conn);
@@ -70,12 +69,10 @@ static void on_connect(uv_stream_t *server, int status) {
     }
 }
 
-
 void partaked_daemon_remove_connection(struct partaked_daemon *daemon,
-        struct partaked_connection *conn) {
+                                       struct partaked_connection *conn) {
     DL_DELETE(daemon->conns, conn);
 }
-
 
 static void on_server_close(uv_handle_t *handle) {
     struct partaked_daemon *daemon = handle->loop->data;
@@ -90,7 +87,6 @@ static void on_server_close(uv_handle_t *handle) {
     }
 }
 
-
 static void on_signal(uv_signal_t *handle, int signum) {
     ZF_LOGI("Signal %d received", signum);
 
@@ -103,7 +99,6 @@ static void on_signal(uv_signal_t *handle, int signum) {
 
     uv_close((uv_handle_t *)&daemon->server, on_server_close);
 }
-
 
 static int setup_server(struct partaked_daemon *daemon) {
     int err = uv_loop_init(&daemon->loop);
@@ -122,8 +117,9 @@ static int setup_server(struct partaked_daemon *daemon) {
     uv_pipe_pending_instances(&daemon->server, 8);
 
     char name[1024];
-    err = uv_pipe_bind(&daemon->server,
-            partaked_tstrtoutf8(daemon->config->socket, name, sizeof(name)));
+    err = uv_pipe_bind(
+        &daemon->server,
+        partaked_tstrtoutf8(daemon->config->socket, name, sizeof(name)));
     if (err != 0) {
         ZF_LOGE("uv_pipe_bind: %s", uv_strerror(err));
         goto error;
@@ -138,7 +134,7 @@ static int setup_server(struct partaked_daemon *daemon) {
     ZF_LOGI("Listening on %s",
             partaked_strtolog(daemon->config->socket, buf, sizeof(buf)));
 
-    int signums[3] = { SIGINT, SIGHUP, SIGTERM };
+    int signums[3] = {SIGINT, SIGHUP, SIGTERM};
     for (int i = 0; i < 3; ++i) {
         err = uv_signal_init(&daemon->loop, &daemon->signal[i]);
         if (err != 0) {
@@ -160,7 +156,6 @@ error:
     return err;
 }
 
-
 static int shutdown_server(struct partaked_daemon *daemon) {
     int err = uv_loop_close(&daemon->loop);
     if (err != 0) {
@@ -171,7 +166,6 @@ static int shutdown_server(struct partaked_daemon *daemon) {
     return 0;
 }
 
-
 static int run_event_loop(struct partaked_daemon *daemon) {
     ZF_LOGI("Calling uv_run");
     int err = uv_run(&daemon->loop, UV_RUN_DEFAULT);
@@ -180,11 +174,10 @@ static int run_event_loop(struct partaked_daemon *daemon) {
     return err;
 }
 
-
 int partaked_daemon_run(const struct partaked_daemon_config *config) {
     partaked_initialize_malloc();
     uv_replace_allocator(partaked_malloc, partaked_realloc, partaked_calloc,
-            (void (*)(void *))partaked_free);
+                         (void (*)(void *))partaked_free);
 
     struct partaked_daemon daemon;
     memset(&daemon, 0, sizeof(daemon));

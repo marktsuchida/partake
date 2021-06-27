@@ -11,7 +11,6 @@
 
 #include <stddef.h>
 
-
 /*
  * The main idea is to process requests without making copies of the
  * FlatBuffers messages or their content. We pass a uv_buf_t * to libuv and
@@ -33,10 +32,8 @@
  * is needed when the kernel decides to interrupt a read mid-message.
  */
 
-
 // Buffers of this size are recycled
 #define PARTAKED_IOBUF_STD_SIZE (49152 - 32)
-
 
 /*
  * Overview of buffer handling with libuv io:
@@ -65,14 +62,13 @@
  * by our connection object, so that we can recover them when the io completes.
  */
 
-
 struct partaked_iobuf {
     // We place this struct within the same partaked_malloc()ed block as the
     // buffer itself. Passing addr_to_free to partaked_free() frees both the
     // buffer and the struct partaked_iobuf.
     void *addr_to_free;
 
-    void *buffer; // Start of data buffer
+    void *buffer;    // Start of data buffer
     size_t capacity; // Capacity of data buffer
 
     uv_buf_t uvbuf; // Used for writes only
@@ -83,14 +79,13 @@ struct partaked_iobuf {
     } management;
 };
 
-
 struct partaked_iobuf *partaked_iobuf_create(size_t size);
 
 // Do not call directly; use partaked_iobuf_decref().
 void partaked_iobuf_destroy(struct partaked_iobuf *iobuf);
 
-static inline struct partaked_iobuf *partaked_iobuf_incref(
-    struct partaked_iobuf *iobuf) {
+static inline struct partaked_iobuf *
+partaked_iobuf_incref(struct partaked_iobuf *iobuf) {
     ++iobuf->management.refcount;
     return iobuf;
 }

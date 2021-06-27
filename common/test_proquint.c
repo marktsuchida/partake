@@ -7,9 +7,8 @@
 
 #include "partake_proquint.c"
 
-void setUp(void) { }
-void tearDown(void) { }
-
+void setUp(void) {}
+void tearDown(void) {}
 
 void test_to_proquint(void) {
     uint64_t i;
@@ -28,7 +27,6 @@ void test_to_proquint(void) {
     TEST_ASSERT_EQUAL_STRING("gutih-tugad-mudof-sakat", pq);
 }
 
-
 void test_16_from_proquint(void) {
     uint16_t i;
     int err;
@@ -45,7 +43,6 @@ void test_16_from_proquint(void) {
     TEST_ASSERT_EQUAL_INT(0, err);
     TEST_ASSERT_EQUAL_UINT64(0x3F54, i);
 }
-
 
 void test_from_proquint(void) {
     uint64_t i;
@@ -64,7 +61,6 @@ void test_from_proquint(void) {
     TEST_ASSERT_EQUAL_UINT64(0x3F54DCC18C62C18D, i);
 }
 
-
 void test_invalid_proquint(void) {
     uint64_t i;
     int err;
@@ -80,9 +76,7 @@ void test_invalid_proquint(void) {
 
     err = partake_proquint_to_uint64("babab-babab.babab-babab", &i);
     TEST_ASSERT_NOT_EQUAL_INT(0, err);
-
 }
-
 
 void test_roundtrip(void) {
     uint64_t i, j;
@@ -101,7 +95,6 @@ void test_roundtrip(void) {
         TEST_ASSERT_EQUAL_UINT64(i, j);
     }
 }
-
 
 int main() {
     UNITY_BEGIN();

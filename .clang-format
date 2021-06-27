@@ -1,0 +1,8 @@
+---
+BasedOnStyle: LLVM
+IndentWidth: 4
+---
+Language: Cpp
+PointerAlignment: Right
+BreakStringLiterals: false
+...

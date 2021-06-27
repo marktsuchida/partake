@@ -9,9 +9,7 @@
 
 #include <stddef.h>
 
-
 void partaked_initialize_malloc(void);
-
 
 /*
  * All allocation of non-shared memory in partaked uses these functions.

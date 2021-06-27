@@ -9,8 +9,7 @@
 
 #include "partaked_tchar.h"
 
-
 int partaked_generate_random_int(void);
 
 TCHAR *partaked_alloc_random_name(TCHAR *prefix, size_t random_len,
-        size_t max_total_len);
+                                  size_t max_total_len);

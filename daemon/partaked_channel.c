@@ -20,7 +20,6 @@
 #include <uthash.h>
 #include <utlist.h>
 
-
 struct partaked_channel {
     struct partaked_pool *pool; // Non-owning
 
@@ -28,31 +27,26 @@ struct partaked_channel {
     struct partaked_handle *handles; // Hash table
 };
 
-
 static inline void add_handle_to_channel(struct partaked_channel *chan,
-        struct partaked_handle *handle) {
+                                         struct partaked_handle *handle) {
     HASH_ADD_KEYPTR(hh, chan->handles, &handle->object->token,
-            sizeof(partaked_token), handle);
+                    sizeof(partaked_token), handle);
 }
 
-
-static inline struct partaked_handle *find_handle_in_channel(
-        struct partaked_channel *chan, partaked_token token) {
+static inline struct partaked_handle *
+find_handle_in_channel(struct partaked_channel *chan, partaked_token token) {
     struct partaked_handle *ret;
     HASH_FIND(hh, chan->handles, &token, sizeof(partaked_token), ret);
     return ret;
 }
 
-
 static inline void remove_handle_from_channel(struct partaked_channel *chan,
-        struct partaked_handle *handle) {
+                                              struct partaked_handle *handle) {
     HASH_DELETE(hh, chan->handles, handle);
 }
 
-
 static void close_object_impl(struct partaked_channel *chan,
-        struct partaked_handle *handle);
-
+                              struct partaked_handle *handle);
 
 struct partaked_channel *partaked_channel_create(struct partaked_pool *pool) {
     struct partaked_channel *ret = partaked_malloc(sizeof(*ret));
@@ -61,7 +55,6 @@ struct partaked_channel *partaked_channel_create(struct partaked_pool *pool) {
     ret->handles = NULL;
     return ret;
 }
-
 
 void partaked_channel_destroy(struct partaked_channel *chan) {
     struct partaked_handle *handle, *tmp;
@@ -73,21 +66,20 @@ void partaked_channel_destroy(struct partaked_channel *chan) {
         // Cancel waits first so they don't fire upon releasing.
         partaked_handle_cancel_all_continue_on_publish(handle);
         partaked_handle_cancel_any_continue_on_sole_ownership(handle);
-        assert (handle->open_count == handle->refcount - 1);
+        assert(handle->open_count == handle->refcount - 1);
 
         while (handle->open_count > 0)
             close_object_impl(chan, handle);
 
         partaked_channel_release_handle(chan, handle);
     }
-    assert (chan->handles == NULL);
+    assert(chan->handles == NULL);
 
     partaked_free(chan);
 }
 
-
 int partaked_channel_get_segment(struct partaked_channel *chan, uint32_t segno,
-        struct partaked_segment **segment) {
+                                 struct partaked_segment **segment) {
     // Currently we use a single segment, 0.
     if (segno != 0)
         return partake_protocol_Status_NO_SUCH_SEGMENT;
@@ -96,18 +88,15 @@ int partaked_channel_get_segment(struct partaked_channel *chan, uint32_t segno,
     return 0;
 }
 
-
 struct partaked_pool *partaked_channel_get_pool(struct partaked_channel *chan) {
     return chan->pool;
 }
 
-
-int partaked_channel_alloc_object(struct partaked_channel *chan,
-        size_t size, bool clear, uint8_t policy,
-        struct partaked_handle **handle) {
-    struct partaked_object *object =
-        partaked_pool_create_object(chan->pool, size, clear,
-                partaked_generate_token());
+int partaked_channel_alloc_object(struct partaked_channel *chan, size_t size,
+                                  bool clear, uint8_t policy,
+                                  struct partaked_handle **handle) {
+    struct partaked_object *object = partaked_pool_create_object(
+        chan->pool, size, clear, partaked_generate_token());
     if (object == NULL)
         return partake_protocol_Status_OUT_OF_MEMORY;
 
@@ -127,9 +116,9 @@ int partaked_channel_alloc_object(struct partaked_channel *chan,
     return 0;
 }
 
-
 int partaked_channel_realloc_object(struct partaked_channel *chan,
-        partaked_token token, size_t size, struct partaked_handle **handle) {
+                                    partaked_token token, size_t size,
+                                    struct partaked_handle **handle) {
     *handle = find_handle_in_channel(chan, token);
     if (*handle == NULL || (*handle)->object->exclusive_writer != chan)
         return partake_protocol_Status_NO_SUCH_OBJECT;
@@ -140,9 +129,9 @@ int partaked_channel_realloc_object(struct partaked_channel *chan,
     return 0;
 }
 
-
 int partaked_channel_resume_open_object(struct partaked_channel *chan,
-        struct partaked_handle *handle, struct partaked_object *voucher) {
+                                        struct partaked_handle *handle,
+                                        struct partaked_object *voucher) {
     if (voucher) {
         --voucher->target->refcount;
         partaked_pool_destroy_object(chan->pool, voucher);
@@ -158,10 +147,10 @@ int partaked_channel_resume_open_object(struct partaked_channel *chan,
     return 0;
 }
 
-
 int partaked_channel_open_object(struct partaked_channel *chan,
-        partaked_token token, uint8_t policy,
-        struct partaked_handle **handle, struct partaked_object **voucher) {
+                                 partaked_token token, uint8_t policy,
+                                 struct partaked_handle **handle,
+                                 struct partaked_object **voucher) {
     *handle = find_handle_in_channel(chan, token);
     *voucher = NULL;
     struct partaked_object *object;
@@ -184,8 +173,7 @@ int partaked_channel_open_object(struct partaked_channel *chan,
         (*handle)->object = object;
         (*handle)->refcount = 1;
         add_handle_to_channel(chan, *handle);
-    }
-    else {
+    } else {
         object = (*handle)->object;
         if (policy != partaked_object_flags_get_policy(object->flags)) {
             return partake_protocol_Status_NO_SUCH_OBJECT;
@@ -200,7 +188,7 @@ int partaked_channel_open_object(struct partaked_channel *chan,
 
     if (*voucher) {
         partaked_voucherqueue_remove(partaked_pool_get_voucherqueue(chan->pool),
-                *voucher);
+                                     *voucher);
     }
 
     int status = partaked_channel_resume_open_object(chan, *handle, *voucher);
@@ -208,9 +196,8 @@ int partaked_channel_open_object(struct partaked_channel *chan,
     return status;
 }
 
-
 static void close_object_impl(struct partaked_channel *chan,
-        struct partaked_handle *handle) {
+                              struct partaked_handle *handle) {
     struct partaked_object *object = handle->object;
 
     --handle->open_count;
@@ -220,25 +207,22 @@ static void close_object_impl(struct partaked_channel *chan,
     if (object->exclusive_writer == chan) {
         object->exclusive_writer = NULL;
         partaked_handle_fire_on_publish(object);
-    }
-    else if (handle->open_count == 0 &&
-            object->handle_waiting_for_sole_ownership == handle) {
+    } else if (handle->open_count == 0 &&
+               object->handle_waiting_for_sole_ownership == handle) {
         // We have (incorrectly) closed a handle on which we have a pending
         // Unpublish request. Trigger failure of the pending request.
         partaked_handle_local_fire_on_sole_ownership(handle);
-    }
-    else if (object->open_count == 1 &&
-            object->handle_waiting_for_sole_ownership != NULL &&
-            object->handle_waiting_for_sole_ownership->open_count == 1) {
+    } else if (object->open_count == 1 &&
+               object->handle_waiting_for_sole_ownership != NULL &&
+               object->handle_waiting_for_sole_ownership->open_count == 1) {
         partaked_handle_fire_on_sole_ownership(handle->object);
     }
 
     partaked_channel_release_handle(chan, handle);
 }
 
-
 int partaked_channel_close_object(struct partaked_channel *chan,
-        partaked_token token) {
+                                  partaked_token token) {
     struct partaked_handle *handle = find_handle_in_channel(chan, token);
     if (handle == NULL || handle->open_count == 0)
         return partake_protocol_Status_NO_SUCH_OBJECT;
@@ -247,9 +231,8 @@ int partaked_channel_close_object(struct partaked_channel *chan,
     return 0;
 }
 
-
 int partaked_channel_publish_object(struct partaked_channel *chan,
-        partaked_token token) {
+                                    partaked_token token) {
     struct partaked_handle *handle = find_handle_in_channel(chan, token);
     if (handle == NULL || handle->object->exclusive_writer != chan)
         return partake_protocol_Status_NO_SUCH_OBJECT;
@@ -261,14 +244,14 @@ int partaked_channel_publish_object(struct partaked_channel *chan,
     return 0;
 }
 
-
 int partaked_channel_resume_unpublish_object(struct partaked_channel *chan,
-        struct partaked_handle *handle, bool clear) {
+                                             struct partaked_handle *handle,
+                                             bool clear) {
     if (handle->open_count == 0)
         return partake_protocol_Status_NO_SUCH_OBJECT;
 
     struct partaked_object *object = handle->object;
-    assert (handle->open_count == 1 && object->open_count == 1);
+    assert(handle->open_count == 1 && object->open_count == 1);
 
     remove_handle_from_channel(chan, handle);
 
@@ -284,9 +267,9 @@ int partaked_channel_resume_unpublish_object(struct partaked_channel *chan,
     return 0;
 }
 
-
 int partaked_channel_unpublish_object(struct partaked_channel *chan,
-        partaked_token token, bool clear, struct partaked_handle **handle) {
+                                      partaked_token token, bool clear,
+                                      struct partaked_handle **handle) {
     *handle = find_handle_in_channel(chan, token);
     if (*handle == NULL || (*handle)->open_count == 0)
         return partake_protocol_Status_NO_SUCH_OBJECT;
@@ -301,9 +284,9 @@ int partaked_channel_unpublish_object(struct partaked_channel *chan,
     return partaked_channel_resume_unpublish_object(chan, *handle, clear);
 }
 
-
 int partaked_channel_create_voucher(struct partaked_channel *chan,
-        partaked_token target_token, struct partaked_object **voucher) {
+                                    partaked_token target_token,
+                                    struct partaked_object **voucher) {
     // There is no logical need to search within this channel, but it is
     // expected that in most cases the object will be found in this channel.
     struct partaked_handle *handle = find_handle_in_channel(chan, target_token);
@@ -317,8 +300,7 @@ int partaked_channel_create_voucher(struct partaked_channel *chan,
         if (object->flags & PARTAKED_OBJECT_IS_VOUCHER) {
             object = object->target;
         }
-    }
-    else {
+    } else {
         object = handle->object;
         // If found in the channel, we know it is not a voucher.
     }
@@ -329,49 +311,48 @@ int partaked_channel_create_voucher(struct partaked_channel *chan,
     ++object->refcount;
 
     partaked_voucherqueue_enqueue(partaked_pool_get_voucherqueue(chan->pool),
-            *voucher);
+                                  *voucher);
 
     return 0;
 }
 
-
 int partaked_channel_discard_voucher(struct partaked_channel *chan,
-        partaked_token token, struct partaked_object **target) {
-    struct partaked_object *object = partaked_pool_find_object(chan->pool, token);
+                                     partaked_token token,
+                                     struct partaked_object **target) {
+    struct partaked_object *object =
+        partaked_pool_find_object(chan->pool, token);
     if (object == NULL) {
         return partake_protocol_Status_NO_SUCH_OBJECT;
     }
 
     if (object->flags & PARTAKED_OBJECT_IS_VOUCHER) {
         partaked_voucherqueue_remove(partaked_pool_get_voucherqueue(chan->pool),
-                object);
+                                     object);
         *target = object->target;
         --(*target)->refcount;
         partaked_pool_destroy_object(chan->pool, object);
-    }
-    else {
+    } else {
         *target = object;
     }
 
     return 0;
 }
 
-
 void partaked_channel_release_handle(struct partaked_channel *chan,
-        struct partaked_handle *handle) {
+                                     struct partaked_handle *handle) {
     struct partaked_object *object = handle->object;
 
     --handle->refcount;
 
     if (handle->refcount == 0) {
-        assert (handle->open_count == 0);
+        assert(handle->open_count == 0);
         remove_handle_from_channel(chan, handle);
         partaked_free(handle);
 
         --object->refcount;
 
         if (object->refcount == 0) {
-            assert (object->open_count == 0);
+            assert(object->open_count == 0);
             partaked_pool_destroy_object(chan->pool, object);
         }
     }

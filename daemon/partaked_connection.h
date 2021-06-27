@@ -15,7 +15,6 @@
 
 struct partaked_pool;
 
-
 struct partaked_connection {
     struct partaked_channel *chan;
 
@@ -40,18 +39,17 @@ struct partaked_connection {
     bool skip_channel_destruction;
 };
 
-
-struct partaked_connection *partaked_connection_create(uint32_t conn_no,
-        uv_loop_t *loop, struct partaked_pool *pool);
+struct partaked_connection *
+partaked_connection_create(uint32_t conn_no, uv_loop_t *loop,
+                           struct partaked_pool *pool);
 
 void partaked_connection_destroy(struct partaked_connection *conn);
 
 // Like destroy, but waits for pending writes to complete.
 void partaked_connection_shutdown(struct partaked_connection *conn);
 
-
 void partaked_connection_alloc_cb(uv_handle_t *client, size_t size,
-        uv_buf_t *buf);
+                                  uv_buf_t *buf);
 
 void partaked_connection_read_cb(uv_stream_t *client, ssize_t nread,
-        const uv_buf_t *buf);
+                                 const uv_buf_t *buf);

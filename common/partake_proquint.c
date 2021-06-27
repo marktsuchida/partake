@@ -12,7 +12,6 @@
 static const char *const consonants = "bdfghjklmnprstvz";
 static const char *const vowels = "aiou";
 
-
 static inline char hi4bits_to_consonant(uint16_t *pi) {
     uint16_t j = (*pi) & 0xF000;
     *pi <<= 4;
@@ -20,14 +19,12 @@ static inline char hi4bits_to_consonant(uint16_t *pi) {
     return consonants[j];
 }
 
-
 static inline char hi2bits_to_vowel(uint16_t *pi) {
     uint16_t j = (*pi) & 0xC000;
     *pi <<= 2;
     j >>= 14;
     return vowels[j];
 }
-
 
 static inline void uint16_to_proquint(uint16_t i, char *dest6) {
     *dest6++ = hi4bits_to_consonant(&i);
@@ -37,7 +34,6 @@ static inline void uint16_to_proquint(uint16_t i, char *dest6) {
     *dest6++ = hi4bits_to_consonant(&i);
     *dest6 = '\0';
 }
-
 
 void partake_proquint_from_uint64(uint64_t i, char *dest24) {
     uint16_to_proquint((uint16_t)((i & 0xFFFF000000000000ull) >> 48), dest24);
@@ -52,10 +48,10 @@ void partake_proquint_from_uint64(uint64_t i, char *dest24) {
     uint16_to_proquint((uint16_t)(i & 0x000000000000FFFFull), dest24);
 }
 
-
 static inline int consonant_to_4bits(char ch, uint16_t *dest) {
     *dest <<= 4;
-    switch (ch) {
+
+    switch (ch) { // clang-format off
     case 'b': *dest |= 0x0; break;
     case 'd': *dest |= 0x1; break;
     case 'f': *dest |= 0x2; break;
@@ -73,23 +69,24 @@ static inline int consonant_to_4bits(char ch, uint16_t *dest) {
     case 'v': *dest |= 0xE; break;
     case 'z': *dest |= 0xF; break;
     default: return ERROR;
-    }
+    } // clang-format on
+
     return 0;
 }
 
-
 static inline int vowel_to_2bits(char ch, uint16_t *dest) {
     *dest <<= 2;
-    switch (ch) {
+
+    switch (ch) { // clang-format off
     case 'a': *dest |= 0x0; break;
     case 'i': *dest |= 0x1; break;
     case 'o': *dest |= 0x2; break;
     case 'u': *dest |= 0x3; break;
     default: return ERROR;
-    }
+    } // clang-format on
+
     return 0;
 }
-
 
 static inline int proquint_to_uint16(const char *pq, uint16_t *dest) {
     *dest = 0;
@@ -106,7 +103,6 @@ static inline int proquint_to_uint16(const char *pq, uint16_t *dest) {
         return err;
     return 0;
 }
-
 
 int partake_proquint_to_uint64(const char *pq, uint64_t *dest) {
     *dest = 0;

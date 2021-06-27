@@ -19,7 +19,6 @@
 
 #include <assert.h>
 
-
 struct partaked_voucherqueue {
     uv_loop_t *event_loop;
 
@@ -42,14 +41,14 @@ struct partaked_voucherqueue {
     struct partaked_object dlist_head;
 };
 
-
-struct partaked_voucherqueue *partaked_voucherqueue_create(
-        uv_loop_t *event_loop, struct partaked_pool *pool) {
+struct partaked_voucherqueue *
+partaked_voucherqueue_create(uv_loop_t *event_loop,
+                             struct partaked_pool *pool) {
     struct partaked_voucherqueue *ret = partaked_malloc(sizeof(*ret));
     ret->event_loop = event_loop;
     ret->pool = pool;
     ret->time_to_live = 60 * 1000; // Consider making configurable
-    ret->timer_delay = 5 * 1000; // Consider making configurable
+    ret->timer_delay = 5 * 1000;   // Consider making configurable
     int err = uv_timer_init(event_loop, &ret->expiry_timer);
     if (err != 0) {
         ZF_LOGE("uv_timer_init: %s", uv_strerror(err));
@@ -62,10 +61,10 @@ struct partaked_voucherqueue *partaked_voucherqueue_create(
     return ret;
 }
 
-
 // Expire a voucher that has been removed from the queue.
 static void expire_voucher(struct partaked_voucherqueue *queue,
-        struct partaked_object *voucher, const char *reason) {
+                           struct partaked_object *voucher,
+                           const char *reason) {
     // TODO Print voucher and target tokens in proquint
     char voucher_token_pq[24];
     partake_proquint_from_uint64(voucher->token, voucher_token_pq);
@@ -76,7 +75,6 @@ static void expire_voucher(struct partaked_voucherqueue *queue,
     --voucher->target->refcount;
     partaked_pool_destroy_object(queue->pool, voucher);
 }
-
 
 void partaked_voucherqueue_destroy(struct partaked_voucherqueue *queue) {
     if (!queue)
@@ -96,13 +94,11 @@ void partaked_voucherqueue_destroy(struct partaked_voucherqueue *queue) {
     partaked_free(queue);
 }
 
-
 static void schedule_timer(struct partaked_voucherqueue *queue);
-
 
 static void timer_callback(uv_timer_t *timer) {
     struct partaked_voucherqueue *queue =
-            uv_handle_get_data((uv_handle_t *)timer);
+        uv_handle_get_data((uv_handle_t *)timer);
     uint64_t now = uv_now(queue->event_loop);
     while (queue->dlist_head.next != &queue->dlist_head) {
         if (queue->dlist_head.next->expiration > now)
@@ -115,29 +111,26 @@ static void timer_callback(uv_timer_t *timer) {
     schedule_timer(queue);
 }
 
-
 static void schedule_timer(struct partaked_voucherqueue *queue) {
     if (queue->dlist_head.next == &queue->dlist_head) { // empty
         int err = uv_timer_stop(&queue->expiry_timer);
         if (err != 0)
             ZF_LOGE("uv_timer_stop: %s", uv_strerror(err));
-    }
-    else {
+    } else {
         uint64_t next_expiry = queue->dlist_head.next->expiration;
         uint64_t next_timer_time = next_expiry + queue->timer_delay;
         uint64_t now = uv_now(queue->event_loop);
         uint64_t timeout = next_timer_time > now ? next_timer_time - now : 0;
-        int err = uv_timer_start(&queue->expiry_timer, timer_callback,
-                timeout, 0);
+        int err =
+            uv_timer_start(&queue->expiry_timer, timer_callback, timeout, 0);
         if (err != 0)
             ZF_LOGE("uv_timer_start: %s", uv_strerror(err));
     }
 }
 
-
 void partaked_voucherqueue_enqueue(struct partaked_voucherqueue *queue,
-        struct partaked_object *voucher) {
-    assert (voucher->next == NULL && voucher->prev == NULL);
+                                   struct partaked_object *voucher) {
+    assert(voucher->next == NULL && voucher->prev == NULL);
 
     voucher->expiration = uv_now(queue->event_loop) + queue->time_to_live;
 
@@ -151,12 +144,11 @@ void partaked_voucherqueue_enqueue(struct partaked_voucherqueue *queue,
     }
 }
 
-
 void partaked_voucherqueue_remove(struct partaked_voucherqueue *queue,
-        struct partaked_object *voucher) {
+                                  struct partaked_object *voucher) {
     struct partaked_object *n = voucher->next;
     struct partaked_object *p = voucher->prev;
-    assert (n && p);
+    assert(n && p);
 
     n->prev = p;
     p->next = n;

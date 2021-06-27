@@ -23,7 +23,6 @@
 
 #include <stdint.h>
 
-
 void partake_proquint_from_uint64(uint64_t i, char *dest28);
 
 int partake_proquint_to_uint64(const char *pq, uint64_t *dest);

@@ -9,5 +9,4 @@
 
 #include "partaked_token.h"
 
-
 partaked_token partaked_prev_token = PARTAKED_TOKEN_SEED;

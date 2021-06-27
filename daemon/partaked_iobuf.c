@@ -14,12 +14,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 #define BUFFER_ALIGNMENT 8 // 8 is sufficient for our flatbuffers
 
-
 static struct partaked_iobuf *freelist;
-
 
 struct partaked_iobuf *partaked_iobuf_create(size_t size) {
     struct partaked_iobuf *iobuf;
@@ -27,11 +24,10 @@ struct partaked_iobuf *partaked_iobuf_create(size_t size) {
         iobuf = freelist;
         freelist = iobuf->management.next_free;
         iobuf->management.next_free = NULL;
-    }
-    else {
+    } else {
         size_t header_size = sizeof(struct partaked_iobuf);
-        header_size = (header_size + BUFFER_ALIGNMENT - 1) &
-            ~(BUFFER_ALIGNMENT - 1);
+        header_size =
+            (header_size + BUFFER_ALIGNMENT - 1) & ~(BUFFER_ALIGNMENT - 1);
 
         iobuf = partaked_malloc(header_size + size);
         iobuf->addr_to_free = iobuf;
@@ -44,20 +40,17 @@ struct partaked_iobuf *partaked_iobuf_create(size_t size) {
     return iobuf;
 }
 
-
 void partaked_iobuf_destroy(struct partaked_iobuf *iobuf) {
-    assert (iobuf->management.refcount == 0);
-    assert (iobuf->management.next_free == 0);
+    assert(iobuf->management.refcount == 0);
+    assert(iobuf->management.next_free == 0);
 
     if (iobuf->capacity == PARTAKED_IOBUF_STD_SIZE) {
         iobuf->management.next_free = freelist;
         freelist = iobuf;
-    }
-    else {
+    } else {
         partaked_free(iobuf->addr_to_free);
     }
 }
-
 
 void partaked_iobuf_release_freelist(void) {
     while (freelist != NULL) {

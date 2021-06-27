@@ -11,28 +11,28 @@
 
 #ifdef _WIN32
 
-    // Guard against inconsistent UNICODE (Win32 A vs W) and _UNICODE (tchar
-    // and C runtime) settings, so that we only need to deal with 2 cases.
-#   if defined(UNICODE) != defined(_UNICODE)
-#       error Inconsistent definition of UNICODE vs _UNICODE
-#   endif
+// Guard against inconsistent UNICODE (Win32 A vs W) and _UNICODE (tchar
+// and C runtime) settings, so that we only need to deal with 2 cases.
+#if defined(UNICODE) != defined(_UNICODE)
+#error Inconsistent definition of UNICODE vs _UNICODE
+#endif
 
-#   define WIN32_LEAN_AND_MEAN
-#   include <tchar.h>
-#   include <Windows.h>
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <tchar.h>
 
-#   define PARTAKED_TEXT(x) _TEXT(x)
+#define PARTAKED_TEXT(x) _TEXT(x)
 
-#   define fputts _fputts
-#   define ftprintf _ftprintf
-#   define sntprintf _sntprintf
-#   define tcslen _tcslen
-#   define tcschr _tcschr
-#   define tcsncmp _tcsncmp
-#   define tcstol _tcstol
+#define fputts _fputts
+#define ftprintf _ftprintf
+#define sntprintf _sntprintf
+#define tcslen _tcslen
+#define tcschr _tcschr
+#define tcsncmp _tcsncmp
+#define tcstol _tcstol
 
 static inline const char *partaked_tstrtoutf8(const TCHAR *s, char *buf,
-        size_t size) {
+                                              size_t size) {
 #ifdef UNICODE
     WideCharToMultiByte(CP_UTF8, 0, s, -1, buf, (int)size, NULL, NULL);
 #else
@@ -45,18 +45,18 @@ static inline const char *partaked_tstrtoutf8(const TCHAR *s, char *buf,
 
 typedef char TCHAR;
 
-#   define PARTAKED_TEXT(x) x
+#define PARTAKED_TEXT(x) x
 
-#   define fputts fputs
-#   define ftprintf fprintf
-#   define sntprintf snprintf
-#   define tcslen strlen
-#   define tcschr strchr
-#   define tcsncmp strncmp
-#   define tcstol strtol
+#define fputts fputs
+#define ftprintf fprintf
+#define sntprintf snprintf
+#define tcslen strlen
+#define tcschr strchr
+#define tcsncmp strncmp
+#define tcstol strtol
 
 static inline const char *partaked_tstrtoutf8(const TCHAR *s, char *buf,
-        size_t size) {
+                                              size_t size) {
     snprintf(buf, size, "%s", s);
     return buf;
 }

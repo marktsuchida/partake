@@ -20,7 +20,6 @@
 #include <assert.h>
 #include <string.h>
 
-
 struct partaked_pool {
     // For now, the pool consists of a single segment.
     struct partaked_segment *segment;
@@ -31,16 +30,15 @@ struct partaked_pool {
     struct partaked_voucherqueue *voucher_expiration_queue;
 };
 
-
 struct partaked_pool *partaked_pool_create(uv_loop_t *event_loop,
-        struct partaked_segment *segment) {
+                                           struct partaked_segment *segment) {
     struct partaked_pool *ret = partaked_malloc(sizeof(*ret));
 
     ret->segment = segment;
     ret->addr = partaked_segment_addr(segment);
 
-    ret->allocator = partaked_create_allocator(ret->addr,
-            partaked_segment_size(segment));
+    ret->allocator =
+        partaked_create_allocator(ret->addr, partaked_segment_size(segment));
     // We allow allocator to be null (the result of size being too small); it
     // just means we are always out of memory.
 
@@ -56,33 +54,30 @@ struct partaked_pool *partaked_pool_create(uv_loop_t *event_loop,
     return ret;
 }
 
-
 void partaked_pool_destroy(struct partaked_pool *pool) {
     if (pool == NULL)
         return;
 
-    assert (pool->objects == NULL);
+    assert(pool->objects == NULL);
 
     partaked_voucherqueue_destroy(pool->voucher_expiration_queue);
     partaked_free(pool);
 }
 
-
 struct partaked_segment *partaked_pool_segment(struct partaked_pool *pool) {
     return pool->segment;
 }
 
-
-struct partaked_object *partaked_pool_find_object(
-        struct partaked_pool *pool, partaked_token token) {
+struct partaked_object *partaked_pool_find_object(struct partaked_pool *pool,
+                                                  partaked_token token) {
     struct partaked_object *ret;
     HASH_FIND(hh, pool->objects, &token, sizeof(partaked_token), ret);
     return ret;
 }
 
-
 struct partaked_object *partaked_pool_create_object(struct partaked_pool *pool,
-        size_t size, bool clear, partaked_token token) {
+                                                    size_t size, bool clear,
+                                                    partaked_token token) {
     struct partaked_object *object = partaked_malloc(sizeof(*object));
 
     char *block = partaked_allocate(pool->allocator, size, clear);
@@ -106,9 +101,10 @@ struct partaked_object *partaked_pool_create_object(struct partaked_pool *pool,
     return object;
 }
 
-
-struct partaked_object *partaked_pool_create_voucher(struct partaked_pool *pool,
-        partaked_token voucher_token, struct partaked_object *target) {
+struct partaked_object *
+partaked_pool_create_voucher(struct partaked_pool *pool,
+                             partaked_token voucher_token,
+                             struct partaked_object *target) {
     struct partaked_object *voucher = partaked_malloc(sizeof(*voucher));
 
     voucher->token = voucher_token;
@@ -122,29 +118,27 @@ struct partaked_object *partaked_pool_create_voucher(struct partaked_pool *pool,
     return voucher;
 }
 
-
 void partaked_pool_destroy_object(struct partaked_pool *pool,
-        struct partaked_object *object) {
-    assert (object->refcount == 0 ||
-            (object->flags & PARTAKED_OBJECT_IS_VOUCHER));
+                                  struct partaked_object *object) {
+    assert(object->refcount == 0 ||
+           (object->flags & PARTAKED_OBJECT_IS_VOUCHER));
 
     HASH_DELETE(hh, pool->objects, object);
 
     if (!(object->flags & PARTAKED_OBJECT_IS_VOUCHER)) {
         partaked_deallocate(pool->allocator,
-                (char *)pool->addr + object->offset);
+                            (char *)pool->addr + object->offset);
     }
 
     partaked_free(object);
 }
 
-
 int partaked_pool_resize_object(struct partaked_pool *pool,
-        struct partaked_object *object, size_t size) {
-    assert (!(object->flags & PARTAKED_OBJECT_IS_VOUCHER));
+                                struct partaked_object *object, size_t size) {
+    assert(!(object->flags & PARTAKED_OBJECT_IS_VOUCHER));
 
-    char *block = partaked_reallocate(pool->allocator,
-            (char *)pool->addr + object->offset, size);
+    char *block = partaked_reallocate(
+        pool->allocator, (char *)pool->addr + object->offset, size);
     if (block == NULL)
         return -1;
 
@@ -152,30 +146,28 @@ int partaked_pool_resize_object(struct partaked_pool *pool,
     return 0;
 }
 
-
 void partaked_pool_rekey_object(struct partaked_pool *pool,
-        struct partaked_object *object, partaked_token token) {
-    assert (!(object->flags & PARTAKED_OBJECT_IS_VOUCHER));
+                                struct partaked_object *object,
+                                partaked_token token) {
+    assert(!(object->flags & PARTAKED_OBJECT_IS_VOUCHER));
 
     HASH_DELETE(hh, pool->objects, object);
     object->token = token;
     HASH_ADD(hh, pool->objects, token, sizeof(partaked_token), object);
 }
 
-
 void partaked_pool_clear_object(struct partaked_pool *pool,
-        struct partaked_object *object) {
-    assert (!(object->flags & PARTAKED_OBJECT_IS_VOUCHER));
+                                struct partaked_object *object) {
+    assert(!(object->flags & PARTAKED_OBJECT_IS_VOUCHER));
 
     memset((char *)pool->addr + object->offset, 0, object->size);
 }
 
-
-struct partaked_voucherqueue *partaked_pool_get_voucherqueue(
-        struct partaked_pool *pool) {
+struct partaked_voucherqueue *
+partaked_pool_get_voucherqueue(struct partaked_pool *pool) {
     if (pool->voucher_expiration_queue == NULL) {
         pool->voucher_expiration_queue =
-                partaked_voucherqueue_create(pool->event_loop, pool);
+            partaked_voucherqueue_create(pool->event_loop, pool);
     }
     return pool->voucher_expiration_queue;
 }

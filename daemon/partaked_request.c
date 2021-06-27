@@ -16,17 +16,14 @@
 
 #include <stdlib.h>
 
-
 #define MESSAGE_FRAME_ALIGNMENT 8
-
 
 struct partaked_reqarray {
     struct partaked_iobuf *iobuf; // Owning, reference-counted
-    size_t offset; // Excluding 32-bit size prefix
+    size_t offset;                // Excluding 32-bit size prefix
 
     partake_protocol_RequestMessage_table_t table;
 };
-
 
 struct partaked_request {
     struct partaked_iobuf *iobuf; // Owning, reference-counted
@@ -34,9 +31,9 @@ struct partaked_request {
     partake_protocol_Request_table_t table;
 };
 
-
 bool partaked_requestframe_scan(struct partaked_iobuf *iobuf, size_t start,
-        size_t size, size_t *frame_size, bool *frame_complete) {
+                                size_t size, size_t *frame_size,
+                                bool *frame_complete) {
     if (size < sizeof(flatbuffers_uoffset_t)) {
         *frame_size = 0;
         *frame_complete = false;
@@ -48,15 +45,15 @@ bool partaked_requestframe_scan(struct partaked_iobuf *iobuf, size_t start,
     *frame_size += sizeof(flatbuffers_uoffset_t);
 
     *frame_size = (*frame_size + MESSAGE_FRAME_ALIGNMENT - 1) &
-        ~(MESSAGE_FRAME_ALIGNMENT - 1);
+                  ~(MESSAGE_FRAME_ALIGNMENT - 1);
 
     *frame_complete = *frame_size <= size;
     return true;
 }
 
-
-struct partaked_iobuf *partaked_requestframe_maybe_move(
-        struct partaked_iobuf *iobuf, size_t *start, size_t size) {
+struct partaked_iobuf *
+partaked_requestframe_maybe_move(struct partaked_iobuf *iobuf, size_t *start,
+                                 size_t size) {
     // For now we just always copy unless already at start. TODO Avoid moving
     // when size is large-ish but there is still plenty of room left in iobuf.
     if (*start > 0) {
@@ -70,12 +67,11 @@ struct partaked_iobuf *partaked_requestframe_maybe_move(
     return iobuf;
 }
 
-
 struct partaked_reqarray *partaked_reqarray_create(struct partaked_iobuf *iobuf,
-        size_t offset) {
+                                                   size_t offset) {
     size_t size;
-    void *msg = flatbuffers_read_size_prefix((char *)iobuf->buffer + offset,
-            &size);
+    void *msg =
+        flatbuffers_read_size_prefix((char *)iobuf->buffer + offset, &size);
     if (size > (32 << 10) - sizeof(flatbuffers_uoffset_t)) {
         ZF_LOGE("Request too long");
         return NULL;
@@ -96,7 +92,6 @@ struct partaked_reqarray *partaked_reqarray_create(struct partaked_iobuf *iobuf,
     return reqarr;
 }
 
-
 void partaked_reqarray_destroy(struct partaked_reqarray *reqarr) {
     if (reqarr == NULL)
         return;
@@ -105,25 +100,21 @@ void partaked_reqarray_destroy(struct partaked_reqarray *reqarr) {
     partaked_free(reqarr);
 }
 
-
 uint32_t partaked_reqarray_count(struct partaked_reqarray *reqarr) {
     return partake_protocol_Request_vec_len(
-            partake_protocol_RequestMessage_requests_get(reqarr->table));
+        partake_protocol_RequestMessage_requests_get(reqarr->table));
 }
 
-
-struct partaked_request *partaked_reqarray_request(
-        struct partaked_reqarray *reqarr, uint32_t index) {
+struct partaked_request *
+partaked_reqarray_request(struct partaked_reqarray *reqarr, uint32_t index) {
     struct partaked_request *req = partaked_malloc(sizeof(*req));
 
     req->iobuf = partaked_iobuf_incref(reqarr->iobuf);
     req->table = partake_protocol_Request_vec_at(
-            partake_protocol_RequestMessage_requests_get(reqarr->table),
-            index);
+        partake_protocol_RequestMessage_requests_get(reqarr->table), index);
 
     return req;
 }
-
 
 void partaked_request_destroy(struct partaked_request *req) {
     if (req == NULL)
@@ -133,107 +124,86 @@ void partaked_request_destroy(struct partaked_request *req) {
     partaked_free(req);
 }
 
-
 uint64_t partaked_request_seqno(struct partaked_request *req) {
     return partake_protocol_Request_seqno_get(req->table);
 }
 
-
-partake_protocol_AnyRequest_union_type_t partaked_request_type(
-        struct partaked_request *req) {
+partake_protocol_AnyRequest_union_type_t
+partaked_request_type(struct partaked_request *req) {
     return partake_protocol_Request_request_type_get(req->table);
 }
-
 
 static inline flatbuffers_generic_t anyrequest(struct partaked_request *req) {
     return partake_protocol_Request_request_get(req->table);
 }
 
-
 uint32_t partaked_request_Hello_pid(struct partaked_request *req) {
     return partake_protocol_HelloRequest_pid_get(anyrequest(req));
 }
-
 
 const char *partaked_request_Hello_name(struct partaked_request *req) {
     return partake_protocol_HelloRequest_name_get(anyrequest(req));
 }
 
-
 uint32_t partaked_request_GetSegment_segment(struct partaked_request *req) {
     return partake_protocol_GetSegmentRequest_segment_get(anyrequest(req));
 }
-
 
 uint64_t partaked_request_Alloc_size(struct partaked_request *req) {
     return partake_protocol_AllocRequest_size_get(anyrequest(req));
 }
 
-
 bool partaked_request_Alloc_clear(struct partaked_request *req) {
     return partake_protocol_AllocRequest_clear_get(anyrequest(req));
 }
-
 
 uint8_t partaked_request_Alloc_policy(struct partaked_request *req) {
     return partake_protocol_AllocRequest_policy_get(anyrequest(req));
 }
 
-
 uint64_t partaked_request_Realloc_token(struct partaked_request *req) {
     return partake_protocol_ReallocRequest_token_get(anyrequest(req));
 }
-
 
 uint64_t partaked_request_Realloc_size(struct partaked_request *req) {
     return partake_protocol_ReallocRequest_size_get(anyrequest(req));
 }
 
-
 uint64_t partaked_request_Open_token(struct partaked_request *req) {
     return partake_protocol_OpenRequest_token_get(anyrequest(req));
 }
-
 
 bool partaked_request_Open_wait(struct partaked_request *req) {
     return partake_protocol_OpenRequest_wait_get(anyrequest(req));
 }
 
-
 uint8_t partaked_request_Open_policy(struct partaked_request *req) {
     return partake_protocol_OpenRequest_policy_get(anyrequest(req));
 }
-
 
 uint64_t partaked_request_Close_token(struct partaked_request *req) {
     return partake_protocol_CloseRequest_token_get(anyrequest(req));
 }
 
-
 uint64_t partaked_request_Publish_token(struct partaked_request *req) {
     return partake_protocol_PublishRequest_token_get(anyrequest(req));
 }
-
 
 uint64_t partaked_request_Unpublish_token(struct partaked_request *req) {
     return partake_protocol_UnpublishRequest_token_get(anyrequest(req));
 }
 
-
 bool partaked_request_Unpublish_wait(struct partaked_request *req) {
     return partake_protocol_UnpublishRequest_wait_get(anyrequest(req));
 }
-
 
 bool partaked_request_Unpublish_clear(struct partaked_request *req) {
     return partake_protocol_UnpublishRequest_clear_get(anyrequest(req));
 }
 
-
 uint64_t partaked_request_CreateVoucher_token(struct partaked_request *req) {
     return partake_protocol_CreateVoucherRequest_token_get(anyrequest(req));
 }
-
 
 uint64_t partaked_request_DiscardVoucher_token(struct partaked_request *req) {
     return partake_protocol_DiscardVoucherRequest_token_get(anyrequest(req));

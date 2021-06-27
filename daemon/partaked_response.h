@@ -15,54 +15,52 @@ struct partaked_handle;
 struct partaked_request;
 struct partaked_segment;
 
-
 struct partaked_resparray *partaked_resparray_create(void);
 
-
-struct partaked_iobuf *partaked_resparray_finish(
-        struct partaked_resparray *resparr, size_t *size);
-
+struct partaked_iobuf *
+partaked_resparray_finish(struct partaked_resparray *resparr, size_t *size);
 
 void partaked_resparray_append_Hello_response(
-        struct partaked_resparray *resparr, struct partaked_request *req,
-        int status, uint32_t client_no);
+    struct partaked_resparray *resparr, struct partaked_request *req,
+    int status, uint32_t client_no);
 
 void partaked_resparray_append_GetSegment_response(
-        struct partaked_resparray *resparr, struct partaked_request *req,
-        int status, struct partaked_segment *segment);
+    struct partaked_resparray *resparr, struct partaked_request *req,
+    int status, struct partaked_segment *segment);
 
 void partaked_resparray_append_Alloc_response(
-        struct partaked_resparray *resparr, struct partaked_request *req,
-        int status, struct partaked_handle *handle);
+    struct partaked_resparray *resparr, struct partaked_request *req,
+    int status, struct partaked_handle *handle);
 
 void partaked_resparray_append_Realloc_response(
-        struct partaked_resparray *resparr, struct partaked_request *req,
-        int status, struct partaked_handle *handle);
+    struct partaked_resparray *resparr, struct partaked_request *req,
+    int status, struct partaked_handle *handle);
 
-void partaked_resparray_append_Open_response(
-        struct partaked_resparray *resparr, struct partaked_request *req,
-        int status, struct partaked_handle *handle);
+void partaked_resparray_append_Open_response(struct partaked_resparray *resparr,
+                                             struct partaked_request *req,
+                                             int status,
+                                             struct partaked_handle *handle);
 
 void partaked_resparray_append_Close_response(
-        struct partaked_resparray *resparr, struct partaked_request *req,
-        int status);
+    struct partaked_resparray *resparr, struct partaked_request *req,
+    int status);
 
 void partaked_resparray_append_Publish_response(
-        struct partaked_resparray *resparr, struct partaked_request *req,
-        int status);
+    struct partaked_resparray *resparr, struct partaked_request *req,
+    int status);
 
 void partaked_resparray_append_Unpublish_response(
-        struct partaked_resparray *resparr, struct partaked_request *req,
-        int status, partaked_token token);
+    struct partaked_resparray *resparr, struct partaked_request *req,
+    int status, partaked_token token);
 
 void partaked_resparray_append_CreateVoucher_response(
-        struct partaked_resparray *resparr, struct partaked_request *req,
-        int status, partaked_token token);
+    struct partaked_resparray *resparr, struct partaked_request *req,
+    int status, partaked_token token);
 
 void partaked_resparray_append_DiscardVoucher_response(
-        struct partaked_resparray *resparr, struct partaked_request *req,
-        int status, partaked_token token);
+    struct partaked_resparray *resparr, struct partaked_request *req,
+    int status, partaked_token token);
 
 void partaked_resparray_append_empty_response(
-        struct partaked_resparray *resparr, struct partaked_request *req,
-        int status);
+    struct partaked_resparray *resparr, struct partaked_request *req,
+    int status);

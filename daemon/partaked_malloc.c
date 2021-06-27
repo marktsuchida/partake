@@ -14,9 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 static void *rainy_day_page;
-
 
 void partaked_initialize_malloc(void) {
     if (rainy_day_page == NULL) {
@@ -24,13 +22,13 @@ void partaked_initialize_malloc(void) {
     }
 }
 
-
 #ifdef __GNUC__
 __attribute__((noreturn))
 #elif defined(_MSC_VER)
 __declspec(noreturn)
 #endif
-static void out_of_memory(const char *func, size_t n, size_t size) {
+static void
+out_of_memory(const char *func, size_t n, size_t size) {
     /*
      * There are two ways to handle out of memory conditions: give up, or
      * return an error. As a daemon that needs to be reliable, returning an
@@ -83,7 +81,6 @@ static void out_of_memory(const char *func, size_t n, size_t size) {
     abort();
 }
 
-
 void *partaked_malloc(size_t size) {
     void *p = malloc(size);
     if (p == NULL) {
@@ -100,7 +97,6 @@ void *partaked_malloc(size_t size) {
     }
     return p;
 }
-
 
 void *partaked_realloc(void *ptr, size_t size) {
     void *p = realloc(ptr, size);
@@ -122,7 +118,6 @@ void *partaked_realloc(void *ptr, size_t size) {
     return p;
 }
 
-
 void *partaked_calloc(size_t n, size_t size) {
     void *p = calloc(n, size);
     if (p == NULL) {
@@ -140,7 +135,4 @@ void *partaked_calloc(size_t n, size_t size) {
     return p;
 }
 
-
-void partaked_free(const void *ptr) {
-    free((void *)ptr);
-}
+void partaked_free(const void *ptr) { free((void *)ptr); }

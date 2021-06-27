@@ -26,15 +26,13 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-
 // Limit generated name to platform maximum.
 #if defined(__APPLE__)
-#   include <sys/posix_shm.h>
-#   define MAX_SHM_OPEN_NAME_LEN (PSHMNAMLEN > 255 ? 255 : PSHMNAMLEN)
+#include <sys/posix_shm.h>
+#define MAX_SHM_OPEN_NAME_LEN (PSHMNAMLEN > 255 ? 255 : PSHMNAMLEN)
 #else
-#   define MAX_SHM_OPEN_NAME_LEN 255
+#define MAX_SHM_OPEN_NAME_LEN 255
 #endif
-
 
 struct mmap_private_data {
     bool use_posix; // Or else filesystem
@@ -45,13 +43,11 @@ struct mmap_private_data {
     void *addr; // non-null indicates mapped
 };
 
-
 static int mmap_initialize(void **data) {
     *data = partaked_malloc(sizeof(struct mmap_private_data));
     memset(*data, 0, sizeof(struct mmap_private_data));
     return 0;
 }
-
 
 static void mmap_deinitialize(void *data) {
     struct mmap_private_data *d = data;
@@ -72,9 +68,8 @@ static void mmap_deinitialize(void *data) {
     partaked_free(data);
 }
 
-
 static int create_posix_shm(const struct partaked_daemon_config *config,
-        struct mmap_private_data *d) {
+                            struct mmap_private_data *d) {
     bool generate_name = config->shmem.mmap.shmname == NULL;
     bool force = config->force && !generate_name;
 
@@ -88,8 +83,8 @@ static int create_posix_shm(const struct partaked_daemon_config *config,
     int NUM_RETRIES = 100;
     for (int i = 0; i < NUM_RETRIES; ++i) {
         if (generate_name) {
-            name = generated_name = partaked_alloc_random_name("/", 32,
-                    MAX_SHM_OPEN_NAME_LEN);
+            name = generated_name =
+                partaked_alloc_random_name("/", 32, MAX_SHM_OPEN_NAME_LEN);
         }
 
         errno = 0;
@@ -118,7 +113,6 @@ static int create_posix_shm(const struct partaked_daemon_config *config,
     return EEXIST;
 }
 
-
 static int unlink_posix_shm(struct mmap_private_data *d) {
     if (d->shmname == NULL) {
         return 0;
@@ -142,7 +136,6 @@ static int unlink_posix_shm(struct mmap_private_data *d) {
 
     return ret;
 }
-
 
 // On return, *canonical is set to either 'name' or an allocated string.
 static int canonicalize_filename(const char *name, const char **canonical) {
@@ -206,25 +199,23 @@ exit:
     return ret;
 }
 
-
 static int create_file_shm(const struct partaked_daemon_config *config,
-        struct mmap_private_data *d) {
+                           struct mmap_private_data *d) {
     if (d->must_free_shmname) {
         partaked_free((void *)d->shmname);
     }
 
     // We need to use a canonicalized path, because it will be passed to
     // clients for them to also open.
-    int ret = canonicalize_filename(config->shmem.mmap.filename,
-            &d->shmname);
+    int ret = canonicalize_filename(config->shmem.mmap.filename, &d->shmname);
     if (ret != 0)
         return ret;
     d->must_free_shmname = d->shmname != config->shmem.mmap.filename;
 
     errno = 0;
-    d->fd = open(d->shmname,
-            O_RDWR | O_CREAT | (config->force ? 0 : O_EXCL) | O_CLOEXEC,
-            0666);
+    d->fd =
+        open(d->shmname,
+             O_RDWR | O_CREAT | (config->force ? 0 : O_EXCL) | O_CLOEXEC, 0666);
     ret = errno;
     if (d->fd < 0) {
         char emsg[1024];
@@ -241,7 +232,6 @@ static int create_file_shm(const struct partaked_daemon_config *config,
     d->fd_open = true;
     return 0;
 }
-
 
 static int unlink_file_shm(struct mmap_private_data *d) {
     if (d->shmname == NULL) {
@@ -267,7 +257,6 @@ static int unlink_file_shm(struct mmap_private_data *d) {
     return ret;
 }
 
-
 static int close_fd(struct mmap_private_data *d) {
     if (!d->fd_open) {
         return 0;
@@ -279,8 +268,7 @@ static int close_fd(struct mmap_private_data *d) {
         char emsg[1024];
         ZF_LOGE("close: %d: %s", d->fd,
                 partaked_strerror(ret, emsg, sizeof(emsg)));
-    }
-    else {
+    } else {
         ZF_LOGI("close: %d", d->fd);
     }
 
@@ -290,15 +278,14 @@ static int close_fd(struct mmap_private_data *d) {
     return 0;
 }
 
-
 static int mmap_allocate(const struct partaked_daemon_config *config,
-        void *data) {
+                         void *data) {
     struct mmap_private_data *d = data;
 
     d->use_posix = config->shmem.mmap.shm_open;
 
-    int ret = d->use_posix ?
-        create_posix_shm(config, d) : create_file_shm(config, d);
+    int ret =
+        d->use_posix ? create_posix_shm(config, d) : create_file_shm(config, d);
     if (ret != 0)
         return ret;
 
@@ -314,8 +301,8 @@ static int mmap_allocate(const struct partaked_daemon_config *config,
 
     if (config->size > 0) {
         errno = 0;
-        d->addr = mmap(NULL, config->size, PROT_READ | PROT_WRITE,
-                MAP_SHARED, d->fd, 0);
+        d->addr = mmap(NULL, config->size, PROT_READ | PROT_WRITE, MAP_SHARED,
+                       d->fd, 0);
         if (d->addr == NULL) {
             ret = errno;
             char emsg[1024];
@@ -324,8 +311,7 @@ static int mmap_allocate(const struct partaked_daemon_config *config,
             goto error;
         }
         ZF_LOGI("mmap: fd %d: %zu bytes at %p", d->fd, config->size, d->addr);
-    }
-    else {
+    } else {
         ZF_LOGI("fd %d: mmap skipped due to zero size", d->fd);
     }
 
@@ -334,20 +320,17 @@ static int mmap_allocate(const struct partaked_daemon_config *config,
 
 error:
     close_fd(d);
-    config->shmem.mmap.shm_open ?  unlink_posix_shm(d) : unlink_file_shm(d);
+    config->shmem.mmap.shm_open ? unlink_posix_shm(d) : unlink_file_shm(d);
     return ret;
 }
 
-
 static void mmap_deallocate(const struct partaked_daemon_config *config,
-        void *data) {
+                            void *data) {
     struct mmap_private_data *d = data;
 
     // fd is already closed in allocate()
 
-    config->shmem.mmap.shm_open ?
-        unlink_posix_shm(d) :
-        unlink_file_shm(d);
+    config->shmem.mmap.shm_open ? unlink_posix_shm(d) : unlink_file_shm(d);
 
     if (d->addr != NULL) {
         errno = 0;
@@ -356,20 +339,17 @@ static void mmap_deallocate(const struct partaked_daemon_config *config,
             char emsg[1024];
             ZF_LOGE("munmap: %zu bytes at %p: %s", config->size, d->addr,
                     partaked_strerror(ret, emsg, sizeof(emsg)));
-        }
-        else {
+        } else {
             ZF_LOGI("munmap: %zu bytes at %p", config->size, d->addr);
         }
         d->addr = NULL;
     }
 }
 
-
 static void *mmap_getaddr(void *data) {
     struct mmap_private_data *d = data;
     return d->addr;
 }
-
 
 static void mmap_add_mapping_spec(flatcc_builder_t *b, void *data) {
     struct mmap_private_data *d = data;
@@ -382,7 +362,6 @@ static void mmap_add_mapping_spec(flatcc_builder_t *b, void *data) {
 
 #endif // _WIN32
 
-
 static struct partaked_shmem_impl mmap_impl = {
     .name = "mmap-based shared memory",
 #ifndef _WIN32
@@ -394,7 +373,6 @@ static struct partaked_shmem_impl mmap_impl = {
     .add_mapping_spec = mmap_add_mapping_spec,
 #endif
 };
-
 
 struct partaked_shmem_impl *partaked_shmem_mmap_impl(void) {
     return &mmap_impl;

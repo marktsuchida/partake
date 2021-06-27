@@ -22,9 +22,9 @@
 #include <uv.h>
 #include <zf_log.h>
 
-
-struct partaked_connection *partaked_connection_create(uint32_t conn_no,
-        uv_loop_t *loop, struct partaked_pool *pool) {
+struct partaked_connection *
+partaked_connection_create(uint32_t conn_no, uv_loop_t *loop,
+                           struct partaked_pool *pool) {
     struct partaked_connection *conn = partaked_malloc(sizeof(*conn));
 
     conn->chan = partaked_channel_create(pool);
@@ -45,7 +45,6 @@ struct partaked_connection *partaked_connection_create(uint32_t conn_no,
     return conn;
 }
 
-
 static void on_client_close(uv_handle_t *handle) {
     struct partaked_connection *conn = handle->data;
     partaked_iobuf_decref(conn->readbuf);
@@ -55,7 +54,6 @@ static void on_client_close(uv_handle_t *handle) {
     partaked_free(conn);
 }
 
-
 void partaked_connection_destroy(struct partaked_connection *conn) {
     uv_read_stop((uv_stream_t *)&conn->client);
     uv_close((uv_handle_t *)&conn->client, on_client_close);
@@ -63,7 +61,6 @@ void partaked_connection_destroy(struct partaked_connection *conn) {
     struct partaked_daemon *daemon = conn->client.loop->data;
     partaked_daemon_remove_connection(daemon, conn);
 }
-
 
 static void on_client_shutdown(uv_shutdown_t *shutdownreq, int status) {
     if (status < 0) {
@@ -73,7 +70,6 @@ static void on_client_shutdown(uv_shutdown_t *shutdownreq, int status) {
     partaked_connection_destroy(conn);
 }
 
-
 void partaked_connection_shutdown(struct partaked_connection *conn) {
     uv_read_stop((uv_stream_t *)&conn->client);
     uv_shutdown_t *shutdownreq = partaked_malloc(sizeof(*shutdownreq));
@@ -81,9 +77,8 @@ void partaked_connection_shutdown(struct partaked_connection *conn) {
     shutdownreq->data = conn;
 }
 
-
 void partaked_connection_alloc_cb(uv_handle_t *client, size_t size,
-        uv_buf_t *buf) {
+                                  uv_buf_t *buf) {
     struct partaked_connection *conn = client->data;
 
     if (conn->readbuf == NULL) {
@@ -95,9 +90,8 @@ void partaked_connection_alloc_cb(uv_handle_t *client, size_t size,
     buf->len = conn->readbuf->capacity - conn->readbuf_start;
 }
 
-
 void partaked_connection_read_cb(uv_stream_t *client, ssize_t nread,
-        const uv_buf_t *buf) {
+                                 const uv_buf_t *buf) {
     struct partaked_connection *conn = client->data;
 
     if (nread == UV_EOF) { // Client disconnected
@@ -118,8 +112,8 @@ void partaked_connection_read_cb(uv_stream_t *client, ssize_t nread,
     size_t frame_size;
     bool frame_complete = true;
     bool quit = false;
-    while (partaked_requestframe_scan(conn->readbuf, start, size,
-                &frame_size, &frame_complete)) {
+    while (partaked_requestframe_scan(conn->readbuf, start, size, &frame_size,
+                                      &frame_complete)) {
         if (!frame_complete)
             break;
 
@@ -155,11 +149,10 @@ void partaked_connection_read_cb(uv_stream_t *client, ssize_t nread,
     partaked_sender_decref(sender);
 
     if (!frame_complete && !quit) {
-        conn->readbuf = partaked_requestframe_maybe_move(conn->readbuf,
-                &start, size);
+        conn->readbuf =
+            partaked_requestframe_maybe_move(conn->readbuf, &start, size);
         conn->readbuf_start = start + size;
-    }
-    else {
+    } else {
         partaked_iobuf_decref(conn->readbuf);
         conn->readbuf = NULL;
         conn->readbuf_start = 0;

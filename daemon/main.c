@@ -20,11 +20,10 @@
 #include <string.h>
 
 #ifndef _WIN32
-#   include <sys/un.h> // For struct sockaddr_un
+#include <sys/un.h> // For struct sockaddr_un
 #endif
 
 #define PTXT(x) PARTAKED_TEXT(x)
-
 
 /*
  * The prefix myopt_ is used in this file for local extensions to dropt.
@@ -36,15 +35,15 @@
 
 // We need long long to ensure 64-bit sizes fit (Windows is LLP64).
 #ifdef DROPT_USE_WCHAR
-#   define myopt_strtoll wcstoll
+#define myopt_strtoll wcstoll
 #else
-#   define myopt_strtoll strtoll
+#define myopt_strtoll strtoll
 #endif
-
 
 // Parse an option argument with optional K/M/G suffix (case sensitive)
 static dropt_error myopt_handle_size(dropt_context *context,
-        const dropt_option *option, const dropt_char *arg, void *dest) {
+                                     const dropt_option *option,
+                                     const dropt_char *arg, void *dest) {
     size_t *out = dest;
 
     if (out == NULL) {
@@ -64,36 +63,35 @@ static dropt_error myopt_handle_size(dropt_context *context,
     }
     if (errno == ERANGE) {
         return dropt_error_overflow;
-    }
-    else if (errno != 0) {
+    } else if (errno != 0) {
         return dropt_error_unknown;
     }
 
     long long f = 1;
     switch (*end) {
-        case DROPT_TEXT_LITERAL('\0'):
-            break;
-        case DROPT_TEXT_LITERAL('B'):
-        case DROPT_TEXT_LITERAL('b'):
-            ++end;
-            break;
-        case DROPT_TEXT_LITERAL('K'):
-        case DROPT_TEXT_LITERAL('k'):
-            f = 1 << 10;
-            ++end;
-            break;
-        case DROPT_TEXT_LITERAL('M'):
-        case DROPT_TEXT_LITERAL('m'):
-            f = 1 << 20;
-            ++end;
-            break;
-        case DROPT_TEXT_LITERAL('G'):
-        case DROPT_TEXT_LITERAL('g'):
-            f = 1 << 30;
-            ++end;
-            break;
-        default:
-            return dropt_error_mismatch;
+    case DROPT_TEXT_LITERAL('\0'):
+        break;
+    case DROPT_TEXT_LITERAL('B'):
+    case DROPT_TEXT_LITERAL('b'):
+        ++end;
+        break;
+    case DROPT_TEXT_LITERAL('K'):
+    case DROPT_TEXT_LITERAL('k'):
+        f = 1 << 10;
+        ++end;
+        break;
+    case DROPT_TEXT_LITERAL('M'):
+    case DROPT_TEXT_LITERAL('m'):
+        f = 1 << 20;
+        ++end;
+        break;
+    case DROPT_TEXT_LITERAL('G'):
+    case DROPT_TEXT_LITERAL('g'):
+        f = 1 << 30;
+        ++end;
+        break;
+    default:
+        return dropt_error_mismatch;
     }
     if (*end != DROPT_TEXT_LITERAL('\0')) {
         return dropt_error_mismatch;
@@ -107,7 +105,6 @@ static dropt_error myopt_handle_size(dropt_context *context,
     *out = (size_t)val;
     return dropt_error_none;
 }
-
 
 struct parsed_options {
     size_t memory;
@@ -125,18 +122,15 @@ struct parsed_options {
     dropt_bool version;
 };
 
-
 static void print_help_prolog(FILE *file) {
     fputts(PTXT("Usage: partaked -m <size> -s <name> [advanced options]\n"),
-            file);
+           file);
     fputts(PTXT("\n"), file);
     fputts(PTXT("Options:\n"), file);
 }
 
-
 static void print_help_epilog(FILE *file) {
-    fputts(
-// clang-format off
+    fputts( // clang-format off
 PTXT("Client connection:\n")
 PTXT("  Either --socket or --socket-fullname must be passed. Normally,\n")
 PTXT("  --socket is more convenient; it must be a string of length 1 to 80\n")
@@ -177,17 +171,14 @@ PTXT("  this case, --memory must be a multiple of the large page size.\n")
 PTXT("\n")
 PTXT("In all cases, partaked will exit with an error if the the filename\n")
 PTXT("given by --file or the name given by --name already exists, unless\n")
-PTXT("--force is also given.\n"),
-// clang-format on
-    file);
+PTXT("--force is also given.\n"), // clang-format on
+        file);
 }
-
 
 static void print_version(FILE *file) {
     const TCHAR *version = "<TBD>";
     ftprintf(file, PTXT("partaked version %s\n"), version);
 }
-
 
 static const TCHAR *progname;
 
@@ -199,7 +190,6 @@ static void error_exit(const TCHAR *msg) {
     exit(EXIT_FAILURE);
 }
 
-
 // Parse options; call exit() on error or help/version.
 static void parse_options(int argc, TCHAR **argv, struct parsed_options *opts) {
     dropt_option option_defs[] = {
@@ -208,68 +198,127 @@ static void parse_options(int argc, TCHAR **argv, struct parsed_options *opts) {
         // arg_descr
         // handler dest attr extra_data
 
-        { PTXT('m'), PTXT("memory"),
+        {
+            PTXT('m'),
+            PTXT("memory"),
             PTXT("Size of shared memory"),
             PTXT("{<bytes>|<kibibytes>K|<mebibytes>M|<gibibytes>G}"),
-            myopt_handle_size, &opts->memory, },
+            myopt_handle_size,
+            &opts->memory,
+        },
 
-        { PTXT('s'), PTXT("socket"),
+        {
+            PTXT('s'),
+            PTXT("socket"),
             PTXT("Socket name for client connection"),
             PTXT("<name>"),
-            dropt_handle_string, &opts->socket, },
+            dropt_handle_string,
+            &opts->socket,
+        },
 
-        { PTXT('\0'), PTXT("socket-fullname"),
+        {
+            PTXT('\0'),
+            PTXT("socket-fullname"),
             PTXT("Full platform-specific name of socket for client connection"),
             PTXT("<name>"),
-            dropt_handle_string, &opts->raw_socket, },
+            dropt_handle_string,
+            &opts->raw_socket,
+        },
 
-        { PTXT('f'), PTXT("force"),
-            PTXT("Overwrite existing shared memory given by --name and/or --file"),
+        {
+            PTXT('f'),
+            PTXT("force"),
+            PTXT(
+                "Overwrite existing shared memory given by --name and/or --file"),
             NULL,
-            dropt_handle_bool, &opts->force, },
+            dropt_handle_bool,
+            &opts->force,
+        },
 
-        { PTXT('n'), PTXT("name"),
+        {
+            PTXT('n'),
+            PTXT("name"),
             PTXT("Name of shared memory block (integer if --systemv is given)"),
             PTXT("{<name>|<integer>}"),
-            dropt_handle_string, &opts->name, },
+            dropt_handle_string,
+            &opts->name,
+        },
 
-        { PTXT('F'), PTXT("file"),
+        {
+            PTXT('F'),
+            PTXT("file"),
             PTXT("Use shared memory backed by the given filesystem file"),
             PTXT("<filename>"),
-            dropt_handle_string, &opts->file, },
+            dropt_handle_string,
+            &opts->file,
+        },
 
-        { PTXT('P'), PTXT("posix"),
+        {
+            PTXT('P'),
+            PTXT("posix"),
             PTXT("Use POSIX shm_open(2) shared memory (default)"),
             NULL,
-            dropt_handle_bool, &opts->posix, },
+            dropt_handle_bool,
+            &opts->posix,
+        },
 
-        { PTXT('S'), PTXT("systemv"),
+        {
+            PTXT('S'),
+            PTXT("systemv"),
             PTXT("Use System V shmget(2) shared memory"),
             NULL,
-            dropt_handle_bool, &opts->systemv, },
+            dropt_handle_bool,
+            &opts->systemv,
+        },
 
-        { PTXT('W'), PTXT("windows"),
+        {
+            PTXT('W'),
+            PTXT("windows"),
             PTXT("Use Win32 named shared memory (default on Windows)"),
             NULL,
-            dropt_handle_bool, &opts->windows, },
+            dropt_handle_bool,
+            &opts->windows,
+        },
 
-        { PTXT('H'), PTXT("huge-pages"),
+        {
+            PTXT('H'),
+            PTXT("huge-pages"),
             PTXT("Use Linux huge pages with --systemv"),
             NULL,
-            dropt_handle_bool, &opts->huge_pages, },
+            dropt_handle_bool,
+            &opts->huge_pages,
+        },
 
-        { PTXT('L'), PTXT("large-pages"),
+        {
+            PTXT('L'),
+            PTXT("large-pages"),
             PTXT("Use Windows large pages (requires SeLockMemoryPrivilege)"),
             NULL,
-            dropt_handle_bool, &opts->large_pages, },
+            dropt_handle_bool,
+            &opts->large_pages,
+        },
 
-        { PTXT('h'), PTXT("help"), PTXT("Show this help and exit"), NULL,
-            dropt_handle_bool, &opts->help, dropt_attr_halt, },
+        {
+            PTXT('h'),
+            PTXT("help"),
+            PTXT("Show this help and exit"),
+            NULL,
+            dropt_handle_bool,
+            &opts->help,
+            dropt_attr_halt,
+        },
 
-        { PTXT('V'), PTXT("version"), PTXT("Print version and exit"), NULL,
-            dropt_handle_bool, &opts->version, dropt_attr_halt, },
+        {
+            PTXT('V'),
+            PTXT("version"),
+            PTXT("Print version and exit"),
+            NULL,
+            dropt_handle_bool,
+            &opts->version,
+            dropt_attr_halt,
+        },
 
-        { 0 } // sentinel
+        {0} // sentinel
     };
 
     int exit_code = EXIT_SUCCESS;
@@ -286,7 +335,7 @@ static void parse_options(int argc, TCHAR **argv, struct parsed_options *opts) {
 
     if (dropt_get_error(context) != dropt_error_none) {
         ftprintf(stderr, PTXT("partaked: %s\n"),
-                dropt_get_error_message(context));
+                 dropt_get_error_message(context));
         goto error;
     }
 
@@ -318,9 +367,8 @@ exit:
     exit(exit_code);
 }
 
-
 static void check_socket_name(const TCHAR *name, bool use_raw,
-        struct partaked_daemon_config *config) {
+                              struct partaked_daemon_config *config) {
     if (name == NULL) {
         error_exit(PTXT("Socket must be given with option -s/--socket\n"));
     }
@@ -329,15 +377,16 @@ static void check_socket_name(const TCHAR *name, bool use_raw,
 
     if (use_raw) {
 #ifdef _WIN32
-        if (tcsncmp(name, PTXT("\\\\.\\pipe\\"), 9) != 0 ||
-                len < 10 || tcschr(name + 9, PTXT('\\')) != NULL ||
-                len > 256) {
-            error_exit(PTXT("Windows named pipe name must consist of the prefix \"\\\\.\\pipe\\\", followed by one or more characters, none of which are backslashes, with a total length of no more than 256 characters\n"));
+        if (tcsncmp(name, PTXT("\\\\.\\pipe\\"), 9) != 0 || len < 10 ||
+            tcschr(name + 9, PTXT('\\')) != NULL || len > 256) {
+            error_exit(PTXT(
+                "Windows named pipe name must consist of the prefix \"\\\\.\\pipe\\\", followed by one or more characters, none of which are backslashes, with a total length of no more than 256 characters\n"));
         }
 #else
         struct sockaddr_un dummy;
         if (len < 1 || len > sizeof(dummy.sun_path) - 1) {
-            error_exit(PTXT("Unix domain socket name must not be empty and must not exceed the platform-dependent length limit\n"));
+            error_exit(PTXT(
+                "Unix domain socket name must not be empty and must not exceed the platform-dependent length limit\n"));
         }
 #endif
 
@@ -351,11 +400,13 @@ static void check_socket_name(const TCHAR *name, bool use_raw,
     // our limit, because it remains under 91 after prefixing with "/tmp/" (and
     // 86 is harder to remember).
     if (len < 1 || len > 80) {
-        error_exit(PTXT("Non-raw socket name must not be empty and must not exceed 80 characters\n"));
+        error_exit(PTXT(
+            "Non-raw socket name must not be empty and must not exceed 80 characters\n"));
     }
 
     if (tcschr(name, PTXT('/')) != NULL || tcschr(name, PTXT('\\')) != NULL) {
-        error_exit(PTXT("Non-raw socket name must not contain slashes or backslashes\n"));
+        error_exit(PTXT(
+            "Non-raw socket name must not contain slashes or backslashes\n"));
     }
 
     const char *format =
@@ -369,16 +420,16 @@ static void check_socket_name(const TCHAR *name, bool use_raw,
     config->socket = config->socket_buf;
 }
 
-
 // Perform checks that can be done without calling OS API and fill struct
 // partaked_daemon_config. All strings are still pointers to the static argv
 // strings.
 static void check_options(const struct parsed_options *opts,
-        struct partaked_daemon_config *config) {
+                          struct partaked_daemon_config *config) {
     memset(config, 0, sizeof(struct partaked_daemon_config));
 
     if (opts->socket != NULL && opts->raw_socket != NULL) {
-        error_exit(PTXT("Not both of -s/--socket and --socket-fullname may be given\n"));
+        error_exit(PTXT(
+            "Not both of -s/--socket and --socket-fullname may be given\n"));
     }
     bool raw_sockname = opts->socket == NULL;
     const TCHAR *sockname = raw_sockname ? opts->raw_socket : opts->socket;
@@ -387,31 +438,27 @@ static void check_options(const struct parsed_options *opts,
     config->size = opts->memory;
     config->force = opts->force;
 
-    int n_types_given =
-        (opts->posix ? 1 : 0) + (opts->systemv ? 1 : 0) +
-        (opts->file != NULL ? 1 : 0) + (opts->windows ? 1 : 0);
+    int n_types_given = (opts->posix ? 1 : 0) + (opts->systemv ? 1 : 0) +
+                        (opts->file != NULL ? 1 : 0) + (opts->windows ? 1 : 0);
     if (n_types_given > 1) {
-        error_exit(PTXT("Only one of -P/--posix, -S/--systemv, -F/--file, or -W/--windows may be given\n"));
+        error_exit(PTXT(
+            "Only one of -P/--posix, -S/--systemv, -F/--file, or -W/--windows may be given\n"));
     }
 
     if (opts->posix) {
         config->type = PARTAKED_SHMEM_MMAP;
         config->shmem.mmap.shm_open = true;
-    }
-    else if (opts->systemv) {
+    } else if (opts->systemv) {
         config->type = PARTAKED_SHMEM_SHMGET;
-    }
-    else if (opts->file != NULL) {
+    } else if (opts->file != NULL) {
 #ifndef _WIN32
         config->type = PARTAKED_SHMEM_MMAP;
 #else
         config->type = PARTAKED_SHMEM_WIN32;
 #endif
-    }
-    else if (opts->windows) {
+    } else if (opts->windows) {
         config->type = PARTAKED_SHMEM_WIN32;
-    }
-    else { // default
+    } else { // default
 #ifndef _WIN32
         config->type = PARTAKED_SHMEM_MMAP;
         config->shmem.mmap.shm_open = true;
@@ -428,29 +475,30 @@ static void check_options(const struct parsed_options *opts,
         if (opts->posix) {
             size_t len = tcslen(opts->name);
             if (opts->name[0] != PTXT('/') || len < 2 || len > 255 ||
-                    tcschr(opts->name + 1, PTXT('/')) != NULL) {
-                error_exit(PTXT("POSIX shared memory name must be less than 256 characters and consist of an initial slash, followed by one or more characters, none of which are slashes\n"));
+                tcschr(opts->name + 1, PTXT('/')) != NULL) {
+                error_exit(PTXT(
+                    "POSIX shared memory name must be less than 256 characters and consist of an initial slash, followed by one or more characters, none of which are slashes\n"));
             }
             config->shmem.mmap.shmname = opts->name;
-        }
-        else if (opts->systemv) {
+        } else if (opts->systemv) {
             TCHAR *end;
             errno = 0;
             long key = tcstol(opts->name, &end, 10);
-            if (end == opts->name || *end != PTXT('\0') ||
-                    errno != 0 || key > INT_MAX || key < INT_MIN) {
+            if (end == opts->name || *end != PTXT('\0') || errno != 0 ||
+                key > INT_MAX || key < INT_MIN) {
                 // It is left to the main daemon code to check that key
                 // doesn't collide with IPC_PRIVATE and that key_t is
                 // actually int.
-                error_exit(PTXT("System V shared memory key must be an integer\n"));
+                error_exit(
+                    PTXT("System V shared memory key must be an integer\n"));
             }
             config->shmem.shmget.key = (int)key;
-        }
-        else if (config->type == PARTAKED_SHMEM_WIN32) {
+        } else if (config->type == PARTAKED_SHMEM_WIN32) {
             size_t len = tcslen(opts->name);
-            if (tcsncmp(opts->name, PTXT("Local\\"), 6) != 0 ||
-                    len < 7 || tcschr(opts->name + 6, PTXT('\\')) != NULL) {
-                error_exit(PTXT("Windows shared memory name must consist of the prefix \"Local\\\", followed by one or more characters, none of which are backslashes\n"));
+            if (tcsncmp(opts->name, PTXT("Local\\"), 6) != 0 || len < 7 ||
+                tcschr(opts->name + 6, PTXT('\\')) != NULL) {
+                error_exit(PTXT(
+                    "Windows shared memory name must consist of the prefix \"Local\\\", followed by one or more characters, none of which are backslashes\n"));
             }
             config->shmem.win32.name = opts->name;
         }
@@ -462,33 +510,30 @@ static void check_options(const struct parsed_options *opts,
         }
         if (config->type == PARTAKED_SHMEM_MMAP) {
             config->shmem.mmap.filename = opts->file;
-        }
-        else if (config->type == PARTAKED_SHMEM_WIN32) {
+        } else if (config->type == PARTAKED_SHMEM_WIN32) {
             config->shmem.win32.filename = opts->file;
         }
     }
 
     if (config->type == PARTAKED_SHMEM_SHMGET) {
         config->shmem.shmget.huge_pages = opts->huge_pages;
-    }
-    else if (opts->huge_pages) {
-        error_exit(PTXT("-H/--huge-pages can only be used with System V shared memory\n"));
+    } else if (opts->huge_pages) {
+        error_exit(PTXT(
+            "-H/--huge-pages can only be used with System V shared memory\n"));
     }
 
     if (config->type == PARTAKED_SHMEM_WIN32) {
         config->shmem.win32.large_pages = opts->large_pages;
-    }
-    else if (opts->large_pages) {
-        error_exit(PTXT("-L/--large-pages can only be used with Windows shared memory\n"));
+    } else if (opts->large_pages) {
+        error_exit(PTXT(
+            "-L/--large-pages can only be used with Windows shared memory\n"));
     }
 }
 
-
 #ifdef _WIN32
-#   define main _tmain
+#define main _tmain
 #endif
-int main(int argc, TCHAR **argv)
-{
+int main(int argc, TCHAR **argv) {
     progname = argv[0];
 
     struct parsed_options opts;

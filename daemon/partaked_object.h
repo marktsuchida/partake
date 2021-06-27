@@ -17,7 +17,6 @@
 
 struct partaked_channel;
 
-
 /*
  * STANDARD objects start their life unpublished. They may get published once.
  * Objects are reference counted, and they are deallocated when the count
@@ -30,7 +29,6 @@ struct partaked_channel;
  * PRIMITIVE objects are immediately sharable and cannot be published or
  * unpublished. Acquiring the object returns a writable reference.
  */
-
 
 // Object flags
 enum {
@@ -45,16 +43,16 @@ enum {
 };
 
 static inline uint8_t partaked_object_flags_get_policy(short flags) {
-    return (flags & PARTAKED_OBJECT_POLICY_MASK) >> PARTAKED_OBJECT_POLICY_SHIFT;
+    return (flags & PARTAKED_OBJECT_POLICY_MASK) >>
+           PARTAKED_OBJECT_POLICY_SHIFT;
 }
 
 static inline void partaked_object_flags_set_policy(short *flags,
-    uint8_t policy) {
+                                                    uint8_t policy) {
     *flags &= ~PARTAKED_OBJECT_POLICY_MASK;
-    *flags |= (policy << PARTAKED_OBJECT_POLICY_SHIFT) &
-        PARTAKED_OBJECT_POLICY_MASK;
+    *flags |=
+        (policy << PARTAKED_OBJECT_POLICY_SHIFT) & PARTAKED_OBJECT_POLICY_MASK;
 }
-
 
 // Object descriptor
 struct partaked_object {

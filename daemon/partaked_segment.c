@@ -13,7 +13,6 @@
 
 #include <zf_log.h>
 
-
 struct partaked_segment {
     // TODO We should have a 'shmem_config' object separate from daemon config
     const struct partaked_daemon_config *config; // Non-owning
@@ -21,23 +20,22 @@ struct partaked_segment {
     void *shmem_data;
 };
 
-
-struct partaked_segment *partaked_segment_create(
-        const struct partaked_daemon_config *config) {
+struct partaked_segment *
+partaked_segment_create(const struct partaked_daemon_config *config) {
     struct partaked_shmem_impl *impl;
     switch (config->type) {
-        case PARTAKED_SHMEM_MMAP:
-            impl = partaked_shmem_mmap_impl();
-            break;
-        case PARTAKED_SHMEM_SHMGET:
-            impl = partaked_shmem_shmget_impl();
-            break;
-        case PARTAKED_SHMEM_WIN32:
-            impl = partaked_shmem_win32_impl();
-            break;
-        default:
-            impl = NULL;
-            break;
+    case PARTAKED_SHMEM_MMAP:
+        impl = partaked_shmem_mmap_impl();
+        break;
+    case PARTAKED_SHMEM_SHMGET:
+        impl = partaked_shmem_shmget_impl();
+        break;
+    case PARTAKED_SHMEM_WIN32:
+        impl = partaked_shmem_win32_impl();
+        break;
+    default:
+        impl = NULL;
+        break;
     }
     if (impl == NULL) {
         ZF_LOGE("Unknown shared memory type");
@@ -70,7 +68,6 @@ struct partaked_segment *partaked_segment_create(
     return segment;
 }
 
-
 void partaked_segment_destroy(struct partaked_segment *segment) {
     if (segment == NULL)
         return;
@@ -80,18 +77,15 @@ void partaked_segment_destroy(struct partaked_segment *segment) {
     partaked_free(segment);
 }
 
-
 void *partaked_segment_addr(struct partaked_segment *segment) {
     return segment->shmem_impl->getaddr(segment->shmem_data);
 }
-
 
 size_t partaked_segment_size(struct partaked_segment *segment) {
     return segment->config->size;
 }
 
-
 void partaked_segment_add_mapping_spec(struct partaked_segment *segment,
-        flatcc_builder_t *b) {
+                                       flatcc_builder_t *b) {
     segment->shmem_impl->add_mapping_spec(b, segment->shmem_data);
 }

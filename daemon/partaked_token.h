@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include <string.h>
 
-
 // A token is a key used by partaked to locate an object. To clients it is an
 // opaque byte string. Within the lifetime of a partaked instance, tokens are
 // unique and never reused; for STANDARD policy objects, tokens uniquely
@@ -18,13 +17,10 @@
 // that we will never loop around.) The null (zero) token is not used.
 typedef uint64_t partaked_token;
 
-
 extern partaked_token partaked_prev_token;
-
 
 // Any non-zero value would work for this.
 #define PARTAKED_TOKEN_SEED 0xffffffffffffffffULL
-
 
 static inline partaked_token partaked_generate_token(void) {
     // Tokens are generated using a pseudorandom sequence that will emit

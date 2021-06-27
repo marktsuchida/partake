@@ -16,18 +16,16 @@
 #include <zf_log.h>
 
 #ifdef _WIN32
-#   include <Bcrypt.h>
+#include <Bcrypt.h>
 #endif
 
 #ifdef __linux__
-#   include <bsd/stdlib.h> // arc4random
+#include <bsd/stdlib.h> // arc4random
 #endif
 
 #include <stdlib.h>
 
-
 #define NAME_INFIX PARTAKED_TEXT("partake-")
-
 
 static char *alloc_random_bytes(size_t size) {
     char *buf = partaked_malloc(size);
@@ -36,8 +34,8 @@ static char *alloc_random_bytes(size_t size) {
     // Not POSIX but available on Linux, macOS, most BSDs
     arc4random_buf(buf, size);
 #else
-    NTSTATUS ret = BCryptGenRandom(NULL, buf, size,
-            BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+    NTSTATUS ret =
+        BCryptGenRandom(NULL, buf, size, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
     if (ret != 0) {
         ZF_LOGF("Random name generation failed");
         abort();
@@ -47,7 +45,6 @@ static char *alloc_random_bytes(size_t size) {
     return buf;
 }
 
-
 int partaked_generate_random_int(void) {
     int ret;
     char *buf = alloc_random_bytes(sizeof(int));
@@ -56,11 +53,10 @@ int partaked_generate_random_int(void) {
     return ret;
 }
 
-
 // Return a partaked_malloc()ed tstring consisting of prefix followed by
 // NAME_INFIX followed by random_len characters of random hex digits.
 TCHAR *partaked_alloc_random_name(TCHAR *prefix, size_t random_len,
-        size_t max_total_len) {
+                                  size_t max_total_len) {
     size_t prefix_infix_len = tcslen(prefix) + tcslen(NAME_INFIX);
     if (prefix_infix_len >= max_total_len) {
         ZF_LOGF("Random name total length too short to fit random chars");

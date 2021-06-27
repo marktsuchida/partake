@@ -9,12 +9,11 @@
 
 #include <uthash.h>
 
-
 // Per-channel object handle.
 struct partaked_handle {
     struct partaked_object *object; // Owning pointer (reference counted)
 
-    unsigned refcount; // References held by client + pending requests
+    unsigned refcount;   // References held by client + pending requests
     unsigned open_count; // Alloc/Acquire minus Release/Unpublish by client
     // The only case where refcount > open_count (between requests) is when
     // Acquire requests are pending on an unpublished object.
@@ -31,7 +30,6 @@ struct partaked_handle {
     struct partaked_handle_continuation *continuation_on_sole_ownership;
 };
 
-
 // Continuation function is called when the awaited condition is satisfied, or
 // the premise for the wait no longer holds (e.g. the wait was for an object to
 // be published, but the object was released by its writer without ever being
@@ -39,38 +37,37 @@ struct partaked_handle {
 // itself is being canceled; in this latter case, the function should simply
 // release whatever is pointed to by data.
 typedef void (*partaked_handle_continuation_func)(
-        struct partaked_handle *handle, void *data);
-
+    struct partaked_handle *handle, void *data);
 
 // Continuation function for on_publish must check if the object is indeed
 // published when called, and act accordingly.
 void partaked_handle_register_continue_on_publish(
-        struct partaked_handle *handle, void *registration_key,
-        partaked_handle_continuation_func func, void *data);
+    struct partaked_handle *handle, void *registration_key,
+    partaked_handle_continuation_func func, void *data);
 
-void partaked_handle_cancel_continue_on_publish(
-        struct partaked_handle *handle, void *registration_key);
+void partaked_handle_cancel_continue_on_publish(struct partaked_handle *handle,
+                                                void *registration_key);
 
 void partaked_handle_cancel_all_continue_on_publish(
-        struct partaked_handle *handle);
+    struct partaked_handle *handle);
 
 void partaked_handle_fire_on_publish(struct partaked_object *object);
 
 void partaked_handle_local_fire_on_publish(struct partaked_handle *handle);
 
-
 // Continuation function for on_sole_ownership must check if the handle and
 // object open_count fields are both exactly 1, and act accordingly.
 void partaked_handle_register_continue_on_sole_ownership(
-        struct partaked_handle *handle, void *registration_key,
-        partaked_handle_continuation_func func, void *data);
+    struct partaked_handle *handle, void *registration_key,
+    partaked_handle_continuation_func func, void *data);
 
 void partaked_handle_cancel_continue_on_sole_ownership(
-        struct partaked_handle *handle, void *registration_key);
+    struct partaked_handle *handle, void *registration_key);
 
 void partaked_handle_cancel_any_continue_on_sole_ownership(
-        struct partaked_handle *handle);
+    struct partaked_handle *handle);
 
 void partaked_handle_fire_on_sole_ownership(struct partaked_object *object);
 
-void partaked_handle_local_fire_on_sole_ownership(struct partaked_handle *handle);
+void partaked_handle_local_fire_on_sole_ownership(
+    struct partaked_handle *handle);

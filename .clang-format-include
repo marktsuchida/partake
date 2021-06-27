@@ -1,0 +1,4 @@
+# These settings are used not by clang-format directly, but by meson's
+# clang-format target: https://mesonbuild.com/Code-formatting.html
+common/**/*
+daemon/**/*

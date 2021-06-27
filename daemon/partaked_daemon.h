@@ -13,14 +13,12 @@
 struct partaked_connection;
 struct partaked_daemon;
 
-
 enum partaked_shmem_type {
     PARTAKED_SHMEM_UNKNOWN,
     PARTAKED_SHMEM_MMAP,
     PARTAKED_SHMEM_SHMGET,
     PARTAKED_SHMEM_WIN32,
 };
-
 
 struct partaked_daemon_config {
     const TCHAR *socket;
@@ -49,10 +47,8 @@ struct partaked_daemon_config {
     } shmem;
 };
 
-
 // Remove connection from the list to be closed upon server shutdown
 void partaked_daemon_remove_connection(struct partaked_daemon *daemon,
-        struct partaked_connection *conn);
-
+                                       struct partaked_connection *conn);
 
 int partaked_daemon_run(const struct partaked_daemon_config *config);
