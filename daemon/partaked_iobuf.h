@@ -27,7 +27,7 @@
  *
  * Alignment. Without special directives, the largest scalar contained in a
  * FlatBuffers serialization is 8 bytes. To preserve alignment in the stream,
- * we need to ensure that all message lengths are round up to a multiple of 8.
+ * we need to ensure that all message lengths are rounded up to a multiple of 8.
  * The receiver then only needs to read into 8-byte-aligned buffers. Recovery
  * is needed when the kernel decides to interrupt a read mid-message.
  */
@@ -44,8 +44,8 @@
  * callback, we will find zero or more messages in this buffer, with the last
  * one potentially being partial. For each complete message (easily determined
  * by their offset within the buffer and the size prefix of the message), we
- * handle requests; if any request needs to be suspended, it the request
- * handler retains the iobuf.
+ * handle requests; if any request needs to be suspended, its request handler
+ * retains the iobuf.
  *
  * If the last message is incomplete, we have two options: (1) pass this buffer
  * to libuv again, or (2) copy the partial message to the front of a new iobuf
