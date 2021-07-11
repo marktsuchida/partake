@@ -36,7 +36,7 @@ namespace partake.protocol;
 enum Status : int32 {
     OK,
     INVALID_REQUEST, // Malformed
-    OUT_OF_MEMORY,
+    OUT_OF_SHMEM,
     NO_SUCH_SEGMENT,
     NO_SUCH_OBJECT, // Token does not exist (in the correct state)
     OBJECT_BUSY, // Cannot open unpublished; cannot unpublish opened by others

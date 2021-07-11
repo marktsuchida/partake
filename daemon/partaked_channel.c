@@ -98,7 +98,7 @@ int partaked_channel_alloc_object(struct partaked_channel *chan, size_t size,
     struct partaked_object *object = partaked_pool_create_object(
         chan->pool, size, clear, partaked_generate_token());
     if (object == NULL)
-        return partake_protocol_Status_OUT_OF_MEMORY;
+        return partake_protocol_Status_OUT_OF_SHMEM;
 
     partaked_object_flags_set_policy(&object->flags, policy);
 
@@ -124,7 +124,7 @@ int partaked_channel_realloc_object(struct partaked_channel *chan,
         return partake_protocol_Status_NO_SUCH_OBJECT;
 
     if (partaked_pool_resize_object(chan->pool, (*handle)->object, size) != 0)
-        return partake_protocol_Status_OUT_OF_MEMORY;
+        return partake_protocol_Status_OUT_OF_SHMEM;
 
     return 0;
 }

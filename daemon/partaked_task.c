@@ -149,7 +149,7 @@ int partaked_task_Alloc(struct partaked_connection *conn,
     struct partaked_handle *handle = NULL;
 
     if (size > SIZE_MAX) {
-        status = partake_protocol_Status_OUT_OF_MEMORY;
+        status = partake_protocol_Status_OUT_OF_SHMEM;
     } else {
         uint8_t policy = partaked_request_Alloc_policy(req);
         bool clear = partaked_request_Alloc_clear(req);
@@ -178,7 +178,7 @@ int partaked_task_Realloc(struct partaked_connection *conn,
     struct partaked_handle *handle = NULL;
 
     if (size > SIZE_MAX) {
-        status = partake_protocol_Status_OUT_OF_MEMORY;
+        status = partake_protocol_Status_OUT_OF_SHMEM;
     } else {
         status =
             partaked_channel_realloc_object(conn->chan, token, size, &handle);
