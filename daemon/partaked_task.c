@@ -60,12 +60,12 @@ int partaked_task_handle(struct partaked_connection *conn,
         func = partaked_task_Close;
         break;
 
-    case partake_protocol_AnyRequest_PublishRequest:
-        func = partaked_task_Publish;
+    case partake_protocol_AnyRequest_ShareRequest:
+        func = partaked_task_Share;
         break;
 
-    case partake_protocol_AnyRequest_UnpublishRequest:
-        func = partaked_task_Unpublish;
+    case partake_protocol_AnyRequest_UnshareRequest:
+        func = partaked_task_Unshare;
         break;
 
     default:
@@ -253,8 +253,8 @@ int partaked_task_Open(struct partaked_connection *conn,
                                          voucher);
         }
 
-        partaked_handle_register_continue_on_publish(handle, req,
-                                                     continue_task_Open, data);
+        partaked_handle_register_continue_on_share(handle, req,
+                                                   continue_task_Open, data);
     } else {
         if (status != 0 && handle != NULL) {
             partaked_channel_release_handle(conn->chan, handle);
@@ -292,17 +292,17 @@ int partaked_task_Close(struct partaked_connection *conn,
     return 0;
 }
 
-int partaked_task_Publish(struct partaked_connection *conn,
-                          struct partaked_request *req,
-                          struct partaked_sender *sender) {
-    partaked_token token = partaked_request_Publish_token(req);
+int partaked_task_Share(struct partaked_connection *conn,
+                        struct partaked_request *req,
+                        struct partaked_sender *sender) {
+    partaked_token token = partaked_request_Share_token(req);
 
-    int status = partaked_channel_publish_object(conn->chan, token);
+    int status = partaked_channel_share_object(conn->chan, token);
 
     struct partaked_resparray *resparr =
         partaked_sender_checkout_resparray(sender);
 
-    partaked_resparray_append_Publish_response(resparr, req, status);
+    partaked_resparray_append_Share_response(resparr, req, status);
 
     partaked_sender_checkin_resparray(sender, resparr);
 
@@ -310,27 +310,26 @@ int partaked_task_Publish(struct partaked_connection *conn,
     return 0;
 }
 
-struct task_Unpublish_continuation_data {
+struct task_Unshare_continuation_data {
     struct partaked_connection *conn;
     struct partaked_request *req;
     struct partaked_sender *sender;
     bool clear;
 };
 
-static void continue_task_Unpublish(struct partaked_handle *handle,
-                                    void *data) {
-    struct task_Unpublish_continuation_data *d = data;
+static void continue_task_Unshare(struct partaked_handle *handle, void *data) {
+    struct task_Unshare_continuation_data *d = data;
 
     if (handle == NULL) // Canceled
         goto exit;
 
-    int status = partaked_channel_resume_unpublish_object(d->conn->chan, handle,
-                                                          d->clear);
+    int status =
+        partaked_channel_resume_unshare_object(d->conn->chan, handle, d->clear);
 
     struct partaked_resparray *resparr =
         partaked_sender_checkout_resparray(d->sender);
 
-    partaked_resparray_append_Unpublish_response(
+    partaked_resparray_append_Unshare_response(
         resparr, d->req, status, handle != NULL ? handle->object->token : 0);
 
     partaked_sender_checkin_resparray(d->sender, resparr);
@@ -343,20 +342,20 @@ exit:
     partaked_free(d);
 }
 
-int partaked_task_Unpublish(struct partaked_connection *conn,
-                            struct partaked_request *req,
-                            struct partaked_sender *sender) {
-    partaked_token token = partaked_request_Unpublish_token(req);
-    bool clear = partaked_request_Unpublish_clear(req);
-    bool wait = partaked_request_Unpublish_wait(req);
+int partaked_task_Unshare(struct partaked_connection *conn,
+                          struct partaked_request *req,
+                          struct partaked_sender *sender) {
+    partaked_token token = partaked_request_Unshare_token(req);
+    bool clear = partaked_request_Unshare_clear(req);
+    bool wait = partaked_request_Unshare_wait(req);
 
     struct partaked_handle *handle = NULL;
     int status =
-        partaked_channel_unpublish_object(conn->chan, token, clear, &handle);
+        partaked_channel_unshare_object(conn->chan, token, clear, &handle);
     if (wait && status == partake_protocol_Status_OBJECT_BUSY) {
         ++handle->refcount;
 
-        struct task_Unpublish_continuation_data *data =
+        struct task_Unshare_continuation_data *data =
             partaked_malloc(sizeof(*data));
         data->conn = conn;
         data->req = req;
@@ -364,12 +363,12 @@ int partaked_task_Unpublish(struct partaked_connection *conn,
         data->clear = clear;
 
         partaked_handle_register_continue_on_sole_ownership(
-            handle, req, continue_task_Unpublish, data);
+            handle, req, continue_task_Unshare, data);
     } else {
         struct partaked_resparray *resparr =
             partaked_sender_checkout_resparray(sender);
 
-        partaked_resparray_append_Unpublish_response(
+        partaked_resparray_append_Unshare_response(
             resparr, req, status, handle != NULL ? handle->object->token : 0);
 
         partaked_sender_checkin_resparray(sender, resparr);

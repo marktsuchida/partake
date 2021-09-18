@@ -39,8 +39,8 @@ enum Status : int32 {
     OUT_OF_SHMEM,
     NO_SUCH_SEGMENT,
     NO_SUCH_OBJECT, // Token does not exist (in the correct state)
-    OBJECT_BUSY, // Cannot open unpublished; cannot unpublish opened by others
-    OBJECT_RESERVED, // Unpublish request already pending
+    OBJECT_BUSY, // Cannot open unshared; cannot unshare opened by others
+    OBJECT_RESERVED, // Unshare request already pending
 }
 
 
@@ -167,12 +167,12 @@ table AllocRequest {
      * there was not enough space in the shared memory pool, status is
      * OUT_OF_MEMORY.
      *
-     * If 'policy' is STANDARD, the returned object is in the "unpublished"
+     * If 'policy' is STANDARD, the returned object is in the "unshared"
      * state and opened for writing by this connection. It can later be
-     * published to allow access by (this and) other connections.
+     * shared to allow access by (this and) other connections.
      *
      * If 'policy' is PRIMITIVE, the returned object does not distinguish
-     * between unpublished and published state. Other connections (as well as
+     * between unshared and shared state. Other connections (as well as
      * the current one) can immediately open the object, and all openers have
      * read and write access. PRIMITIVE objects are intended for use cases
      * where some other mechanism exists to coordinate object read and write
@@ -194,7 +194,7 @@ table ReallocRequest {
 
     /*
      * The token must not be a voucher and must refer to a STANDARD object that
-     * is unpublished and opened by this connection for writing, or else status
+     * is unshared and opened by this connection for writing, or else status
      * is NO_SUCH_OBJECT.
      *
      * The object's buffer is resized to the requested size, preserving its
@@ -219,13 +219,13 @@ table OpenRequest {
      * The token must exist and its type must match 'policy', or else status is
      * NO_SUCH_OBJECT. The token may be a voucher.
      *
-     * If 'policy' is STANDARD and the token refers to a published object, the
+     * If 'policy' is STANDARD and the token refers to a shared object, the
      * object is opened for read-only access. If the token refers to an
-     * unpublished object, behavior depends on the 'wait' flag. If 'wait' is
+     * unshared object, behavior depends on the 'wait' flag. If 'wait' is
      * false, status is OBJECT_BUSY. If 'wait' is true, partaked waits for the
-     * object to be published and opens it for read-only access before
+     * object to be shared and opens it for read-only access before
      * responding. If the object is closed by its writer before ever being
-     * published, the wait is canceled and a status of NO_SUCH_OBJECT is
+     * shared, the wait is canceled and a status of NO_SUCH_OBJECT is
      * returned.
      *
      * If 'policy' is PRIMITIVE, the object is opened for read and write
@@ -269,81 +269,81 @@ table CloseResponse {
 }
 
 
-table PublishRequest {
+table ShareRequest {
     token: uint64;
 
     /*
      * The token must not be a voucher and must refer to a STANDARD,
-     * unpublished object that is opened for writing by this client, or else
+     * unshared object that is opened for writing by this client, or else
      * status is NO_SUCH_OBJECT.
      *
-     * The object is marked published, which allows (this and) other
+     * The object is marked shared, which allows (this and) other
      * connections to open it for read-only access. The access already held by
      * this connection also changes to read-only.
      */
 }
 
 
-table PublishResponse {
+table ShareResponse {
 }
 
 
-table UnpublishRequest {
+table UnshareRequest {
     token: uint64;
     wait: bool = true;
     clear: bool = false;
 
     /*
-     * The token must not be a voucher and must refer to a STANDARD, published
+     * The token must not be a voucher and must refer to a STANDARD, shared
      * object that is opened by this client (for reading), or else status is
      * NO_SUCH_OBJECT.
      *
      * If the object is exclusively opened by this connection (i.e., opened
      * exactly once by this connection, not opened by any other connections,
      * and no vouchers outstanding), the object is removed from circulation,
-     * marked unpublished, given a new token, and reopened by this connection
+     * marked unshared, given a new token, and reopened by this connection
      * with read and write access. Otherwise, behavior depends on the 'wait'
      * flag. If 'wait' is false, status is OBJECT_BUSY. If 'wait' is true, the
      * request is suspended until this connection becomes the exclusive holder
-     * of access to the object, so that unpublishing can take place.
+     * of access to the object, so that unsharing can take place.
      *
-     * Even if 'wait' is true, if another Unpublish request (by this or another
+     * Even if 'wait' is true, if another Unshare request (by this or another
      * connection) is pending on the object, the request fails immediately with
      * a status of OBJECT_RESERVED.
      *
-     * A pending Unpublish request can fail with a NO_SUCH_OBJECT status if
+     * A pending Unshare request can fail with a NO_SUCH_OBJECT status if
      * this connection (erroneously) closes all of its access to the object
      * (while other connections still hold access).
      *
-     * A pending Unpublish request does not, however, prevent this or another
+     * A pending Unshare request does not, however, prevent this or another
      * client from opening the object or creating vouchers for the object.
      *
-     * Upon successful completion of an Unpublish, the old token of the object
+     * Upon successful completion of an Unshare, the old token of the object
      * is completely removed from partaked and no client can ever open it
-     * again. This allows the client performing the Unpublish to reuse the
-     * buffer by writing new content to it and publishing it again. The fact
-     * that an Unpublish (rather than a Close followed by a fresh Alloc) is
+     * again. This allows the client performing the Unshare to reuse the
+     * buffer by writing new content to it and sharing it again. The fact
+     * that an Unshare (rather than a Close followed by a fresh Alloc) is
      * taking place is not visible to any other clients. Note that for
      * STANDARD objects, a given token is guaranteed to only ever refer to the
      * same content.
      *
-     * Unpublishing is intended for two types of advanced and
+     * Unsharing is intended for two types of advanced and
      * performance-critical applications: (1) streaming data from a producer to
      * one or more consumers without incurring the overhead of allocating new
      * buffers, and (2) passing data from one process to another, which
      * modifies the data in place (and potentially passes it to yet other
      * processes) without incurring the overhead of copying data (and
      * allocating a new object). Whatever system that coordinates access to the
-     * objects must ensure that deadlock or premature unpublishing does not
+     * objects must ensure that deadlock or premature unsharing does not
      * occur.
      *
      * If 'clear' is true, the object buffer is zeroed upon successful
-     * unpublishing.
+     * unsharing.
      */
 }
 
 
-table UnpublishResponse {
+table UnshareResponse {
     token: uint64; // The new token; null or zero if status is not OK
 }
 
@@ -421,8 +421,8 @@ union AnyRequest {
     ReallocRequest,
     OpenRequest,
     CloseRequest,
-    PublishRequest,
-    UnpublishRequest,
+    ShareRequest,
+    UnshareRequest,
     CreateVoucherRequest,
     DiscardVoucherRequest,
 }
@@ -436,8 +436,8 @@ union AnyResponse {
     ReallocResponse,
     OpenResponse,
     CloseResponse,
-    PublishResponse,
-    UnpublishResponse,
+    ShareResponse,
+    UnshareResponse,
     CreateVoucherResponse,
     DiscardVoucherResponse,
 }

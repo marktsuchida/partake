@@ -43,13 +43,13 @@ int partaked_task_Close(struct partaked_connection *conn,
                         struct partaked_request *req,
                         struct partaked_sender *sender);
 
-int partaked_task_Publish(struct partaked_connection *conn,
+int partaked_task_Share(struct partaked_connection *conn,
+                        struct partaked_request *req,
+                        struct partaked_sender *sender);
+
+int partaked_task_Unshare(struct partaked_connection *conn,
                           struct partaked_request *req,
                           struct partaked_sender *sender);
-
-int partaked_task_Unpublish(struct partaked_connection *conn,
-                            struct partaked_request *req,
-                            struct partaked_sender *sender);
 
 int partaked_task_CreateVoucher(struct partaked_connection *conn,
                                 struct partaked_request *req,

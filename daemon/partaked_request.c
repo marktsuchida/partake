@@ -185,20 +185,20 @@ uint64_t partaked_request_Close_token(struct partaked_request *req) {
     return partake_protocol_CloseRequest_token_get(anyrequest(req));
 }
 
-uint64_t partaked_request_Publish_token(struct partaked_request *req) {
-    return partake_protocol_PublishRequest_token_get(anyrequest(req));
+uint64_t partaked_request_Share_token(struct partaked_request *req) {
+    return partake_protocol_ShareRequest_token_get(anyrequest(req));
 }
 
-uint64_t partaked_request_Unpublish_token(struct partaked_request *req) {
-    return partake_protocol_UnpublishRequest_token_get(anyrequest(req));
+uint64_t partaked_request_Unshare_token(struct partaked_request *req) {
+    return partake_protocol_UnshareRequest_token_get(anyrequest(req));
 }
 
-bool partaked_request_Unpublish_wait(struct partaked_request *req) {
-    return partake_protocol_UnpublishRequest_wait_get(anyrequest(req));
+bool partaked_request_Unshare_wait(struct partaked_request *req) {
+    return partake_protocol_UnshareRequest_wait_get(anyrequest(req));
 }
 
-bool partaked_request_Unpublish_clear(struct partaked_request *req) {
-    return partake_protocol_UnpublishRequest_clear_get(anyrequest(req));
+bool partaked_request_Unshare_clear(struct partaked_request *req) {
+    return partake_protocol_UnshareRequest_clear_get(anyrequest(req));
 }
 
 uint64_t partaked_request_CreateVoucher_token(struct partaked_request *req) {

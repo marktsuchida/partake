@@ -93,7 +93,7 @@ struct partaked_object *partaked_pool_create_object(struct partaked_pool *pool,
     object->refcount = 1;
     object->open_count = 0;
     object->exclusive_writer = NULL;
-    object->handles_waiting_for_publish = NULL;
+    object->handles_waiting_for_share = NULL;
     object->handle_waiting_for_sole_ownership = NULL;
 
     HASH_ADD(hh, pool->objects, token, sizeof(partaked_token), object);

@@ -45,11 +45,11 @@ void partaked_resparray_append_Close_response(
     struct partaked_resparray *resparr, struct partaked_request *req,
     int status);
 
-void partaked_resparray_append_Publish_response(
+void partaked_resparray_append_Share_response(
     struct partaked_resparray *resparr, struct partaked_request *req,
     int status);
 
-void partaked_resparray_append_Unpublish_response(
+void partaked_resparray_append_Unshare_response(
     struct partaked_resparray *resparr, struct partaked_request *req,
     int status, partaked_token token);
 

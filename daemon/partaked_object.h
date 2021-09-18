@@ -18,16 +18,16 @@
 struct partaked_channel;
 
 /*
- * STANDARD objects start their life unpublished. They may get published once.
+ * STANDARD objects start their life unshared. They may get shared once.
  * Objects are reference counted, and they are deallocated when the count
- * reaches zero. Unpublished objects are not sharable, but their reference count
+ * reaches zero. Unshared objects are not sharable, but their reference count
  * may become greater than 1 if others are waiting for publication.
- * Unpublishing is equivalent to deallocating and allocating a new object,
+ * Unsharing is equivalent to deallocating and allocating a new object,
  * except that the old object's buffer is reused; therefore it can only be
  * performed when the reference count is 1.
  *
- * PRIMITIVE objects are immediately sharable and cannot be published or
- * unpublished. Acquiring the object returns a writable reference.
+ * PRIMITIVE objects are immediately sharable and cannot be shared or
+ * unshared. Acquiring the object returns a writable reference.
  */
 
 // Object flags
@@ -39,7 +39,7 @@ enum {
     PARTAKED_OBJECT_POLICY_SHIFT = 1,
     PARTAKED_OBJECT_POLICY_MASK = 1 << PARTAKED_OBJECT_POLICY_SHIFT,
 
-    PARTAKED_OBJECT_PUBLISHED = 1 << 2,
+    PARTAKED_OBJECT_SHARED = 1 << 2,
 };
 
 static inline uint8_t partaked_object_flags_get_policy(short flags) {
@@ -85,22 +85,22 @@ struct partaked_object {
             unsigned open_count;
 
             // The channel currently holding a writable reference. Always NULL
-            // for published or PRIMITIVE objects and for vouchers.
+            // for shared or PRIMITIVE objects and for vouchers.
             struct partaked_channel *exclusive_writer;
 
             // Some request handling requires waiting on objects to change
             // state. Here we only manage handles waiting on this object;
             // detailed bookkeeping and callbacks are done by handles.
 
-            // These handles are notified when this object is published, or
-            // released by the creator without publishing. The list is empty
-            // unless this object is unpublished. Handles are stored in a
+            // These handles are notified when this object is shared, or
+            // released by the creator without sharing. The list is empty
+            // unless this object is unshared. Handles are stored in a
             // singly-linked list (utlist).
-            struct partaked_handle *handles_waiting_for_publish;
+            struct partaked_handle *handles_waiting_for_share;
 
-            // This handle is notified when this object is published _and_ the
+            // This handle is notified when this object is shared _and_ the
             // total number of owning handles and vouchers goes from 2 to 1. It
-            // will be NULL unless the object is published and there is more
+            // will be NULL unless the object is shared and there is more
             // than 1 owning handle.
             struct partaked_handle *handle_waiting_for_sole_ownership;
         };

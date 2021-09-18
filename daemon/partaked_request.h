@@ -77,13 +77,13 @@ uint8_t partaked_request_Open_policy(struct partaked_request *req);
 
 uint64_t partaked_request_Close_token(struct partaked_request *req);
 
-uint64_t partaked_request_Publish_token(struct partaked_request *req);
+uint64_t partaked_request_Share_token(struct partaked_request *req);
 
-uint64_t partaked_request_Unpublish_token(struct partaked_request *req);
+uint64_t partaked_request_Unshare_token(struct partaked_request *req);
 
-bool partaked_request_Unpublish_wait(struct partaked_request *req);
+bool partaked_request_Unshare_wait(struct partaked_request *req);
 
-bool partaked_request_Unpublish_clear(struct partaked_request *req);
+bool partaked_request_Unshare_clear(struct partaked_request *req);
 
 uint64_t partaked_request_CreateVoucher_token(struct partaked_request *req);
 

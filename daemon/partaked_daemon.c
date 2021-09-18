@@ -80,7 +80,7 @@ static void on_server_close(uv_handle_t *handle) {
     struct partaked_connection *conn, *tmp;
     DL_FOREACH_SAFE(daemon->conns, conn, tmp) {
         // Skipping channel is not only faster, but also avoids firing pending
-        // unpublish tasks (although they would probably be harmless if they
+        // unshare tasks (although they would probably be harmless if they
         // do).
         conn->skip_channel_destruction = true;
         partaked_connection_destroy(conn);

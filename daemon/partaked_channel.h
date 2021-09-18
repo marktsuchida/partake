@@ -53,18 +53,18 @@ int partaked_channel_close_object(struct partaked_channel *chan,
                                   partaked_token token);
 
 // Refcount for handle for token is unchanged.
-int partaked_channel_publish_object(struct partaked_channel *chan,
-                                    partaked_token token);
+int partaked_channel_share_object(struct partaked_channel *chan,
+                                  partaked_token token);
 
 // Refcount of handle is unchanged.
-int partaked_channel_resume_unpublish_object(struct partaked_channel *chan,
-                                             struct partaked_handle *handle,
-                                             bool clear);
+int partaked_channel_resume_unshare_object(struct partaked_channel *chan,
+                                           struct partaked_handle *handle,
+                                           bool clear);
 
 // Refcount of *handle is unchanged; caller must retain if suspending
-int partaked_channel_unpublish_object(struct partaked_channel *chan,
-                                      partaked_token token, bool clear,
-                                      struct partaked_handle **handle);
+int partaked_channel_unshare_object(struct partaked_channel *chan,
+                                    partaked_token token, bool clear,
+                                    struct partaked_handle **handle);
 
 int partaked_channel_create_voucher(struct partaked_channel *chan,
                                     partaked_token target_token,

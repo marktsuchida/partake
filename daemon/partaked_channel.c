@@ -64,7 +64,7 @@ void partaked_channel_destroy(struct partaked_channel *chan) {
         ++handle->refcount;
 
         // Cancel waits first so they don't fire upon releasing.
-        partaked_handle_cancel_all_continue_on_publish(handle);
+        partaked_handle_cancel_all_continue_on_share(handle);
         partaked_handle_cancel_any_continue_on_sole_ownership(handle);
         assert(handle->open_count == handle->refcount - 1);
 
@@ -137,7 +137,7 @@ int partaked_channel_resume_open_object(struct partaked_channel *chan,
         partaked_pool_destroy_object(chan->pool, voucher);
     }
 
-    if (!(handle->object->flags & PARTAKED_OBJECT_PUBLISHED))
+    if (!(handle->object->flags & PARTAKED_OBJECT_SHARED))
         return partake_protocol_Status_NO_SUCH_OBJECT;
 
     ++handle->open_count;
@@ -183,7 +183,7 @@ int partaked_channel_open_object(struct partaked_channel *chan,
     }
 
     if (policy == partake_protocol_Policy_STANDARD &&
-        !(object->flags & PARTAKED_OBJECT_PUBLISHED))
+        !(object->flags & PARTAKED_OBJECT_SHARED))
         return partake_protocol_Status_OBJECT_BUSY;
 
     if (*voucher) {
@@ -206,11 +206,11 @@ static void close_object_impl(struct partaked_channel *chan,
 
     if (object->exclusive_writer == chan) {
         object->exclusive_writer = NULL;
-        partaked_handle_fire_on_publish(object);
+        partaked_handle_fire_on_share(object);
     } else if (handle->open_count == 0 &&
                object->handle_waiting_for_sole_ownership == handle) {
         // We have (incorrectly) closed a handle on which we have a pending
-        // Unpublish request. Trigger failure of the pending request.
+        // Unshare request. Trigger failure of the pending request.
         partaked_handle_local_fire_on_sole_ownership(handle);
     } else if (object->open_count == 1 &&
                object->handle_waiting_for_sole_ownership != NULL &&
@@ -231,22 +231,22 @@ int partaked_channel_close_object(struct partaked_channel *chan,
     return 0;
 }
 
-int partaked_channel_publish_object(struct partaked_channel *chan,
-                                    partaked_token token) {
+int partaked_channel_share_object(struct partaked_channel *chan,
+                                  partaked_token token) {
     struct partaked_handle *handle = find_handle_in_channel(chan, token);
     if (handle == NULL || handle->object->exclusive_writer != chan)
         return partake_protocol_Status_NO_SUCH_OBJECT;
 
-    handle->object->flags |= PARTAKED_OBJECT_PUBLISHED;
+    handle->object->flags |= PARTAKED_OBJECT_SHARED;
 
-    partaked_handle_fire_on_publish(handle->object);
+    partaked_handle_fire_on_share(handle->object);
 
     return 0;
 }
 
-int partaked_channel_resume_unpublish_object(struct partaked_channel *chan,
-                                             struct partaked_handle *handle,
-                                             bool clear) {
+int partaked_channel_resume_unshare_object(struct partaked_channel *chan,
+                                           struct partaked_handle *handle,
+                                           bool clear) {
     if (handle->open_count == 0)
         return partake_protocol_Status_NO_SUCH_OBJECT;
 
@@ -259,7 +259,7 @@ int partaked_channel_resume_unpublish_object(struct partaked_channel *chan,
     if (clear)
         partaked_pool_clear_object(chan->pool, object);
 
-    object->flags &= ~PARTAKED_OBJECT_PUBLISHED;
+    object->flags &= ~PARTAKED_OBJECT_SHARED;
     object->exclusive_writer = chan;
 
     add_handle_to_channel(chan, handle);
@@ -267,21 +267,21 @@ int partaked_channel_resume_unpublish_object(struct partaked_channel *chan,
     return 0;
 }
 
-int partaked_channel_unpublish_object(struct partaked_channel *chan,
-                                      partaked_token token, bool clear,
-                                      struct partaked_handle **handle) {
+int partaked_channel_unshare_object(struct partaked_channel *chan,
+                                    partaked_token token, bool clear,
+                                    struct partaked_handle **handle) {
     *handle = find_handle_in_channel(chan, token);
     if (*handle == NULL || (*handle)->open_count == 0)
         return partake_protocol_Status_NO_SUCH_OBJECT;
 
     struct partaked_object *object = (*handle)->object;
-    if (!(object->flags & PARTAKED_OBJECT_PUBLISHED))
+    if (!(object->flags & PARTAKED_OBJECT_SHARED))
         return partake_protocol_Status_NO_SUCH_OBJECT;
 
     if ((*handle)->open_count > 1 || object->open_count > 1)
         return partake_protocol_Status_OBJECT_BUSY;
 
-    return partaked_channel_resume_unpublish_object(chan, *handle, clear);
+    return partaked_channel_resume_unshare_object(chan, *handle, clear);
 }
 
 int partaked_channel_create_voucher(struct partaked_channel *chan,

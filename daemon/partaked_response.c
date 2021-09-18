@@ -186,29 +186,29 @@ void partaked_resparray_append_Close_response(
     finish_response(resparr);
 }
 
-void partaked_resparray_append_Publish_response(
+void partaked_resparray_append_Share_response(
     struct partaked_resparray *resparr, struct partaked_request *req,
     int status) {
     flatcc_builder_t *b = &resparr->builder;
 
     start_response(resparr, req, status);
-    partake_protocol_Response_response_PublishResponse_start(b);
-    partake_protocol_Response_response_PublishResponse_end(b);
+    partake_protocol_Response_response_ShareResponse_start(b);
+    partake_protocol_Response_response_ShareResponse_end(b);
     finish_response(resparr);
 }
 
-void partaked_resparray_append_Unpublish_response(
+void partaked_resparray_append_Unshare_response(
     struct partaked_resparray *resparr, struct partaked_request *req,
     int status, partaked_token token) {
     flatcc_builder_t *b = &resparr->builder;
 
     start_response(resparr, req, status);
-    partake_protocol_Response_response_UnpublishResponse_start(b);
+    partake_protocol_Response_response_UnshareResponse_start(b);
 
     if (status == partake_protocol_Status_OK)
-        partake_protocol_UnpublishResponse_token_add(b, token);
+        partake_protocol_UnshareResponse_token_add(b, token);
 
-    partake_protocol_Response_response_UnpublishResponse_end(b);
+    partake_protocol_Response_response_UnshareResponse_end(b);
     finish_response(resparr);
 }
 
