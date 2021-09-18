@@ -18,7 +18,7 @@
 struct partaked_channel;
 
 /*
- * STANDARD objects start their life unshared. They may get shared once.
+ * REGULAR objects start their life unshared. They may get shared once.
  * Objects are reference counted, and they are deallocated when the count
  * reaches zero. Unshared objects are not sharable, but their reference count
  * may become greater than 1 if others are waiting for publication.

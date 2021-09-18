@@ -102,7 +102,7 @@ int partaked_channel_alloc_object(struct partaked_channel *chan, size_t size,
 
     partaked_object_flags_set_policy(&object->flags, policy);
 
-    if (policy == partake_protocol_Policy_STANDARD)
+    if (policy == partake_protocol_Policy_REGULAR)
         object->exclusive_writer = chan;
 
     object->open_count = 1;
@@ -182,7 +182,7 @@ int partaked_channel_open_object(struct partaked_channel *chan,
         ++(*handle)->refcount;
     }
 
-    if (policy == partake_protocol_Policy_STANDARD &&
+    if (policy == partake_protocol_Policy_REGULAR &&
         !(object->flags & PARTAKED_OBJECT_SHARED))
         return partake_protocol_Status_OBJECT_BUSY;
 

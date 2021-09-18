@@ -45,7 +45,7 @@ enum Status : int32 {
 
 
 enum Policy : int8 {
-    STANDARD, // Write once exclusively; share as immutable buffer
+    REGULAR, // Write once exclusively; share as immutable buffer
     PRIMITIVE, // Share with simultaneous write access
 }
 
@@ -160,14 +160,14 @@ table GetSegmentResponse {
 table AllocRequest {
     size: uint64;
     clear: bool = false;
-    policy: Policy = STANDARD;
+    policy: Policy = REGULAR;
 
     /*
      * An object of the given size is allocated, and optionally cleared. If
      * there was not enough space in the shared memory pool, status is
      * OUT_OF_MEMORY.
      *
-     * If 'policy' is STANDARD, the returned object is in the "unshared"
+     * If 'policy' is REGULAR, the returned object is in the "unshared"
      * state and opened for writing by this connection. It can later be
      * shared to allow access by (this and) other connections.
      *
@@ -193,7 +193,7 @@ table ReallocRequest {
     size: uint64;
 
     /*
-     * The token must not be a voucher and must refer to a STANDARD object that
+     * The token must not be a voucher and must refer to a REGULAR object that
      * is unshared and opened by this connection for writing, or else status
      * is NO_SUCH_OBJECT.
      *
@@ -212,14 +212,14 @@ table ReallocResponse {
 
 table OpenRequest {
     token: uint64;
-    policy: Policy = STANDARD;
+    policy: Policy = REGULAR;
     wait: bool = true;
 
     /*
      * The token must exist and its type must match 'policy', or else status is
      * NO_SUCH_OBJECT. The token may be a voucher.
      *
-     * If 'policy' is STANDARD and the token refers to a shared object, the
+     * If 'policy' is REGULAR and the token refers to a shared object, the
      * object is opened for read-only access. If the token refers to an
      * unshared object, behavior depends on the 'wait' flag. If 'wait' is
      * false, status is OBJECT_BUSY. If 'wait' is true, partaked waits for the
@@ -273,7 +273,7 @@ table ShareRequest {
     token: uint64;
 
     /*
-     * The token must not be a voucher and must refer to a STANDARD,
+     * The token must not be a voucher and must refer to a REGULAR,
      * unshared object that is opened for writing by this client, or else
      * status is NO_SUCH_OBJECT.
      *
@@ -294,7 +294,7 @@ table UnshareRequest {
     clear: bool = false;
 
     /*
-     * The token must not be a voucher and must refer to a STANDARD, shared
+     * The token must not be a voucher and must refer to a REGULAR, shared
      * object that is opened by this client (for reading), or else status is
      * NO_SUCH_OBJECT.
      *
@@ -324,7 +324,7 @@ table UnshareRequest {
      * buffer by writing new content to it and sharing it again. The fact
      * that an Unshare (rather than a Close followed by a fresh Alloc) is
      * taking place is not visible to any other clients. Note that for
-     * STANDARD objects, a given token is guaranteed to only ever refer to the
+     * REGULAR objects, a given token is guaranteed to only ever refer to the
      * same content.
      *
      * Unsharing is intended for two types of advanced and
