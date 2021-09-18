@@ -14,9 +14,9 @@ struct partaked_handle {
     struct partaked_object *object; // Owning pointer (reference counted)
 
     unsigned refcount;   // References held by client + pending requests
-    unsigned open_count; // Alloc/Acquire minus Release/Unshare by client
+    unsigned open_count; // Alloc/Open minus Release/Unshare by client
     // The only case where refcount > open_count (between requests) is when
-    // Acquire requests are pending on an unshared object.
+    // Open requests are pending on an unshared object.
 
     // All object handles are kept in a per-channel hash table.
     UT_hash_handle hh; // Key == object->token
