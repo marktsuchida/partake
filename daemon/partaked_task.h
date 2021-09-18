@@ -15,6 +15,10 @@ int partaked_task_handle(struct partaked_connection *conn,
                          struct partaked_request *req,
                          struct partaked_sender *sender);
 
+int partaked_task_Echo(struct partaked_connection *conn,
+                       struct partaked_request *req,
+                       struct partaked_sender *sender);
+
 int partaked_task_Hello(struct partaked_connection *conn,
                         struct partaked_request *req,
                         struct partaked_sender *sender);

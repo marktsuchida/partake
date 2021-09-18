@@ -53,6 +53,10 @@ uint64_t partaked_request_seqno(struct partaked_request *req);
 partake_protocol_AnyRequest_union_type_t
 partaked_request_type(struct partaked_request *req);
 
+bool partaked_request_Echo_skip_response(struct partaked_request *req);
+
+const char *partaked_request_Echo_text(struct partaked_request *req);
+
 uint32_t partaked_request_Hello_pid(struct partaked_request *req);
 
 const char *partaked_request_Hello_name(struct partaked_request *req);

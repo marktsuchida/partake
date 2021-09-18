@@ -84,6 +84,23 @@ static inline void finish_response(struct partaked_resparray *resparr) {
     partake_protocol_ResponseMessage_responses_push_end(b);
 }
 
+void partaked_resparray_append_Echo_response(struct partaked_resparray *resparr,
+                                             struct partaked_request *req,
+                                             int status,
+                                             const char *text_copy) {
+    flatcc_builder_t *b = &resparr->builder;
+
+    start_response(resparr, req, status);
+    partake_protocol_Response_response_EchoResponse_start(b);
+
+    partake_protocol_EchoResponse_text_create_str(b, text_copy);
+
+    partake_protocol_Response_response_EchoResponse_end(b);
+    finish_response(resparr);
+
+    partaked_free(text_copy);
+}
+
 void partaked_resparray_append_Hello_response(
     struct partaked_resparray *resparr, struct partaked_request *req,
     int status, uint32_t conn_no) {

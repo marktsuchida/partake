@@ -20,6 +20,10 @@ struct partaked_resparray *partaked_resparray_create(void);
 struct partaked_iobuf *
 partaked_resparray_finish(struct partaked_resparray *resparr, size_t *size);
 
+void partaked_resparray_append_Echo_response(struct partaked_resparray *resparr,
+                                             struct partaked_request *req,
+                                             int status, const char *text_copy);
+
 void partaked_resparray_append_Hello_response(
     struct partaked_resparray *resparr, struct partaked_request *req,
     int status, uint32_t client_no);

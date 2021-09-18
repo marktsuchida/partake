@@ -137,6 +137,14 @@ static inline flatbuffers_generic_t anyrequest(struct partaked_request *req) {
     return partake_protocol_Request_request_get(req->table);
 }
 
+bool partaked_request_Echo_skip_response(struct partaked_request *req) {
+    return partake_protocol_EchoRequest_skip_response_get(anyrequest(req));
+}
+
+const char *partaked_request_Echo_text(struct partaked_request *req) {
+    return partake_protocol_EchoRequest_text_get(anyrequest(req));
+}
+
 uint32_t partaked_request_Hello_pid(struct partaked_request *req) {
     return partake_protocol_HelloRequest_pid_get(anyrequest(req));
 }

@@ -32,6 +32,10 @@ int partaked_task_handle(struct partaked_connection *conn,
     int (*func)(struct partaked_connection *, struct partaked_request *,
                 struct partaked_sender *);
     switch (type) {
+    case partake_protocol_AnyRequest_EchoRequest:
+        func = partaked_task_Echo;
+        break;
+
     case partake_protocol_AnyRequest_HelloRequest:
         func = partaked_task_Hello;
         break;
@@ -78,6 +82,28 @@ int partaked_task_handle(struct partaked_connection *conn,
         return -1;
 
     return func(conn, req, sender);
+}
+
+int partaked_task_Echo(struct partaked_connection *conn,
+                       struct partaked_request *req,
+                       struct partaked_sender *sender) {
+    bool skip_response = partaked_request_Echo_skip_response(req);
+    if (skip_response)
+        return 0;
+
+    const char *text = partaked_request_Echo_text(req);
+    char *text_copy = partaked_malloc(strlen(text) + 1);
+    strcpy(text_copy, text);
+
+    struct partaked_resparray *resparr =
+        partaked_sender_checkout_resparray(sender);
+
+    partaked_resparray_append_Echo_response(resparr, req, 0, text_copy);
+
+    partaked_sender_checkin_resparray(sender, resparr);
+
+    partaked_request_destroy(req);
+    return 0;
 }
 
 int partaked_task_Hello(struct partaked_connection *conn,
