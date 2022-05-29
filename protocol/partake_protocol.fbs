@@ -116,11 +116,11 @@ table HelloRequest {
      * request. (Otherwise partaked will drop the connection.) This request
      * must not be sent more than once per connection.
      *
-     * The client should send its process id: this is only used for logging so
-     * that it is easier to identify errors caused by a particular client. The
-     * optional 'name' should be a short, user-supplied string that describes
-     * the client's role; it is again only used for logging purposes; long
-     * names may be truncated.
+     * The client should send its process id: this is used for logging and
+     * monitoring so that it is easier to identify errors caused by a particular
+     * client. The optional 'name' should be a short, user-supplied string that
+     * describes the client's role; it is again used for logging and monitoring;
+     * long names may be truncated.
      */
 }
 
@@ -215,14 +215,14 @@ table ReallocRequest {
      *
      * The object's buffer is resized to the requested size, preserving its
      * contents. If there is not enough space in the shared memory pool, status
-     * is OUT_OF_MEMORY. On success, the object buffer may move, requiring the
-     * client to remap it.
+     * is OUT_OF_MEMORY, and the object is unchanged. On success, the object
+     * buffer may move, requiring the client to remap it.
      */
 }
 
 
 table ReallocResponse {
-    object: Mapping; // Null if status is not OK
+    object: Mapping; // Null if status is not OK; token may have changed
 }
 
 
