@@ -52,10 +52,6 @@ int partaked_task_handle(struct partaked_connection *conn,
         func = partaked_task_Alloc;
         break;
 
-    case partake_protocol_AnyRequest_ReallocRequest:
-        func = partaked_task_Realloc;
-        break;
-
     case partake_protocol_AnyRequest_OpenRequest:
         func = partaked_task_Open;
         break;
@@ -187,33 +183,6 @@ int partaked_task_Alloc(struct partaked_connection *conn,
         partaked_sender_checkout_resparray(sender);
 
     partaked_resparray_append_Alloc_response(resparr, req, status, handle);
-
-    partaked_sender_checkin_resparray(sender, resparr);
-
-    partaked_request_destroy(req);
-    return 0;
-}
-
-int partaked_task_Realloc(struct partaked_connection *conn,
-                          struct partaked_request *req,
-                          struct partaked_sender *sender) {
-    partaked_token token = partaked_request_Realloc_token(req);
-    uint64_t size = partaked_request_Realloc_size(req);
-
-    int status;
-    struct partaked_handle *handle = NULL;
-
-    if (size > SIZE_MAX) {
-        status = partake_protocol_Status_OUT_OF_SHMEM;
-    } else {
-        status =
-            partaked_channel_realloc_object(conn->chan, token, size, &handle);
-    }
-
-    struct partaked_resparray *resparr =
-        partaked_sender_checkout_resparray(sender);
-
-    partaked_resparray_append_Realloc_response(resparr, req, status, handle);
 
     partaked_sender_checkin_resparray(sender, resparr);
 

@@ -21,9 +21,6 @@ void *partaked_allocate(partaked_allocator allocator, size_t size, bool clear);
 
 void partaked_deallocate(partaked_allocator allocator, void *addr);
 
-void *partaked_reallocate(partaked_allocator allocator, void *addr,
-                          size_t newsize);
-
 void **partaked_allocate_many(partaked_allocator allocator, size_t n,
                               size_t elem_size, void **addrs, bool clear);
 

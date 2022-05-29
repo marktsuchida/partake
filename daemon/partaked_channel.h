@@ -31,11 +31,6 @@ int partaked_channel_alloc_object(struct partaked_channel *chan, size_t size,
                                   bool clear, uint8_t policy,
                                   struct partaked_handle **handle);
 
-// Refcount of *handle is unchanged.
-int partaked_channel_realloc_object(struct partaked_channel *chan,
-                                    partaked_token token, size_t size,
-                                    struct partaked_handle **handle);
-
 // If successful, handle open_count is incremented.
 int partaked_channel_resume_open_object(struct partaked_channel *chan,
                                         struct partaked_handle *handle,

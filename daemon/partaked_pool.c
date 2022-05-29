@@ -133,19 +133,6 @@ void partaked_pool_destroy_object(struct partaked_pool *pool,
     partaked_free(object);
 }
 
-int partaked_pool_resize_object(struct partaked_pool *pool,
-                                struct partaked_object *object, size_t size) {
-    assert(!(object->flags & PARTAKED_OBJECT_IS_VOUCHER));
-
-    char *block = partaked_reallocate(
-        pool->allocator, (char *)pool->addr + object->offset, size);
-    if (block == NULL)
-        return -1;
-
-    object->offset = block - (char *)pool->addr;
-    return 0;
-}
-
 void partaked_pool_rekey_object(struct partaked_pool *pool,
                                 struct partaked_object *object,
                                 partaked_token token) {

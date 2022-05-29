@@ -162,7 +162,7 @@ table GetSegmentRequest {
 
     /*
      * The segment number must be one that appeared in a Mapping returned by a
-     * previous Alloc/Realloc/Open. If the segment number is unknown, status is
+     * previous Alloc/Open. If the segment number is unknown, status is
      * NO_SUCH_SEGMENT.
      */
 }
@@ -201,28 +201,6 @@ table AllocRequest {
 
 table AllocResponse {
     object: Mapping; // Null if status is not OK
-}
-
-
-table ReallocRequest {
-    token: uint64;
-    size: uint64;
-
-    /*
-     * The token must not be a voucher and must refer to a REGULAR object that
-     * is unshared and opened by this connection for writing, or else status
-     * is NO_SUCH_OBJECT.
-     *
-     * The object's buffer is resized to the requested size, preserving its
-     * contents. If there is not enough space in the shared memory pool, status
-     * is OUT_OF_MEMORY, and the object is unchanged. On success, the object
-     * buffer may move, requiring the client to remap it.
-     */
-}
-
-
-table ReallocResponse {
-    object: Mapping; // Null if status is not OK; token may have changed
 }
 
 
@@ -435,7 +413,6 @@ union AnyRequest {
     QuitRequest,
     GetSegmentRequest,
     AllocRequest,
-    ReallocRequest,
     OpenRequest,
     CloseRequest,
     ShareRequest,
@@ -451,7 +428,6 @@ union AnyResponse {
     QuitResponse, // Never actually sent!
     GetSegmentResponse,
     AllocResponse,
-    ReallocResponse,
     OpenResponse,
     CloseResponse,
     ShareResponse,

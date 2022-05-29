@@ -76,14 +76,6 @@ void partaked_deallocate(partaked_allocator allocator, void *addr) {
     mspace_free(allocator, addr);
 }
 
-void *partaked_reallocate(partaked_allocator allocator, void *addr,
-                          size_t newsize) {
-    if (allocator == NULL) {
-        return NULL;
-    }
-    return mspace_realloc(allocator, addr, newsize);
-}
-
 void **partaked_allocate_many(partaked_allocator allocator, size_t n,
                               size_t elem_size, void **addrs, bool clear) {
     if (allocator == NULL) {

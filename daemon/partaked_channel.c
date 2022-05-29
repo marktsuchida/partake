@@ -116,19 +116,6 @@ int partaked_channel_alloc_object(struct partaked_channel *chan, size_t size,
     return 0;
 }
 
-int partaked_channel_realloc_object(struct partaked_channel *chan,
-                                    partaked_token token, size_t size,
-                                    struct partaked_handle **handle) {
-    *handle = find_handle_in_channel(chan, token);
-    if (*handle == NULL || (*handle)->object->exclusive_writer != chan)
-        return partake_protocol_Status_NO_SUCH_OBJECT;
-
-    if (partaked_pool_resize_object(chan->pool, (*handle)->object, size) != 0)
-        return partake_protocol_Status_OUT_OF_SHMEM;
-
-    return 0;
-}
-
 int partaked_channel_resume_open_object(struct partaked_channel *chan,
                                         struct partaked_handle *handle,
                                         struct partaked_object *voucher) {

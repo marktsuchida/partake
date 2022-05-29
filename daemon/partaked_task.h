@@ -35,10 +35,6 @@ int partaked_task_Alloc(struct partaked_connection *conn,
                         struct partaked_request *req,
                         struct partaked_sender *sender);
 
-int partaked_task_Realloc(struct partaked_connection *conn,
-                          struct partaked_request *req,
-                          struct partaked_sender *sender);
-
 int partaked_task_Open(struct partaked_connection *conn,
                        struct partaked_request *req,
                        struct partaked_sender *sender);

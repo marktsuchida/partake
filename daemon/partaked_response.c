@@ -155,24 +155,6 @@ void partaked_resparray_append_Alloc_response(
     finish_response(resparr);
 }
 
-void partaked_resparray_append_Realloc_response(
-    struct partaked_resparray *resparr, struct partaked_request *req,
-    int status, struct partaked_handle *handle) {
-    flatcc_builder_t *b = &resparr->builder;
-
-    start_response(resparr, req, status);
-    partake_protocol_Response_response_ReallocResponse_start(b);
-
-    if (status == partake_protocol_Status_OK) {
-        partake_protocol_ReallocResponse_object_create(
-            b, handle->object->token, 0, handle->object->offset,
-            handle->object->size);
-    }
-
-    partake_protocol_Response_response_ReallocResponse_end(b);
-    finish_response(resparr);
-}
-
 void partaked_resparray_append_Open_response(struct partaked_resparray *resparr,
                                              struct partaked_request *req,
                                              int status,

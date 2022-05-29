@@ -45,9 +45,6 @@ partaked_pool_create_voucher(struct partaked_pool *pool,
 void partaked_pool_destroy_object(struct partaked_pool *pool,
                                   struct partaked_object *object);
 
-int partaked_pool_resize_object(struct partaked_pool *pool,
-                                struct partaked_object *object, size_t size);
-
 void partaked_pool_rekey_object(struct partaked_pool *pool,
                                 struct partaked_object *object,
                                 partaked_token token);

@@ -36,10 +36,6 @@ void partaked_resparray_append_Alloc_response(
     struct partaked_resparray *resparr, struct partaked_request *req,
     int status, struct partaked_handle *handle);
 
-void partaked_resparray_append_Realloc_response(
-    struct partaked_resparray *resparr, struct partaked_request *req,
-    int status, struct partaked_handle *handle);
-
 void partaked_resparray_append_Open_response(struct partaked_resparray *resparr,
                                              struct partaked_request *req,
                                              int status,
