@@ -161,10 +161,6 @@ uint64_t partaked_request_Alloc_size(struct partaked_request *req) {
     return partake_protocol_AllocRequest_size_get(anyrequest(req));
 }
 
-bool partaked_request_Alloc_clear(struct partaked_request *req) {
-    return partake_protocol_AllocRequest_clear_get(anyrequest(req));
-}
-
 uint8_t partaked_request_Alloc_policy(struct partaked_request *req) {
     return partake_protocol_AllocRequest_policy_get(anyrequest(req));
 }
@@ -195,10 +191,6 @@ uint64_t partaked_request_Unshare_token(struct partaked_request *req) {
 
 bool partaked_request_Unshare_wait(struct partaked_request *req) {
     return partake_protocol_UnshareRequest_wait_get(anyrequest(req));
-}
-
-bool partaked_request_Unshare_clear(struct partaked_request *req) {
-    return partake_protocol_UnshareRequest_clear_get(anyrequest(req));
 }
 
 uint64_t partaked_request_CreateVoucher_token(struct partaked_request *req) {

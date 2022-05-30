@@ -61,12 +61,11 @@ partaked_allocator partaked_create_allocator(void *base, size_t size) {
     return allocator;
 }
 
-void *partaked_allocate(partaked_allocator allocator, size_t size, bool clear) {
+void *partaked_allocate(partaked_allocator allocator, size_t size) {
     if (allocator == NULL) {
         return NULL;
     }
-    return clear ? mspace_calloc(allocator, 1, size)
-                 : mspace_malloc(allocator, size);
+    return mspace_malloc(allocator, size);
 }
 
 void partaked_deallocate(partaked_allocator allocator, void *addr) {
@@ -74,28 +73,4 @@ void partaked_deallocate(partaked_allocator allocator, void *addr) {
         return;
     }
     mspace_free(allocator, addr);
-}
-
-void **partaked_allocate_many(partaked_allocator allocator, size_t n,
-                              size_t elem_size, void **addrs, bool clear) {
-    if (allocator == NULL) {
-        if (addrs != NULL) {
-            memset(addrs, 0, n * sizeof(void *));
-        }
-        return NULL;
-    }
-    (void)clear;
-    return mspace_independent_calloc(allocator, n, elem_size, addrs);
-}
-
-void **partaked_allocate_many_sizes(partaked_allocator allocator, size_t n,
-                                    size_t *sizes, void **addrs, bool clear) {
-    if (allocator == NULL) {
-        if (addrs != NULL) {
-            memset(addrs, 0, n * sizeof(void *));
-        }
-        return NULL;
-    }
-    (void)clear;
-    return mspace_independent_comalloc(allocator, n, sizes, addrs);
 }

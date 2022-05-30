@@ -34,7 +34,7 @@ struct partaked_object *partaked_pool_find_object(struct partaked_pool *pool,
                                                   partaked_token token);
 
 struct partaked_object *partaked_pool_create_object(struct partaked_pool *pool,
-                                                    size_t size, bool clear,
+                                                    size_t size,
                                                     partaked_token token);
 
 struct partaked_object *
@@ -48,9 +48,6 @@ void partaked_pool_destroy_object(struct partaked_pool *pool,
 void partaked_pool_rekey_object(struct partaked_pool *pool,
                                 struct partaked_object *object,
                                 partaked_token token);
-
-void partaked_pool_clear_object(struct partaked_pool *pool,
-                                struct partaked_object *object);
 
 struct partaked_voucherqueue *
 partaked_pool_get_voucherqueue(struct partaked_pool *pool);

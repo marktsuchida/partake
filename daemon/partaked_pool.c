@@ -76,11 +76,11 @@ struct partaked_object *partaked_pool_find_object(struct partaked_pool *pool,
 }
 
 struct partaked_object *partaked_pool_create_object(struct partaked_pool *pool,
-                                                    size_t size, bool clear,
+                                                    size_t size,
                                                     partaked_token token) {
     struct partaked_object *object = partaked_malloc(sizeof(*object));
 
-    char *block = partaked_allocate(pool->allocator, size, clear);
+    char *block = partaked_allocate(pool->allocator, size);
     if (block == NULL) {
         partaked_free(object);
         return NULL;
@@ -141,13 +141,6 @@ void partaked_pool_rekey_object(struct partaked_pool *pool,
     HASH_DELETE(hh, pool->objects, object);
     object->token = token;
     HASH_ADD(hh, pool->objects, token, sizeof(partaked_token), object);
-}
-
-void partaked_pool_clear_object(struct partaked_pool *pool,
-                                struct partaked_object *object) {
-    assert(!(object->flags & PARTAKED_OBJECT_IS_VOUCHER));
-
-    memset((char *)pool->addr + object->offset, 0, object->size);
 }
 
 struct partaked_voucherqueue *

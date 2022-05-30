@@ -93,10 +93,10 @@ struct partaked_pool *partaked_channel_get_pool(struct partaked_channel *chan) {
 }
 
 int partaked_channel_alloc_object(struct partaked_channel *chan, size_t size,
-                                  bool clear, uint8_t policy,
+                                  uint8_t policy,
                                   struct partaked_handle **handle) {
     struct partaked_object *object = partaked_pool_create_object(
-        chan->pool, size, clear, partaked_generate_token());
+        chan->pool, size, partaked_generate_token());
     if (object == NULL)
         return partake_protocol_Status_OUT_OF_SHMEM;
 
@@ -232,8 +232,7 @@ int partaked_channel_share_object(struct partaked_channel *chan,
 }
 
 int partaked_channel_resume_unshare_object(struct partaked_channel *chan,
-                                           struct partaked_handle *handle,
-                                           bool clear) {
+                                           struct partaked_handle *handle) {
     if (handle->open_count == 0)
         return partake_protocol_Status_NO_SUCH_OBJECT;
 
@@ -243,8 +242,6 @@ int partaked_channel_resume_unshare_object(struct partaked_channel *chan,
     remove_handle_from_channel(chan, handle);
 
     partaked_pool_rekey_object(chan->pool, object, partaked_generate_token());
-    if (clear)
-        partaked_pool_clear_object(chan->pool, object);
 
     object->flags &= ~PARTAKED_OBJECT_SHARED;
     object->exclusive_writer = chan;
@@ -255,7 +252,7 @@ int partaked_channel_resume_unshare_object(struct partaked_channel *chan,
 }
 
 int partaked_channel_unshare_object(struct partaked_channel *chan,
-                                    partaked_token token, bool clear,
+                                    partaked_token token,
                                     struct partaked_handle **handle) {
     *handle = find_handle_in_channel(chan, token);
     if (*handle == NULL || (*handle)->open_count == 0)
@@ -268,7 +265,7 @@ int partaked_channel_unshare_object(struct partaked_channel *chan,
     if ((*handle)->open_count > 1 || object->open_count > 1)
         return partake_protocol_Status_OBJECT_BUSY;
 
-    return partaked_channel_resume_unshare_object(chan, *handle, clear);
+    return partaked_channel_resume_unshare_object(chan, *handle);
 }
 
 int partaked_channel_create_voucher(struct partaked_channel *chan,

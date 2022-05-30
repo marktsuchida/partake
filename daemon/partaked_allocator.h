@@ -17,12 +17,6 @@ partaked_allocator partaked_create_allocator(void *base, size_t size);
 // There is no 'destroy' because all dlmalloc data is stored inside the segment
 // it manages.
 
-void *partaked_allocate(partaked_allocator allocator, size_t size, bool clear);
+void *partaked_allocate(partaked_allocator allocator, size_t size);
 
 void partaked_deallocate(partaked_allocator allocator, void *addr);
-
-void **partaked_allocate_many(partaked_allocator allocator, size_t n,
-                              size_t elem_size, void **addrs, bool clear);
-
-void **partaked_allocate_many_sizes(partaked_allocator allocator, size_t n,
-                                    size_t *sizes, void **addrs, bool clear);

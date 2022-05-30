@@ -28,7 +28,7 @@ struct partaked_pool *partaked_channel_get_pool(struct partaked_channel *chan);
 
 // If successful, *handle has refcount 1, open_count 1.
 int partaked_channel_alloc_object(struct partaked_channel *chan, size_t size,
-                                  bool clear, uint8_t policy,
+                                  uint8_t policy,
                                   struct partaked_handle **handle);
 
 // If successful, handle open_count is incremented.
@@ -53,12 +53,11 @@ int partaked_channel_share_object(struct partaked_channel *chan,
 
 // Refcount of handle is unchanged.
 int partaked_channel_resume_unshare_object(struct partaked_channel *chan,
-                                           struct partaked_handle *handle,
-                                           bool clear);
+                                           struct partaked_handle *handle);
 
 // Refcount of *handle is unchanged; caller must retain if suspending
 int partaked_channel_unshare_object(struct partaked_channel *chan,
-                                    partaked_token token, bool clear,
+                                    partaked_token token,
                                     struct partaked_handle **handle);
 
 int partaked_channel_create_voucher(struct partaked_channel *chan,

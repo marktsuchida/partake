@@ -174,9 +174,8 @@ int partaked_task_Alloc(struct partaked_connection *conn,
         status = partake_protocol_Status_OUT_OF_SHMEM;
     } else {
         uint8_t policy = partaked_request_Alloc_policy(req);
-        bool clear = partaked_request_Alloc_clear(req);
-        status = partaked_channel_alloc_object(conn->chan, size, clear, policy,
-                                               &handle);
+        status =
+            partaked_channel_alloc_object(conn->chan, size, policy, &handle);
     }
 
     struct partaked_resparray *resparr =
@@ -309,7 +308,6 @@ struct task_Unshare_continuation_data {
     struct partaked_connection *conn;
     struct partaked_request *req;
     struct partaked_sender *sender;
-    bool clear;
 };
 
 static void continue_task_Unshare(struct partaked_handle *handle, void *data) {
@@ -318,8 +316,7 @@ static void continue_task_Unshare(struct partaked_handle *handle, void *data) {
     if (handle == NULL) // Canceled
         goto exit;
 
-    int status =
-        partaked_channel_resume_unshare_object(d->conn->chan, handle, d->clear);
+    int status = partaked_channel_resume_unshare_object(d->conn->chan, handle);
 
     struct partaked_resparray *resparr =
         partaked_sender_checkout_resparray(d->sender);
@@ -341,12 +338,10 @@ int partaked_task_Unshare(struct partaked_connection *conn,
                           struct partaked_request *req,
                           struct partaked_sender *sender) {
     partaked_token token = partaked_request_Unshare_token(req);
-    bool clear = partaked_request_Unshare_clear(req);
     bool wait = partaked_request_Unshare_wait(req);
 
     struct partaked_handle *handle = NULL;
-    int status =
-        partaked_channel_unshare_object(conn->chan, token, clear, &handle);
+    int status = partaked_channel_unshare_object(conn->chan, token, &handle);
     if (wait && status == partake_protocol_Status_OBJECT_BUSY) {
         ++handle->refcount;
 
@@ -355,7 +350,6 @@ int partaked_task_Unshare(struct partaked_connection *conn,
         data->conn = conn;
         data->req = req;
         data->sender = partaked_sender_incref(sender);
-        data->clear = clear;
 
         partaked_handle_register_continue_on_sole_ownership(
             handle, req, continue_task_Unshare, data);

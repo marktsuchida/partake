@@ -175,13 +175,11 @@ table GetSegmentResponse {
 
 table AllocRequest {
     size: uint64;
-    clear: bool = false;
     policy: Policy = REGULAR;
 
     /*
-     * An object of the given size is allocated, and optionally cleared. If
-     * there was not enough space in the shared memory pool, status is
-     * OUT_OF_MEMORY.
+     * An object of the given size is allocated. If there was not enough space
+     * in the shared memory pool, status is OUT_OF_MEMORY.
      *
      * If 'policy' is REGULAR, the returned object is in the "unshared"
      * state and opened for writing by this connection. It can later be
@@ -201,6 +199,7 @@ table AllocRequest {
 
 table AllocResponse {
     object: Mapping; // Null if status is not OK
+    zeroed: bool = false; // Object happens to be zero-filled
 }
 
 
@@ -285,7 +284,6 @@ table ShareResponse {
 table UnshareRequest {
     token: uint64;
     wait: bool = true;
-    clear: bool = false;
 
     /*
      * The token must not be a voucher and must refer to a REGULAR, shared
@@ -330,15 +328,13 @@ table UnshareRequest {
      * allocating a new object). Whatever system that coordinates access to the
      * objects must ensure that deadlock or premature unsharing does not
      * occur.
-     *
-     * If 'clear' is true, the object buffer is zeroed upon successful
-     * unsharing.
      */
 }
 
 
 table UnshareResponse {
     token: uint64; // The new token; null or zero if status is not OK
+    zeroed: bool = false; // Object happens to be zero-filled
 }
 
 
