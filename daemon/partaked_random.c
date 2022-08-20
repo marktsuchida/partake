@@ -11,7 +11,6 @@
 
 #include "partaked_logging.h"
 #include "partaked_malloc.h"
-#include "partaked_tchar.h"
 
 #include <zf_log.h>
 
@@ -25,7 +24,7 @@
 
 #include <stdlib.h>
 
-#define NAME_INFIX PARTAKED_TEXT("partake-")
+#define NAME_INFIX "partake-"
 
 static char *alloc_random_bytes(size_t size) {
     char *buf = partaked_malloc(size);
@@ -55,9 +54,9 @@ int partaked_generate_random_int(void) {
 
 // Return a partaked_malloc()ed tstring consisting of prefix followed by
 // NAME_INFIX followed by random_len characters of random hex digits.
-TCHAR *partaked_alloc_random_name(TCHAR *prefix, size_t random_len,
-                                  size_t max_total_len) {
-    size_t prefix_infix_len = tcslen(prefix) + tcslen(NAME_INFIX);
+char *partaked_alloc_random_name(char *prefix, size_t random_len,
+                                 size_t max_total_len) {
+    size_t prefix_infix_len = strlen(prefix) + strlen(NAME_INFIX);
     if (prefix_infix_len >= max_total_len) {
         ZF_LOGF("Random name total length too short to fit random chars");
         abort();
@@ -69,26 +68,22 @@ TCHAR *partaked_alloc_random_name(TCHAR *prefix, size_t random_len,
         random_len = len - prefix_infix_len;
     }
 
-    TCHAR *ret = partaked_malloc(sizeof(TCHAR) * (len + 1));
+    char *ret = partaked_malloc(len + 1);
 
-    sntprintf(ret, len, PARTAKED_TEXT("%s") NAME_INFIX, prefix);
+    snprintf(ret, len, "%s" NAME_INFIX, prefix);
 
     size_t randbufsize = (random_len + 1) / 2;
     char *randbuf = alloc_random_bytes(randbufsize);
 
     // Now convert (up to) randbufsize random bytes to random_len hex digits
     char *byte = randbuf;
-    TCHAR *p = ret + prefix_infix_len;
+    char *p = ret + prefix_infix_len;
     size_t space_left = len + 1 - prefix_infix_len;
     while (space_left > 1) {
-        sntprintf(p, space_left, "%02hhx", *byte++);
+        snprintf(p, space_left, "%02hhx", *byte++);
         size_t n = space_left > 1 ? 2 : 1;
         p += n;
         space_left -= n;
-
-        if (space_left == 0) { // Win32 _sntprintf doesn't null-terminate
-            *--p = PARTAKED_TEXT('\0');
-        }
     }
 
     partaked_free(randbuf);

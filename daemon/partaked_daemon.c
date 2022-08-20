@@ -11,7 +11,6 @@
 #include "partaked_malloc.h"
 #include "partaked_pool.h"
 #include "partaked_segment.h"
-#include "partaked_tchar.h"
 
 #include <utlist.h>
 #include <uv.h>
@@ -116,10 +115,7 @@ static int setup_server(struct partaked_daemon *daemon) {
 
     uv_pipe_pending_instances(&daemon->server, 8);
 
-    char name[1024];
-    err = uv_pipe_bind(
-        &daemon->server,
-        partaked_tstrtoutf8(daemon->config->socket, name, sizeof(name)));
+    err = uv_pipe_bind(&daemon->server, daemon->config->socket);
     if (err != 0) {
         ZF_LOGE("uv_pipe_bind: %s", uv_strerror(err));
         goto error;
@@ -130,9 +126,7 @@ static int setup_server(struct partaked_daemon *daemon) {
         ZF_LOGE("uv_listen: %s", uv_strerror(err));
         goto error;
     }
-    TCHAR buf[1024];
-    ZF_LOGI("Listening on %s",
-            partaked_strtolog(daemon->config->socket, buf, sizeof(buf)));
+    ZF_LOGI("Listening on %s", daemon->config->socket);
 
     int signums[3] = {SIGINT, SIGHUP, SIGTERM};
     for (int i = 0; i < 3; ++i) {

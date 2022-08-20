@@ -11,7 +11,6 @@
 #include "partaked_logging.h"
 #include "partaked_malloc.h"
 #include "partaked_random.h"
-#include "partaked_tchar.h"
 
 #ifdef _WIN32
 
@@ -19,7 +18,7 @@
 
 struct win32_private_data {
     HANDLE h_file;
-    TCHAR *mapping_name;
+    char *mapping_name;
     bool must_free_mapping_name;
     HANDLE h_mapping;
     bool large_pages;
@@ -72,11 +71,10 @@ static int add_lock_memory_privilage(void) {
     }
 
     LUID lock_mem_luid;
-    if (!LookupPrivilegeValue(NULL, SE_LOCK_MEMORY_NAME, &lock_mem_luid)) {
+    if (!LookupPrivilegeValueA(NULL, SE_LOCK_MEMORY_NAME, &lock_mem_luid)) {
         DWORD ret = GetLastError();
-        char name[1024], emsg[1024];
-        ZF_LOGE("LookupPrivilageValue: %s: %s",
-                partaked_strtolog(SE_LOCK_MEMORY_NAME, name, sizeof(name)),
+        char emsg[1024];
+        ZF_LOGE("LookupPrivilageValue: %s: %s", SE_LOCK_MEMORY_NAME,
                 partaked_strerror(ret, emsg, sizeof(emsg)));
         return ret;
     }
@@ -90,9 +88,8 @@ static int add_lock_memory_privilage(void) {
                                     NULL, NULL);
     DWORD ret = GetLastError();
     if (!ok || ret == ERROR_NOT_ALL_ASSIGNED) {
-        char name[1024], emsg[1024];
-        ZF_LOGE("AdjustTokenPrivileges: %s: %s",
-                partaked_strtolog(SE_LOCK_MEMORY_NAME, name, sizeof(name)),
+        char emsg[1024];
+        ZF_LOGE("AdjustTokenPrivileges: %s: %s", SE_LOCK_MEMORY_NAME,
                 partaked_strerror(ret, emsg, sizeof(emsg)));
         return ret;
     }
@@ -105,25 +102,20 @@ static int create_file(const struct partaked_daemon_config *config,
                        struct win32_private_data *d) {
     // We do not need to canonicalize the filename, since we never send it
     // to clients.
-    d->h_file =
-        CreateFile(config->shmem.win32.filename, GENERIC_READ | GENERIC_WRITE,
-                   0, NULL, config->force ? CREATE_ALWAYS : CREATE_NEW,
-                   FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, NULL);
+    d->h_file = CreateFileA(
+        config->shmem.win32.filename, GENERIC_READ | GENERIC_WRITE, 0, NULL,
+        config->force ? CREATE_ALWAYS : CREATE_NEW,
+        FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, NULL);
     if (d->h_file == INVALID_HANDLE_VALUE) {
         DWORD ret = GetLastError();
-        char fname[1024], emsg[1024];
-        ZF_LOGE("CreateFile: %s: %s",
-                partaked_strtolog(config->shmem.win32.filename, fname,
-                                  sizeof(fname)),
+        char emsg[1024];
+        ZF_LOGE("CreateFile: %s: %s", config->shmem.win32.filename,
                 partaked_strerror(ret, emsg, sizeof(emsg)));
         return ret;
     }
 
-    char fname[1024];
-    ZF_LOGI(
-        "CreateFile: %s: HANDLE %p",
-        partaked_strtolog(config->shmem.win32.filename, fname, sizeof(fname)),
-        d->h_file);
+    ZF_LOGI("CreateFile: %s: HANDLE %p", config->shmem.win32.filename,
+            d->h_file);
     return 0;
 }
 
@@ -150,20 +142,19 @@ static int create_file_mapping(const struct partaked_daemon_config *config,
     for (int i = 0; i < NUM_RETRIES; ++i) {
         if (generate_name) {
             name = generated_name =
-                partaked_alloc_random_name(PARTAKED_TEXT("Local\\"), 32, 255);
+                partaked_alloc_random_name("Local\\", 32, 255);
         }
 
         d->h_mapping =
-            CreateFileMapping(d->h_file, NULL,
-                              PAGE_READWRITE | SEC_COMMIT |
-                                  (d->large_pages ? SEC_LARGE_PAGES : 0),
-                              sizeof(size_t) > 4 ? config->size >> 32 : 0,
-                              config->size & UINT_MAX, name);
+            CreateFileMappingA(d->h_file, NULL,
+                               PAGE_READWRITE | SEC_COMMIT |
+                                   (d->large_pages ? SEC_LARGE_PAGES : 0),
+                               sizeof(size_t) > 4 ? config->size >> 32 : 0,
+                               config->size & UINT_MAX, name);
         DWORD ret = GetLastError();
         if (ret != 0) {
-            char namebuf[1024], emsg[1024];
-            ZF_LOGE("CreateFileMapping: %s: %s",
-                    partaked_strtolog(name, namebuf, sizeof(namebuf)),
+            char emsg[1024];
+            ZF_LOGE("CreateFileMapping: %s: %s", name,
                     partaked_strerror(ret, emsg, sizeof(emsg)));
             partaked_free(generated_name);
             d->h_mapping = INVALID_HANDLE_VALUE;
@@ -175,10 +166,7 @@ static int create_file_mapping(const struct partaked_daemon_config *config,
             return ret;
         }
 
-        char namebuf[1024];
-        ZF_LOGI("CreateFileMapping: %s: HANDLE %p",
-                partaked_strtolog(name, namebuf, sizeof(namebuf)),
-                d->h_mapping);
+        ZF_LOGI("CreateFileMapping: %s: HANDLE %p", name, d->h_mapping);
 
         d->mapping_name = name;
         d->must_free_mapping_name = generate_name;
@@ -311,9 +299,7 @@ static void win32_add_mapping_spec(flatcc_builder_t *b, void *data) {
 
     partake_protocol_SegmentSpec_spec_Win32FileMappingSpec_start(b);
 
-    char buf[1024];
-    partake_protocol_Win32FileMappingSpec_name_create_str(
-        b, partaked_tstrtoutf8(d->mapping_name, buf, sizeof(buf)));
+    partake_protocol_Win32FileMappingSpec_name_create_str(b, d->mapping_name);
 
     partake_protocol_Win32FileMappingSpec_use_large_pages_add(b,
                                                               d->large_pages);

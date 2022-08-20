@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include "partaked_tchar.h"
-
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -21,9 +19,9 @@ enum partaked_shmem_type {
 };
 
 struct partaked_daemon_config {
-    const TCHAR *socket;
+    const char *socket;
     // 'socket' may point to 'socket_buf' or elsewhere
-    TCHAR socket_buf[96];
+    char socket_buf[96];
 
     size_t size;
     bool force;
@@ -32,16 +30,16 @@ struct partaked_daemon_config {
     union {
         struct {
             bool shm_open;
-            TCHAR *shmname;
-            TCHAR *filename;
+            char *shmname;
+            char *filename;
         } mmap;
         struct {
             int key;
             bool huge_pages;
         } shmget;
         struct {
-            TCHAR *filename; // NULL for system paging file
-            TCHAR *name;
+            char *filename; // NULL for system paging file
+            char *name;
             bool large_pages;
         } win32;
     } shmem;

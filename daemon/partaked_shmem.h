@@ -12,7 +12,7 @@
 #include "partake_protocol_builder.h"
 
 struct partaked_shmem_impl {
-    TCHAR *name; // Non-null even if not supported
+    char *name; // Non-null even if not supported
 
     // int return values are platform error codes (success = 0)
     int (*initialize)(void **data);

@@ -7,9 +7,9 @@
 
 #pragma once
 
-#include "partaked_tchar.h"
+#include <stddef.h>
 
 int partaked_generate_random_int(void);
 
-TCHAR *partaked_alloc_random_name(TCHAR *prefix, size_t random_len,
-                                  size_t max_total_len);
+char *partaked_alloc_random_name(char *prefix, size_t random_len,
+                                 size_t max_total_len);

@@ -8,6 +8,10 @@ project('partake', 'c',
 
 cc = meson.get_compiler('c')
 
+if cc.get_id() in ['msvc', 'clang-cl']
+    add_global_arguments('/utf-8', language: 'c')
+endif
+
 # POSIX shm_open() and shm_unlink()
 librt = cc.find_library('rt', required: false)
 
