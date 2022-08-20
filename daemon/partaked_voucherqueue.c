@@ -36,8 +36,8 @@ struct partaked_voucherqueue {
     // Doubly-linked list, sorted by expiration, of vouchers.
     // dlist_head->next points to the oldest voucher; dlist_head->prev points
     // to the newest voucher. Other fields of the head are not used.
-    // Probably a chuncked array-based deque is more efficient for large numbers
-    // of vouchers.
+    // Probably a chuncked array-based deque is more efficient for large
+    // numbers of vouchers.
     struct partaked_object dlist_head;
 };
 

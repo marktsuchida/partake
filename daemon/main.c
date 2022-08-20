@@ -191,7 +191,8 @@ static void error_exit(const TCHAR *msg) {
 }
 
 // Parse options; call exit() on error or help/version.
-static void parse_options(int argc, TCHAR **argv, struct parsed_options *opts) {
+static void parse_options(int argc, TCHAR **argv,
+                          struct parsed_options *opts) {
     dropt_option option_defs[] = {
         // short_name long_name
         // description
@@ -219,7 +220,8 @@ static void parse_options(int argc, TCHAR **argv, struct parsed_options *opts) {
         {
             PTXT('\0'),
             PTXT("socket-fullname"),
-            PTXT("Full platform-specific name of socket for client connection"),
+            PTXT(
+                "Full platform-specific name of socket for client connection"),
             PTXT("<name>"),
             dropt_handle_string,
             &opts->raw_socket,
@@ -238,7 +240,8 @@ static void parse_options(int argc, TCHAR **argv, struct parsed_options *opts) {
         {
             PTXT('n'),
             PTXT("name"),
-            PTXT("Name of shared memory block (integer if --systemv is given)"),
+            PTXT(
+                "Name of shared memory block (integer if --systemv is given)"),
             PTXT("{<name>|<integer>}"),
             dropt_handle_string,
             &opts->name,

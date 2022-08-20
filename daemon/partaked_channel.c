@@ -88,7 +88,8 @@ int partaked_channel_get_segment(struct partaked_channel *chan, uint32_t segno,
     return 0;
 }
 
-struct partaked_pool *partaked_channel_get_pool(struct partaked_channel *chan) {
+struct partaked_pool *
+partaked_channel_get_pool(struct partaked_channel *chan) {
     return chan->pool;
 }
 
@@ -174,8 +175,8 @@ int partaked_channel_open_object(struct partaked_channel *chan,
         return partake_protocol_Status_OBJECT_BUSY;
 
     if (*voucher) {
-        partaked_voucherqueue_remove(partaked_pool_get_voucherqueue(chan->pool),
-                                     *voucher);
+        partaked_voucherqueue_remove(
+            partaked_pool_get_voucherqueue(chan->pool), *voucher);
     }
 
     int status = partaked_channel_resume_open_object(chan, *handle, *voucher);
@@ -273,7 +274,8 @@ int partaked_channel_create_voucher(struct partaked_channel *chan,
                                     struct partaked_object **voucher) {
     // There is no logical need to search within this channel, but it is
     // expected that in most cases the object will be found in this channel.
-    struct partaked_handle *handle = find_handle_in_channel(chan, target_token);
+    struct partaked_handle *handle =
+        find_handle_in_channel(chan, target_token);
     struct partaked_object *object;
     if (handle == NULL) {
         object = partaked_pool_find_object(chan->pool, target_token);
@@ -310,8 +312,8 @@ int partaked_channel_discard_voucher(struct partaked_channel *chan,
     }
 
     if (object->flags & PARTAKED_OBJECT_IS_VOUCHER) {
-        partaked_voucherqueue_remove(partaked_pool_get_voucherqueue(chan->pool),
-                                     object);
+        partaked_voucherqueue_remove(
+            partaked_pool_get_voucherqueue(chan->pool), object);
         *target = object->target;
         --(*target)->refcount;
         partaked_pool_destroy_object(chan->pool, object);

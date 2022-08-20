@@ -128,7 +128,8 @@ void partaked_connection_read_cb(uv_stream_t *client, ssize_t nread,
 
         uint32_t count = partaked_reqarray_count(reqarr);
         for (uint32_t i = 0; i < count; ++i) {
-            struct partaked_request *req = partaked_reqarray_request(reqarr, i);
+            struct partaked_request *req =
+                partaked_reqarray_request(reqarr, i);
             if (partaked_task_handle(conn, req, sender) != 0) {
                 quit = true;
                 break;

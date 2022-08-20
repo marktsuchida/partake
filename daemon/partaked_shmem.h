@@ -18,7 +18,8 @@ struct partaked_shmem_impl {
     int (*initialize)(void **data);
     void (*deinitialize)(void *data);
     int (*allocate)(const struct partaked_daemon_config *config, void *data);
-    void (*deallocate)(const struct partaked_daemon_config *config, void *data);
+    void (*deallocate)(const struct partaked_daemon_config *config,
+                       void *data);
     void *(*getaddr)(void *data);
     void (*add_mapping_spec)(flatcc_builder_t *b, void *data);
 };

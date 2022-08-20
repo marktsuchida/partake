@@ -67,8 +67,8 @@ partaked_requestframe_maybe_move(struct partaked_iobuf *iobuf, size_t *start,
     return iobuf;
 }
 
-struct partaked_reqarray *partaked_reqarray_create(struct partaked_iobuf *iobuf,
-                                                   size_t offset) {
+struct partaked_reqarray *
+partaked_reqarray_create(struct partaked_iobuf *iobuf, size_t offset) {
     size_t size;
     void *msg =
         flatbuffers_read_size_prefix((char *)iobuf->buffer + offset, &size);

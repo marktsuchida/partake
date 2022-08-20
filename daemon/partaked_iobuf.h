@@ -27,9 +27,9 @@
  *
  * Alignment. Without special directives, the largest scalar contained in a
  * FlatBuffers serialization is 8 bytes. To preserve alignment in the stream,
- * we need to ensure that all message lengths are rounded up to a multiple of 8.
- * The receiver then only needs to read into 8-byte-aligned buffers. Recovery
- * is needed when the kernel decides to interrupt a read mid-message.
+ * we need to ensure that all message lengths are rounded up to a multiple
+ * of 8. The receiver then only needs to read into 8-byte-aligned buffers.
+ * Recovery is needed when the kernel decides to interrupt a read mid-message.
  */
 
 // Buffers of this size are recycled

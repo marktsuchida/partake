@@ -20,9 +20,9 @@ struct partaked_resparray *partaked_resparray_create(void);
 struct partaked_iobuf *
 partaked_resparray_finish(struct partaked_resparray *resparr, size_t *size);
 
-void partaked_resparray_append_Echo_response(struct partaked_resparray *resparr,
-                                             struct partaked_request *req,
-                                             int status, const char *text_copy);
+void partaked_resparray_append_Echo_response(
+    struct partaked_resparray *resparr, struct partaked_request *req,
+    int status, const char *text_copy);
 
 void partaked_resparray_append_Hello_response(
     struct partaked_resparray *resparr, struct partaked_request *req,
@@ -36,10 +36,9 @@ void partaked_resparray_append_Alloc_response(
     struct partaked_resparray *resparr, struct partaked_request *req,
     int status, struct partaked_handle *handle);
 
-void partaked_resparray_append_Open_response(struct partaked_resparray *resparr,
-                                             struct partaked_request *req,
-                                             int status,
-                                             struct partaked_handle *handle);
+void partaked_resparray_append_Open_response(
+    struct partaked_resparray *resparr, struct partaked_request *req,
+    int status, struct partaked_handle *handle);
 
 void partaked_resparray_append_Close_response(
     struct partaked_resparray *resparr, struct partaked_request *req,

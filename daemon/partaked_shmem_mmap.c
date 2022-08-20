@@ -213,9 +213,9 @@ static int create_file_shm(const struct partaked_daemon_config *config,
     d->must_free_shmname = d->shmname != config->shmem.mmap.filename;
 
     errno = 0;
-    d->fd =
-        open(d->shmname,
-             O_RDWR | O_CREAT | (config->force ? 0 : O_EXCL) | O_CLOEXEC, 0666);
+    d->fd = open(d->shmname,
+                 O_RDWR | O_CREAT | (config->force ? 0 : O_EXCL) | O_CLOEXEC,
+                 0666);
     ret = errno;
     if (d->fd < 0) {
         char emsg[1024];
@@ -284,8 +284,8 @@ static int mmap_allocate(const struct partaked_daemon_config *config,
 
     d->use_posix = config->shmem.mmap.shm_open;
 
-    int ret =
-        d->use_posix ? create_posix_shm(config, d) : create_file_shm(config, d);
+    int ret = d->use_posix ? create_posix_shm(config, d)
+                           : create_file_shm(config, d);
     if (ret != 0)
         return ret;
 

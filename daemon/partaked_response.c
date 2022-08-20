@@ -84,10 +84,9 @@ static inline void finish_response(struct partaked_resparray *resparr) {
     partake_protocol_ResponseMessage_responses_push_end(b);
 }
 
-void partaked_resparray_append_Echo_response(struct partaked_resparray *resparr,
-                                             struct partaked_request *req,
-                                             int status,
-                                             const char *text_copy) {
+void partaked_resparray_append_Echo_response(
+    struct partaked_resparray *resparr, struct partaked_request *req,
+    int status, const char *text_copy) {
     flatcc_builder_t *b = &resparr->builder;
 
     start_response(resparr, req, status);
@@ -155,18 +154,17 @@ void partaked_resparray_append_Alloc_response(
     finish_response(resparr);
 }
 
-void partaked_resparray_append_Open_response(struct partaked_resparray *resparr,
-                                             struct partaked_request *req,
-                                             int status,
-                                             struct partaked_handle *handle) {
+void partaked_resparray_append_Open_response(
+    struct partaked_resparray *resparr, struct partaked_request *req,
+    int status, struct partaked_handle *handle) {
     flatcc_builder_t *b = &resparr->builder;
 
     start_response(resparr, req, status);
     partake_protocol_Response_response_OpenResponse_start(b);
 
     if (status == partake_protocol_Status_OK) {
-        partake_protocol_OpenResponse_object_create(b, handle->object->token, 0,
-                                                    handle->object->offset,
+        partake_protocol_OpenResponse_object_create(b, handle->object->token,
+                                                    0, handle->object->offset,
                                                     handle->object->size);
     }
 

@@ -38,7 +38,8 @@ struct partaked_sender *partaked_sender_create(uv_stream_t *client) {
     return sender;
 }
 
-struct partaked_sender *partaked_sender_incref(struct partaked_sender *sender) {
+struct partaked_sender *
+partaked_sender_incref(struct partaked_sender *sender) {
     ++sender->refcount;
     return sender;
 }

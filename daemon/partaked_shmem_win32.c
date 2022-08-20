@@ -86,8 +86,8 @@ static int add_lock_memory_privilage(void) {
     privs.Privileges[0].Luid = lock_mem_luid;
     privs.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 
-    BOOL ok = AdjustTokenPrivileges(h_token, FALSE, &privs, sizeof(privs), NULL,
-                                    NULL);
+    BOOL ok = AdjustTokenPrivileges(h_token, FALSE, &privs, sizeof(privs),
+                                    NULL, NULL);
     DWORD ret = GetLastError();
     if (!ok || ret == ERROR_NOT_ALL_ASSIGNED) {
         char name[1024], emsg[1024];

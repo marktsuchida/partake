@@ -14,7 +14,8 @@ struct partaked_pool;
 struct partaked_voucherqueue;
 
 struct partaked_voucherqueue *
-partaked_voucherqueue_create(uv_loop_t *event_loop, struct partaked_pool *pool);
+partaked_voucherqueue_create(uv_loop_t *event_loop,
+                             struct partaked_pool *pool);
 
 void partaked_voucherqueue_destroy(struct partaked_voucherqueue *queue);
 

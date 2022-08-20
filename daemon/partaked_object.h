@@ -73,11 +73,11 @@ struct partaked_object {
             size_t offset;          // Relative to segment base address
             size_t size;
 
-            // The reference count is the number of handles to this object. This
-            // includes channels waiting for this object to change state. (Note
-            // that a single channel can hold multiple references to an object;
-            // the object doesn't know about this.) For vouchers, this is always
-            // 1.
+            // The reference count is the number of handles to this object.
+            // This includes channels waiting for this object to change state.
+            // (Note that a single channel can hold multiple references to an
+            // object; the object doesn't know about this.) For vouchers, this
+            // is always 1.
             unsigned refcount;
 
             // The open count is the number of handles to this object with a
