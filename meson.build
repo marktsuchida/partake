@@ -20,32 +20,7 @@ libbsd = cc.find_library('bsd', required: false)
 
 libbcrypt = cc.find_library('bcrypt', required: false)
 
-libuv = dependency('libuv', required: false) # pkg-config on Unix
-
-if not libuv.found()
-    cmake = import('cmake')
-
-    libuv_needs_win32_libs = host_machine.system() == 'windows'
-    winsock = cc.find_library('Ws2_32', required: libuv_needs_win32_libs)
-    iphlpapi = cc.find_library('Iphlpapi', required: libuv_needs_win32_libs)
-    userenv = cc.find_library('Userenv', required: libuv_needs_win32_libs)
-
-    libuv_cmake_options = cmake.subproject_options()
-    libuv_cmake_options.add_cmake_defines({
-        'BUILD_TESTING': false,
-    })
-    libuv_proj = cmake.subproject('libuv', options: libuv_cmake_options)
-
-    libuv = declare_dependency(
-        include_directories: libuv_proj.include_directories('uv_a'),
-        link_with: libuv_proj.target('uv_a'),
-        dependencies: [ # Needed for the static version (uv_a)
-            winsock,
-            iphlpapi,
-            userenv,
-        ],
-    )
-endif
+libuv = dependency('libuv', fallback: 'libuv')
 
 libflatccrt = cc.find_library('flatccrt', required: false)
 prog_flatcc = find_program('flatcc', required: false)
@@ -62,7 +37,9 @@ if not libflatccrt.found() or not prog_flatcc.found()
     prog_flatcc = flatcc_proj.get_variable('flatcc')
 endif
 
-unity_dep = dependency('unity', fallback: ['unity', 'unity_dep'])
+uthash_dep = dependency('uthash', fallback: 'uthash')
+
+unity_dep = dependency('unity', fallback: 'unity')
 
 subdir('thirdparty')
 subdir('common')

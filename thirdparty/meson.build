@@ -17,10 +17,6 @@ dropt_sources = files([
 ])
 
 
-# uthash is a header-only library
-uthash_incdir = include_directories('uthash/src')
-
-
 zf_log_incdir = include_directories('zf_log/zf_log')
 zf_log_sources = files([
     'zf_log/zf_log/zf_log.c',

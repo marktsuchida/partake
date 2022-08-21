@@ -1,0 +1,8 @@
+*
+
+!/.gitignore
+!/flatcc/
+!/flatcc/**
+!/libuv.wrap
+!/unity.wrap
+!/uthash.wrap

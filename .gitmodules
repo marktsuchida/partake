@@ -4,15 +4,6 @@
 [submodule "subprojects/zf_log"]
 	path = thirdparty/zf_log
 	url = https://github.com/wonder-mice/zf_log.git
-[submodule "subprojects/uthash"]
-	path = thirdparty/uthash
-	url = https://github.com/troydhanson/uthash.git
 [submodule "subprojects/flatcc"]
 	path = subprojects/flatcc
 	url = https://github.com/dvidelabs/flatcc.git
-[submodule "subprojects/libuv"]
-	path = subprojects/libuv
-	url = https://github.com/libuv/libuv.git
-[submodule "subprojects/unity"]
-	path = subprojects/unity
-	url = https://github.com/ThrowTheSwitch/Unity.git
