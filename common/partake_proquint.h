@@ -1,11 +1,12 @@
 /*
- * An implementation of proquint (https://arxiv.org/html/0901.4016)
- *
- * Copyright 2020-2021 Board of Regents of the University of Wisconsin System
+ * This file is part of the partake project
+ * Copyright 2020-2022 Board of Regents of the University of Wisconsin System
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
 /*
+ * An implementation of proquint (https://arxiv.org/html/0901.4016)
+ *
  * In partake, object (and voucher) tokens are 64-bit values. Although they are
  * handled as binary data internally and in the FlatBuffers protocol, they are
  * displayed in "proquint" representation for logging and debugging purposes.

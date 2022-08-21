@@ -1,7 +1,6 @@
 /*
- * Reference-counted buffers for request/response
- *
- * Copyright 2020-2021 Board of Regents of the University of Wisconsin System
+ * This file is part of the partake project
+ * Copyright 2020-2022 Board of Regents of the University of Wisconsin System
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
@@ -12,6 +11,8 @@
 #include <stddef.h>
 
 /*
+ * Reference-counted buffers for request/response
+ *
  * The main idea is to process requests without making copies of the
  * FlatBuffers messages or their content. We pass a uv_buf_t * to libuv and
  * receive it back when messages have been received. By placing our metadata
