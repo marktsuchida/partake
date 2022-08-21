@@ -17,3 +17,10 @@ repos:
     rev: v14.0.6
     hooks:
       - id: clang-format
+
+# Disabled for now because the reuse hook doesn't allow overriding args
+#  - repo: https://github.com/fsfe/reuse-tool
+#    rev: TBD
+#    hooks:
+#      - id: reuse
+#        args: ["--include-meson-subprojects", "lint"]

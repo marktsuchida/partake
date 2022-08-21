@@ -1,6 +1,13 @@
+# This file is part of the partake project
+# Copyright 2020-2022 Board of Regents of the University of Wisconsin System
+# SPDX-License-Identifier: BSD-2-Clause
+
 root = true
 
 [*]
 insert_final_newline = true
 indent_style = space
 trim_trailing_whitespace = true
+
+[LICENSES/*.txt]
+trim_trailing_whitespace = false

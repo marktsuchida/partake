@@ -1,15 +1,14 @@
-*
+# This file is part of the partake project
+# Copyright 2020-2022 Board of Regents of the University of Wisconsin System
+# SPDX-License-Identifier: BSD-2-Clause
 
-!/.gitignore
+/packagecache/
 
-!/.clang-format
+# Subprojects with version numbers, downloaded via wrap
+/*-*/
 
-!/packagefiles/
-!/packagefiles/**
-
-!/dlmalloc/
-!/dlmalloc/**
-
+# List our wraps explicitly because transitive dependencies may be added
+/*.wrap
 !/dropt.wrap
 !/flatcc.wrap
 !/libuv.wrap
