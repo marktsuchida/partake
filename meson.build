@@ -20,7 +20,14 @@ libbsd = cc.find_library('bsd', required: false)
 
 libbcrypt = cc.find_library('bcrypt', required: false)
 
-libuv = dependency('libuv', fallback: 'libuv')
+libuv = dependency(
+    'libuv',
+    fallback: 'libuv',
+    default_options: [
+        'build_tests=false',
+        'build_benchmarks=false',
+    ],
+)
 
 dropt_dep = dependency('dropt', fallback: 'dropt')
 
