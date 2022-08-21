@@ -3,6 +3,7 @@
 !/.gitignore
 !/packagefiles/
 !/packagefiles/**
+!/dropt.wrap
 !/flatcc.wrap
 !/libuv.wrap
 !/unity.wrap

@@ -9,14 +9,6 @@
 dlmalloc_incdir = include_directories('dlmalloc')
 
 
-dropt_incdir = include_directories('dropt/include')
-dropt_sources = files([
-    'dropt/src/dropt.c',
-    'dropt/src/dropt_handlers.c',
-    'dropt/src/dropt_string.c',
-])
-
-
 zf_log_incdir = include_directories('zf_log/zf_log')
 zf_log_sources = files([
     'zf_log/zf_log/zf_log.c',

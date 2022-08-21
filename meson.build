@@ -22,6 +22,8 @@ libbcrypt = cc.find_library('bcrypt', required: false)
 
 libuv = dependency('libuv', fallback: 'libuv')
 
+dropt_dep = dependency('dropt', fallback: 'dropt')
+
 libflatccrt = dependency('flatccrt', fallback: ['flatcc', 'flatccrt_dep'])
 prog_flatcc = find_program('flatcc', required: false)
 if not prog_flatcc.found()

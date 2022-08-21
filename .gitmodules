@@ -1,6 +1,3 @@
-[submodule "subprojects/dropt"]
-	path = thirdparty/dropt
-	url = https://github.com/jamesderlin/dropt.git
 [submodule "subprojects/zf_log"]
 	path = thirdparty/zf_log
 	url = https://github.com/wonder-mice/zf_log.git
