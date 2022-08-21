@@ -7,9 +7,3 @@
 
 # We use dlmalloc by #including the .c file
 dlmalloc_incdir = include_directories('dlmalloc')
-
-
-zf_log_incdir = include_directories('zf_log/zf_log')
-zf_log_sources = files([
-    'zf_log/zf_log/zf_log.c',
-])

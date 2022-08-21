@@ -32,6 +32,8 @@ endif
 
 uthash_dep = dependency('uthash', fallback: 'uthash')
 
+zf_log_dep = dependency('zf_log', fallback: 'zf_log')
+
 unity_dep = dependency('unity', fallback: 'unity')
 
 subdir('thirdparty')
