@@ -29,6 +29,8 @@ libuv = dependency(
     ],
 )
 
+dlmalloc_incdir = subproject('dlmalloc').get_variable('dlmalloc_incdir')
+
 dropt_dep = dependency('dropt', fallback: 'dropt')
 
 libflatccrt = dependency('flatccrt', fallback: ['flatcc', 'flatccrt_dep'])
@@ -43,7 +45,6 @@ zf_log_dep = dependency('zf_log', fallback: 'zf_log')
 
 unity_dep = dependency('unity', fallback: 'unity')
 
-subdir('thirdparty')
 subdir('common')
 subdir('protocol')
 subdir('daemon')

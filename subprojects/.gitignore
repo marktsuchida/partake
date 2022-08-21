@@ -1,8 +1,15 @@
 *
 
 !/.gitignore
+
+!/.clang-format
+
 !/packagefiles/
 !/packagefiles/**
+
+!/dlmalloc/
+!/dlmalloc/**
+
 !/dropt.wrap
 !/flatcc.wrap
 !/libuv.wrap
