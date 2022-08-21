@@ -4,6 +4,3 @@
 [submodule "subprojects/zf_log"]
 	path = thirdparty/zf_log
 	url = https://github.com/wonder-mice/zf_log.git
-[submodule "subprojects/flatcc"]
-	path = subprojects/flatcc
-	url = https://github.com/dvidelabs/flatcc.git

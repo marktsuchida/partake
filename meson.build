@@ -22,19 +22,10 @@ libbcrypt = cc.find_library('bcrypt', required: false)
 
 libuv = dependency('libuv', fallback: 'libuv')
 
-libflatccrt = cc.find_library('flatccrt', required: false)
+libflatccrt = dependency('flatccrt', fallback: ['flatcc', 'flatccrt_dep'])
 prog_flatcc = find_program('flatcc', required: false)
-
-if not libflatccrt.found() or not prog_flatcc.found()
-    # Note that we use the 'meson' branch of flatcc
-    flatcc_proj = subproject('flatcc')
-
-    libflatccrt = declare_dependency(
-        include_directories: flatcc_proj.get_variable('inc_dir'),
-        link_with: flatcc_proj.get_variable('libflatccrt'),
-    )
-
-    prog_flatcc = flatcc_proj.get_variable('flatcc')
+if not prog_flatcc.found()
+    prog_flatcc = subproject('flatcc').get_variable('flatcc_prog')
 endif
 
 uthash_dep = dependency('uthash', fallback: 'uthash')
