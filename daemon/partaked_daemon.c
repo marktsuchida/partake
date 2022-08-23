@@ -20,7 +20,7 @@
 #include <zf_log.h>
 
 struct partaked_daemon {
-    const struct partaked_daemon_config *config;
+    const struct partaked_config *config;
 
     // We currently use a single shared memory segment
     struct partaked_segment *segment;
@@ -118,7 +118,8 @@ static int setup_server(struct partaked_daemon *daemon) {
 
     uv_pipe_pending_instances(&daemon->server, 8);
 
-    err = uv_pipe_bind(&daemon->server, daemon->config->socket);
+    err =
+        uv_pipe_bind(&daemon->server, ss8_const_cstr(&daemon->config->socket));
     if (err != 0) {
         ZF_LOGE("uv_pipe_bind: %s", uv_strerror(err));
         goto error;
@@ -129,7 +130,7 @@ static int setup_server(struct partaked_daemon *daemon) {
         ZF_LOGE("uv_listen: %s", uv_strerror(err));
         goto error;
     }
-    ZF_LOGI("Listening on %s", daemon->config->socket);
+    ZF_LOGI("Listening on %s", ss8_const_cstr(&daemon->config->socket));
 
     int signums[3] = {SIGINT, SIGHUP, SIGTERM};
     for (int i = 0; i < 3; ++i) {
@@ -171,7 +172,7 @@ static int run_event_loop(struct partaked_daemon *daemon) {
     return err;
 }
 
-int partaked_daemon_run(const struct partaked_daemon_config *config) {
+int partaked_daemon_run(const struct partaked_config *config) {
     partaked_initialize_malloc();
     uv_replace_allocator(partaked_malloc, partaked_realloc, partaked_calloc,
                          (void (*)(void *))partaked_free);

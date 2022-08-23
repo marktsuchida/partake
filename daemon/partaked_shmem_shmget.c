@@ -52,7 +52,7 @@ static void shmget_deinitialize(void *data) {
     partaked_free(data);
 }
 
-static int create_sysv_shm(const struct partaked_daemon_config *config,
+static int create_sysv_shm(const struct partaked_config *config,
                            struct shmget_private_data *d) {
     if (sizeof(key_t) < sizeof(config->shmem.shmget.key)) {
         // Hopefully this check is pedantic.
@@ -131,7 +131,7 @@ static int remove_sysv_shm(struct shmget_private_data *d) {
     return 0;
 }
 
-static int attach_sysv_shm(const struct partaked_daemon_config *config,
+static int attach_sysv_shm(const struct partaked_config *config,
                            struct shmget_private_data *d) {
     if (config->size > 0) {
         errno = 0;
@@ -169,8 +169,7 @@ static int detach_sysv_shm(struct shmget_private_data *d) {
     return 0;
 }
 
-static int shmget_allocate(const struct partaked_daemon_config *config,
-                           void *data) {
+static int shmget_allocate(const struct partaked_config *config, void *data) {
     struct shmget_private_data *d = data;
 
     int ret = create_sysv_shm(config, d);
@@ -187,7 +186,7 @@ static int shmget_allocate(const struct partaked_daemon_config *config,
     return 0;
 }
 
-static void shmget_deallocate(const struct partaked_daemon_config *config,
+static void shmget_deallocate(const struct partaked_config *config,
                               void *data) {
     struct shmget_private_data *d = data;
 

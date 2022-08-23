@@ -12,6 +12,7 @@
 !/dropt.wrap
 !/flatcc.wrap
 !/libuv.wrap
+!/ssstr.wrap
 !/unity.wrap
 !/uthash.wrap
 !/zf_log.wrap

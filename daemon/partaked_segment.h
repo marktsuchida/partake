@@ -8,11 +8,11 @@
 
 #include "partake_protocol_builder.h"
 
-struct partaked_daemon_config;
+struct partaked_config;
 struct partaked_segment;
 
 struct partaked_segment *
-partaked_segment_create(const struct partaked_daemon_config *config);
+partaked_segment_create(const struct partaked_config *config);
 
 void partaked_segment_destroy(struct partaked_segment *segment);
 

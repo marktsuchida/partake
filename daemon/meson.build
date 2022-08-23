@@ -6,6 +6,7 @@ partaked_sources = [
     'main.c',
     'partaked_allocator.c',
     'partaked_channel.c',
+    'partaked_config.c',
     'partaked_connection.c',
     'partaked_daemon.c',
     'partaked_handle.c',
@@ -34,6 +35,7 @@ executable('partaked',
     include_directories: [
         common_incdir,
         dlmalloc_incdir,
+        ssstr_incdir,
     ],
     dependencies: [
         dropt_dep,

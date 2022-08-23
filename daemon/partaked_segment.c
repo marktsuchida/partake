@@ -15,15 +15,15 @@
 
 struct partaked_segment {
     // TODO We should have a 'shmem_config' object separate from daemon config
-    const struct partaked_daemon_config *config; // Non-owning
+    const struct partaked_config *config; // Non-owning
     struct partaked_shmem_impl *shmem_impl;
     void *shmem_data;
 };
 
 struct partaked_segment *
-partaked_segment_create(const struct partaked_daemon_config *config) {
+partaked_segment_create(const struct partaked_config *config) {
     struct partaked_shmem_impl *impl;
-    switch (config->type) {
+    switch (config->shmem.type) {
     case PARTAKED_SHMEM_MMAP:
         impl = partaked_shmem_mmap_impl();
         break;

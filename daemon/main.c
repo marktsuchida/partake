@@ -10,6 +10,7 @@
 #include "partaked_daemon.h"
 
 #include <dropt.h>
+#include <ss8str.h>
 
 #include <errno.h>
 #include <limits.h>
@@ -355,7 +356,7 @@ exit:
 }
 
 static void check_socket_name(const char *name, bool use_raw,
-                              struct partaked_daemon_config *config) {
+                              struct partaked_config *config) {
     if (name == NULL) {
         error_exit("Socket must be given with option -s/--socket\n");
     }
@@ -377,7 +378,7 @@ static void check_socket_name(const char *name, bool use_raw,
         }
 #endif
 
-        config->socket = name;
+        ss8_copy_cstr(&config->socket, name);
         return;
     }
 
@@ -403,17 +404,13 @@ static void check_socket_name(const char *name, bool use_raw,
         "\\\\.\\pipe\\%s"
 #endif
         ;
-    snprintf(config->socket_buf, sizeof(config->socket_buf), format, name);
-    config->socket = config->socket_buf;
+    ss8_sprintf(&config->socket, format, name);
 }
 
 // Perform checks that can be done without calling OS API and fill struct
-// partaked_daemon_config. All strings are still pointers to the static argv
-// strings.
+// partaked_config. All strings are still pointers to the static argv strings.
 static void check_options(const struct parsed_options *opts,
-                          struct partaked_daemon_config *config) {
-    memset(config, 0, sizeof(struct partaked_daemon_config));
-
+                          struct partaked_config *config) {
     if (opts->socket != NULL && opts->raw_socket != NULL) {
         error_exit(
             "Not both of -s/--socket and --socket-fullname may be given\n");
@@ -433,21 +430,21 @@ static void check_options(const struct parsed_options *opts,
     }
 
     if (opts->posix) {
-        config->type = PARTAKED_SHMEM_MMAP;
+        config->shmem.type = PARTAKED_SHMEM_MMAP;
         config->shmem.mmap.shm_open = true;
     } else if (opts->systemv) {
-        config->type = PARTAKED_SHMEM_SHMGET;
+        config->shmem.type = PARTAKED_SHMEM_SHMGET;
     } else if (opts->file != NULL) {
 #ifndef _WIN32
-        config->type = PARTAKED_SHMEM_MMAP;
+        config->shmem.type = PARTAKED_SHMEM_MMAP;
 #else
         config->type = PARTAKED_SHMEM_WIN32;
 #endif
     } else if (opts->windows) {
-        config->type = PARTAKED_SHMEM_WIN32;
+        config->shmem.type = PARTAKED_SHMEM_WIN32;
     } else { // default
 #ifndef _WIN32
-        config->type = PARTAKED_SHMEM_MMAP;
+        config->shmem.type = PARTAKED_SHMEM_MMAP;
         config->shmem.mmap.shm_open = true;
 #else
         config->type = PARTAKED_SHMEM_WIN32;
@@ -466,7 +463,7 @@ static void check_options(const struct parsed_options *opts,
                 error_exit(
                     "POSIX shared memory name must be less than 256 characters and consist of an initial slash, followed by one or more characters, none of which are slashes\n");
             }
-            config->shmem.mmap.shmname = opts->name;
+            ss8_copy_cstr(&config->shmem.mmap.shmname, opts->name);
         } else if (opts->systemv) {
             char *end;
             errno = 0;
@@ -479,36 +476,34 @@ static void check_options(const struct parsed_options *opts,
                 error_exit("System V shared memory key must be an integer\n");
             }
             config->shmem.shmget.key = (int)key;
-        } else if (config->type == PARTAKED_SHMEM_WIN32) {
+        } else if (config->shmem.type == PARTAKED_SHMEM_WIN32) {
             size_t len = strlen(opts->name);
             if (strncmp(opts->name, "Local\\", 6) != 0 || len < 7 ||
                 strchr(opts->name + 6, '\\') != NULL) {
                 error_exit(
                     "Windows shared memory name must consist of the prefix \"Local\\\", followed by one or more characters, none of which are backslashes\n");
             }
-            config->shmem.win32.name = opts->name;
+            ss8_copy_cstr(&config->shmem.win32.mappingname, opts->name);
         }
     }
 
     if (opts->file != NULL) {
-        if (opts->file[0] == '\0') {
+        if (opts->file[0] == '\0')
             error_exit("Filename must not be empty\n");
-        }
-        if (config->type == PARTAKED_SHMEM_MMAP) {
-            config->shmem.mmap.filename = opts->file;
-        } else if (config->type == PARTAKED_SHMEM_WIN32) {
-            config->shmem.win32.filename = opts->file;
-        }
+        if (config->shmem.type == PARTAKED_SHMEM_MMAP)
+            ss8_copy_cstr(&config->shmem.mmap.filename, opts->file);
+        else if (config->shmem.type == PARTAKED_SHMEM_WIN32)
+            ss8_copy_cstr(&config->shmem.win32.filename, opts->file);
     }
 
-    if (config->type == PARTAKED_SHMEM_SHMGET) {
+    if (config->shmem.type == PARTAKED_SHMEM_SHMGET) {
         config->shmem.shmget.huge_pages = opts->huge_pages;
     } else if (opts->huge_pages) {
         error_exit(
             "-H/--huge-pages can only be used with System V shared memory\n");
     }
 
-    if (config->type == PARTAKED_SHMEM_WIN32) {
+    if (config->shmem.type == PARTAKED_SHMEM_WIN32) {
         config->shmem.win32.large_pages = opts->large_pages;
     } else if (opts->large_pages) {
         error_exit(
@@ -524,12 +519,13 @@ int main(int argc, char **argv) {
 
     parse_options(argc, argv, &opts);
 
-    struct partaked_daemon_config config;
-    memset(&config, 0, sizeof(config));
+    struct partaked_config *config = partaked_config_create();
 
-    check_options(&opts, &config);
+    check_options(&opts, config);
 
-    int ret = partaked_daemon_run(&config);
+    int ret = partaked_daemon_run(config);
+
+    partaked_config_destroy(config);
 
     return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

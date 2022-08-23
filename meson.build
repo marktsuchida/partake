@@ -40,6 +40,9 @@ if not prog_flatcc.found()
     prog_flatcc = subproject('flatcc').get_variable('flatcc_prog')
 endif
 
+# ssstr ought to provide a dependency object, but this will work for now
+ssstr_incdir = subproject('ssstr').get_variable('public_inc')
+
 uthash_dep = dependency('uthash', fallback: 'uthash')
 
 zf_log_dep = dependency('zf_log', fallback: 'zf_log')

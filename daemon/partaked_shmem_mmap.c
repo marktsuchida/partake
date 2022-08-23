@@ -15,6 +15,7 @@
 
 #ifndef _WIN32
 
+#include <ss8str.h>
 #include <zf_log.h>
 
 #include <errno.h>
@@ -39,14 +40,14 @@ struct mmap_private_data {
     bool use_posix; // Or else filesystem
     int fd;
     bool fd_open;
-    const char *shmname; // non-null indicates shm/file created
-    bool must_free_shmname;
-    void *addr; // non-null indicates mapped
+    ss8str shmname; // non-empty indicates shm/file created
+    void *addr;     // non-null indicates mapped
 };
 
 static int mmap_initialize(void **data) {
-    *data = partaked_malloc(sizeof(struct mmap_private_data));
-    memset(*data, 0, sizeof(struct mmap_private_data));
+    *data = partaked_calloc(1, sizeof(struct mmap_private_data));
+    struct mmap_private_data *d = *data;
+    ss8_init(&d->shmname);
     return 0;
 }
 
@@ -62,123 +63,129 @@ static void mmap_deinitialize(void *data) {
     if (d->fd_open) {
         ZF_LOGF("Deinitializing mmap segment whose fd is still open!");
     }
-    if (d->shmname != NULL) {
+    if (!ss8_is_empty(&d->shmname)) {
         ZF_LOGF("Deinitializing mmap segment whose shm/file still exists!");
     }
 
+    ss8_destroy(&d->shmname);
     partaked_free(data);
 }
 
-static int create_posix_shm(const struct partaked_daemon_config *config,
+static int create_posix_shm(const struct partaked_config *config,
                             struct mmap_private_data *d) {
-    bool generate_name = config->shmem.mmap.shmname == NULL;
+    bool generate_name = ss8_is_empty(&config->shmem.mmap.shmname);
     bool force = config->force && !generate_name;
 
-    char *generated_name = NULL;
-    char *name;
+    const char *generated_name = NULL;
+    ss8str name;
+    ss8_init(&name);
 
-    if (!generate_name) {
-        name = config->shmem.mmap.shmname;
-    }
+    int ret = 0;
+
+    if (!generate_name)
+        ss8_copy(&name, &config->shmem.mmap.shmname);
 
     int NUM_RETRIES = 100;
     for (int i = 0; i < NUM_RETRIES; ++i) {
         if (generate_name) {
-            name = generated_name =
+            generated_name =
                 partaked_alloc_random_name("/", 32, MAX_SHM_OPEN_NAME_LEN);
+            ss8_copy_cstr(&name, generated_name);
         }
 
         errno = 0;
-        d->fd = shm_open(name, O_RDWR | O_CREAT | (force ? 0 : O_EXCL), 0666);
-        int ret = errno;
+        d->fd = shm_open(ss8_const_cstr(&name),
+                         O_RDWR | O_CREAT | (force ? 0 : O_EXCL), 0666);
+        ret = errno;
         if (d->fd < 0) {
             char emsg[1024];
-            ZF_LOGE("shm_open: %s: %s", name,
+            ZF_LOGE("shm_open: %s: %s", ss8_const_cstr(&name),
                     partaked_strerror(ret, emsg, sizeof(emsg)));
             partaked_free(generated_name);
 
             if (generate_name && ret == EEXIST) {
                 continue;
             }
-            return ret;
+            goto exit;
         }
-        ZF_LOGI("shm_open: %s: fd = %d", name, d->fd);
+        ZF_LOGI("shm_open: %s: fd = %d", ss8_const_cstr(&name), d->fd);
 
-        d->shmname = name;
-        d->must_free_shmname = generate_name;
+        ss8_copy(&d->shmname, &name);
         d->fd_open = true;
-        return 0;
+        goto exit;
     }
 
     ZF_LOGE("Giving up after trying %d names", NUM_RETRIES);
-    return EEXIST;
+    ret = EEXIST;
+
+exit:
+    ss8_destroy(&name);
+    return ret;
 }
 
 static int unlink_posix_shm(struct mmap_private_data *d) {
-    if (d->shmname == NULL) {
+    if (ss8_is_empty(&d->shmname)) {
         return 0;
     }
 
     int ret = 0;
     errno = 0;
-    if (shm_unlink(d->shmname) != 0) {
+    if (shm_unlink(ss8_const_cstr(&d->shmname)) != 0) {
         ret = errno;
         char emsg[1024];
-        ZF_LOGE("shm_unlink: %s: %s", d->shmname,
+        ZF_LOGE("shm_unlink: %s: %s", ss8_const_cstr(&d->shmname),
                 partaked_strerror(ret, emsg, sizeof(emsg)));
     }
-    ZF_LOGI("shm_unlink: %s", d->shmname);
+    ZF_LOGI("shm_unlink: %s", ss8_const_cstr(&d->shmname));
 
     // Marked unlinked even on error; there is nothing further we can do.
-    if (d->must_free_shmname) {
-        partaked_free((void *)d->shmname);
-    }
-    d->shmname = NULL;
+    ss8_clear(&d->shmname);
 
     return ret;
 }
 
-// On return, *canonical is set to either 'name' or an allocated string.
-static int canonicalize_filename(const char *name, const char **canonical) {
-    if (strcmp(name, "/") == 0) { // Get edge case out of the way
-        *canonical = name;
+static int canonicalize_filename(const ss8str *name, ss8str *canonical) {
+    if (ss8_equals_ch(name, '/')) { // Get edge case out of the way
+        ss8_copy(canonical, name);
         return 0;
     }
 
     int ret = 0;
-    char *name1 = NULL, *name2 = NULL, *rdname = NULL;
 
     // We need to run realpath() on the directory, since the file may not
     // exist yet. Some implementations of dirname() and basename() can modify
     // the given path, so we need to make copies.
 
-    name1 = partaked_malloc(strlen(name) + 1);
-    strcpy(name1, name);
+    ss8str wk;
+    ss8_init(&wk);
+
+    ss8_copy(&wk, name);
     errno = 0;
-    char *dirnm = dirname(name1);
+    char *dirnm = dirname(ss8_cstr(&wk));
     if (dirnm == NULL) {
         ret = errno;
         char emsg[1024];
-        ZF_LOGE("dirname: %s: %s", name,
+        ZF_LOGE("dirname: %s: %s", ss8_const_cstr(name),
                 partaked_strerror(ret, emsg, sizeof(emsg)));
         goto exit;
     }
 
-    name2 = partaked_malloc(strlen(name) + 1);
-    strcpy(name2, name);
+    ss8_copy(&wk, name);
     errno = 0;
-    char *basnm = basename(name2);
+    char *basnm = basename(ss8_cstr(&wk));
     if (basnm == NULL) {
         ret = errno;
         char emsg[1024];
-        ZF_LOGE("basename: %s: %s", name,
+        ZF_LOGE("basename: %s: %s", ss8_const_cstr(name),
                 partaked_strerror(ret, emsg, sizeof(emsg)));
         goto exit;
     }
 
-    rdname = partaked_malloc(PATH_MAX + 1);
+    ss8str rdname;
+    ss8_init(&rdname);
+    ss8_set_len(&rdname, PATH_MAX);
     errno = 0;
-    char *realdirnm = realpath(dirnm, rdname);
+    char *realdirnm = realpath(dirnm, ss8_cstr(&rdname));
     if (realdirnm == NULL) {
         ret = errno;
         char emsg[1024];
@@ -187,73 +194,58 @@ static int canonicalize_filename(const char *name, const char **canonical) {
         goto exit;
     }
 
-    *canonical = partaked_malloc(strlen(realdirnm) + 1 + strlen(basnm) + 1);
-    char *c = (char *)*canonical;
-    strcpy(c, realdirnm);
-    strcat(c, "/");
-    strcat(c, basnm);
+    ss8_copy_cstr(canonical, realdirnm);
+    ss8_cat_ch(canonical, '/');
+    ss8_cat_cstr(canonical, basnm);
 
 exit:
-    partaked_free(rdname);
-    partaked_free(name2);
-    partaked_free(name1);
+    ss8_destroy(&rdname);
+    ss8_destroy(&wk);
     return ret;
 }
 
-static int create_file_shm(const struct partaked_daemon_config *config,
+static int create_file_shm(const struct partaked_config *config,
                            struct mmap_private_data *d) {
-    if (d->must_free_shmname) {
-        partaked_free((void *)d->shmname);
-    }
-
     // We need to use a canonicalized path, because it will be passed to
     // clients for them to also open.
-    int ret = canonicalize_filename(config->shmem.mmap.filename, &d->shmname);
+    int ret = canonicalize_filename(&config->shmem.mmap.filename, &d->shmname);
     if (ret != 0)
         return ret;
-    d->must_free_shmname = d->shmname != config->shmem.mmap.filename;
 
     errno = 0;
-    d->fd = open(d->shmname,
+    d->fd = open(ss8_const_cstr(&d->shmname),
                  O_RDWR | O_CREAT | (config->force ? 0 : O_EXCL) | O_CLOEXEC,
                  0666);
     ret = errno;
     if (d->fd < 0) {
         char emsg[1024];
-        ZF_LOGE("open: %s: %s", d->shmname,
+        ZF_LOGE("open: %s: %s", ss8_const_cstr(&d->shmname),
                 partaked_strerror(ret, emsg, sizeof(emsg)));
-        if (d->must_free_shmname) {
-            partaked_free((void *)d->shmname);
-        }
-        d->shmname = NULL;
+        ss8_clear(&d->shmname);
         return ret;
     }
-    ZF_LOGI("open: %s: fd = %d", d->shmname, d->fd);
+    ZF_LOGI("open: %s: fd = %d", ss8_const_cstr(&d->shmname), d->fd);
 
     d->fd_open = true;
     return 0;
 }
 
 static int unlink_file_shm(struct mmap_private_data *d) {
-    if (d->shmname == NULL) {
+    if (ss8_is_empty(&d->shmname))
         return 0;
-    }
 
     int ret = 0;
     errno = 0;
-    if (unlink(d->shmname) != 0) {
+    if (unlink(ss8_const_cstr(&d->shmname)) != 0) {
         ret = errno;
         char emsg[1024];
-        ZF_LOGE("unlink: %s: %s", d->shmname,
+        ZF_LOGE("unlink: %s: %s", ss8_const_cstr(&d->shmname),
                 partaked_strerror(ret, emsg, sizeof(emsg)));
     }
-    ZF_LOGI("unlink: %s", d->shmname);
+    ZF_LOGI("unlink: %s", ss8_const_cstr(&d->shmname));
 
     // Marked unlinked even on error; there is nothing further we can do.
-    if (d->must_free_shmname) {
-        partaked_free((void *)d->shmname);
-    }
-    d->shmname = NULL;
+    ss8_clear(&d->shmname);
 
     return ret;
 }
@@ -279,8 +271,7 @@ static int close_fd(struct mmap_private_data *d) {
     return 0;
 }
 
-static int mmap_allocate(const struct partaked_daemon_config *config,
-                         void *data) {
+static int mmap_allocate(const struct partaked_config *config, void *data) {
     struct mmap_private_data *d = data;
 
     d->use_posix = config->shmem.mmap.shm_open;
@@ -325,8 +316,7 @@ error:
     return ret;
 }
 
-static void mmap_deallocate(const struct partaked_daemon_config *config,
-                            void *data) {
+static void mmap_deallocate(const struct partaked_config *config, void *data) {
     struct mmap_private_data *d = data;
 
     // fd is already closed in allocate()
@@ -356,7 +346,8 @@ static void mmap_add_mapping_spec(flatcc_builder_t *b, void *data) {
     struct mmap_private_data *d = data;
 
     partake_protocol_SegmentSpec_spec_PosixMmapSpec_start(b);
-    partake_protocol_PosixMmapSpec_name_create_str(b, d->shmname);
+    partake_protocol_PosixMmapSpec_name_create_str(
+        b, ss8_const_cstr(&d->shmname));
     partake_protocol_PosixMmapSpec_use_shm_open_add(b, d->use_posix);
     partake_protocol_SegmentSpec_spec_PosixMmapSpec_end(b);
 }

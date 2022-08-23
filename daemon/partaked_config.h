@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <ss8str.h>
+
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -16,29 +18,30 @@ enum partaked_shmem_type {
     PARTAKED_SHMEM_WIN32,
 };
 
-struct partaked_daemon_config {
-    const char *socket;
-    // 'socket' may point to 'socket_buf' or elsewhere
-    char socket_buf[96];
+struct partaked_config {
+    ss8str socket;
 
     size_t size;
     bool force;
 
-    enum partaked_shmem_type type;
-    union {
+    struct {
+        enum partaked_shmem_type type;
         struct {
             bool shm_open;
-            char *shmname;
-            char *filename;
+            ss8str shmname;  // if shm_open
+            ss8str filename; // if !shm_open
         } mmap;
         struct {
             int key;
             bool huge_pages;
         } shmget;
         struct {
-            char *filename; // NULL for system paging file
-            char *name;
+            ss8str filename; // system paging file if empty
+            ss8str mappingname;
             bool large_pages;
         } win32;
     } shmem;
 };
+
+struct partaked_config *partaked_config_create(void);
+void partaked_config_destroy(struct partaked_config *config);

@@ -11,10 +11,10 @@
 
 struct partaked_connection;
 struct partaked_daemon;
-struct partaked_daemon_config;
+struct partaked_config;
 
 // Remove connection from the list to be closed upon server shutdown
 void partaked_daemon_remove_connection(struct partaked_daemon *daemon,
                                        struct partaked_connection *conn);
 
-int partaked_daemon_run(const struct partaked_daemon_config *config);
+int partaked_daemon_run(const struct partaked_config *config);

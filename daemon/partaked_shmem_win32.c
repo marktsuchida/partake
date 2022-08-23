@@ -15,12 +15,12 @@
 
 #ifdef _WIN32
 
+#include <ss8str.h>
 #include <zf_log.h>
 
 struct win32_private_data {
     HANDLE h_file;
-    char *mapping_name;
-    bool must_free_mapping_name;
+    ss8str mapping_name;
     HANDLE h_mapping;
     bool large_pages;
     void *addr;
@@ -32,6 +32,7 @@ static int win32_initialize(void **data) {
 
     struct win32_private_data *d = *data;
     d->h_file = INVALID_HANDLE_VALUE;
+    ss8_init(&d->mapping_name);
     d->h_mapping = INVALID_HANDLE_VALUE;
 
     return 0;
@@ -53,10 +54,7 @@ static void win32_deinitialize(void *data) {
         ZF_LOGF("Deinitializing Win32 segment that is still mapped!");
     }
 
-    if (d->must_free_mapping_name) {
-        partaked_free(d->mapping_name);
-    }
-
+    ss8_destroy(&d->mapping_name);
     partaked_free(data);
 }
 
@@ -99,30 +97,32 @@ static int add_lock_memory_privilage(void) {
     return 0;
 }
 
-static int create_file(const struct partaked_daemon_config *config,
+static int create_file(const struct partaked_config *config,
                        struct win32_private_data *d) {
     // We do not need to canonicalize the filename, since we never send it
     // to clients.
     d->h_file = CreateFileA(
-        config->shmem.win32.filename, GENERIC_READ | GENERIC_WRITE, 0, NULL,
+        ss8_const_cstr(&config->shmem.win32.filename),
+        GENERIC_READ | GENERIC_WRITE, 0, NULL,
         config->force ? CREATE_ALWAYS : CREATE_NEW,
         FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, NULL);
     if (d->h_file == INVALID_HANDLE_VALUE) {
         DWORD ret = GetLastError();
         char emsg[1024];
-        ZF_LOGE("CreateFile: %s: %s", config->shmem.win32.filename,
+        ZF_LOGE("CreateFile: %s: %s",
+                ss8_const_cstr(&config->shmem.win32.filename),
                 partaked_strerror(ret, emsg, sizeof(emsg)));
         return ret;
     }
 
-    ZF_LOGI("CreateFile: %s: HANDLE %p", config->shmem.win32.filename,
-            d->h_file);
+    ZF_LOGI("CreateFile: %s: HANDLE %p",
+            ss8_const_cstr(&config->shmem.win32.filename), d->h_file);
     return 0;
 }
 
-static int create_file_mapping(const struct partaked_daemon_config *config,
+static int create_file_mapping(const struct partaked_config *config,
                                struct win32_private_data *d) {
-    bool generate_name = config->shmem.win32.name == NULL;
+    bool generate_name = ss8_is_empty(&config->shmem.win32.mappingname);
     bool force = config->force && !generate_name;
 
     if (config->size == 0) {
@@ -133,17 +133,19 @@ static int create_file_mapping(const struct partaked_daemon_config *config,
     d->large_pages = config->shmem.win32.large_pages;
 
     char *generated_name = NULL;
-    char *name;
+    ss8str name;
+    ss8_init(&name);
 
-    if (!generate_name) {
-        name = config->shmem.win32.name;
-    }
+    DWORD ret = 0;
+
+    if (!generate_name)
+        ss8_copy(&name, &config->shmem.win32.mappingname);
 
     int NUM_RETRIES = 100;
     for (int i = 0; i < NUM_RETRIES; ++i) {
         if (generate_name) {
-            name = generated_name =
-                partaked_alloc_random_name("Local\\", 32, 255);
+            generated_name = partaked_alloc_random_name("Local\\", 32, 255);
+            ss8_copy_cstr(&name, generated_name);
         }
 
         d->h_mapping =
@@ -151,11 +153,11 @@ static int create_file_mapping(const struct partaked_daemon_config *config,
                                PAGE_READWRITE | SEC_COMMIT |
                                    (d->large_pages ? SEC_LARGE_PAGES : 0),
                                sizeof(size_t) > 4 ? config->size >> 32 : 0,
-                               config->size & UINT_MAX, name);
-        DWORD ret = GetLastError();
+                               config->size & UINT_MAX, ss8_const_cstr(&name));
+        ret = GetLastError();
         if (ret != 0) {
             char emsg[1024];
-            ZF_LOGE("CreateFileMapping: %s: %s", name,
+            ZF_LOGE("CreateFileMapping: %s: %s", ss8_const_cstr(&name),
                     partaked_strerror(ret, emsg, sizeof(emsg)));
             partaked_free(generated_name);
             d->h_mapping = INVALID_HANDLE_VALUE;
@@ -164,18 +166,22 @@ static int create_file_mapping(const struct partaked_daemon_config *config,
                 CloseHandle(d->h_mapping);
                 continue;
             }
-            return ret;
+            goto exit;
         }
 
-        ZF_LOGI("CreateFileMapping: %s: HANDLE %p", name, d->h_mapping);
+        ZF_LOGI("CreateFileMapping: %s: HANDLE %p", ss8_const_cstr(&name),
+                d->h_mapping);
 
-        d->mapping_name = name;
-        d->must_free_mapping_name = generate_name;
-        return 0;
+        ss8_copy(&d->mapping_name, &name);
+        goto exit;
     }
 
     ZF_LOGE("Giving up after trying %d names", NUM_RETRIES);
-    return ERROR_ALREADY_EXISTS;
+    ret = ERROR_ALREADY_EXISTS;
+
+exit:
+    ss8_destroy(&name);
+    return ret;
 }
 
 static void close_handle(HANDLE *h) {
@@ -197,7 +203,7 @@ static void close_handle(HANDLE *h) {
     *h = INVALID_HANDLE_VALUE;
 }
 
-static int map_memory(const struct partaked_daemon_config *config,
+static int map_memory(const struct partaked_config *config,
                       struct win32_private_data *d) {
     if (config->size == 0) {
         ZF_LOGI("MapViewOfFile skipped due to zero size");
@@ -242,8 +248,7 @@ static int unmap_memory(struct win32_private_data *d) {
     return ret;
 }
 
-static int win32_allocate(const struct partaked_daemon_config *config,
-                          void *data) {
+static int win32_allocate(const struct partaked_config *config, void *data) {
     struct win32_private_data *d = data;
 
     if (config->shmem.win32.large_pages) {
@@ -252,7 +257,7 @@ static int win32_allocate(const struct partaked_daemon_config *config,
             return ret;
     }
 
-    if (config->shmem.win32.filename != NULL) {
+    if (!ss8_is_empty(&config->shmem.win32.filename)) {
         int ret = create_file(config, d);
         if (ret != 0)
             return ret;
@@ -279,7 +284,7 @@ static int win32_allocate(const struct partaked_daemon_config *config,
     return 0;
 }
 
-static void win32_deallocate(const struct partaked_daemon_config *config,
+static void win32_deallocate(const struct partaked_config *config,
                              void *data) {
     struct win32_private_data *d = data;
 
@@ -300,7 +305,8 @@ static void win32_add_mapping_spec(flatcc_builder_t *b, void *data) {
 
     partake_protocol_SegmentSpec_spec_Win32FileMappingSpec_start(b);
 
-    partake_protocol_Win32FileMappingSpec_name_create_str(b, d->mapping_name);
+    partake_protocol_Win32FileMappingSpec_name_create_str(
+        b, ss8_const_cstr(&d->mapping_name));
 
     partake_protocol_Win32FileMappingSpec_use_large_pages_add(b,
                                                               d->large_pages);

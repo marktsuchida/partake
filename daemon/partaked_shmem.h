@@ -6,7 +6,7 @@
 
 #pragma once
 
-struct partaked_daemon_config;
+struct partaked_config;
 
 #include "partake_protocol_builder.h"
 
@@ -16,9 +16,8 @@ struct partaked_shmem_impl {
     // int return values are platform error codes (success = 0)
     int (*initialize)(void **data);
     void (*deinitialize)(void *data);
-    int (*allocate)(const struct partaked_daemon_config *config, void *data);
-    void (*deallocate)(const struct partaked_daemon_config *config,
-                       void *data);
+    int (*allocate)(const struct partaked_config *config, void *data);
+    void (*deallocate)(const struct partaked_config *config, void *data);
     void *(*getaddr)(void *data);
     void (*add_mapping_spec)(flatcc_builder_t *b, void *data);
 };

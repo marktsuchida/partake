@@ -36,9 +36,9 @@ static inline char *partaked_strerror(DWORD code, char *buf, size_t size) {
 #else // _WIN32
 
 // POSIX
-static inline char *partaked_strerror(int errno, char *buf, size_t size) {
-    if (strerror_r(errno, buf, size)) {
-        snprintf(buf, size, "Unknown error %d", errno);
+static inline char *partaked_strerror(int erno, char *buf, size_t size) {
+    if (strerror_r(erno, buf, size)) {
+        snprintf(buf, size, "Unknown error %d", erno);
     }
     return buf;
 }
