@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "partaked_daemon.h"
+struct partaked_daemon_config;
 
 #include "partake_protocol_builder.h"
 

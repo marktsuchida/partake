@@ -6,8 +6,10 @@
 
 #include "partaked_prefix.h"
 
-#include "partaked_connection.h"
 #include "partaked_daemon.h"
+
+#include "partaked_config.h"
+#include "partaked_connection.h"
 #include "partaked_logging.h"
 #include "partaked_malloc.h"
 #include "partaked_pool.h"

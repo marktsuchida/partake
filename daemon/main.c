@@ -6,6 +6,7 @@
 
 #include "partaked_prefix.h"
 
+#include "partaked_config.h"
 #include "partaked_daemon.h"
 
 #include <dropt.h>

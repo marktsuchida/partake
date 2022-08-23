@@ -5,8 +5,10 @@
  */
 
 #include "partaked_prefix.h"
+
 #include "partaked_shmem.h"
 
+#include "partaked_config.h"
 #include "partaked_logging.h"
 #include "partaked_malloc.h"
 #include "partaked_random.h"

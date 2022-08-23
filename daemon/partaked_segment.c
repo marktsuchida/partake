@@ -6,6 +6,7 @@
 
 #include "partaked_prefix.h"
 
+#include "partaked_config.h"
 #include "partaked_malloc.h"
 #include "partaked_segment.h"
 #include "partaked_shmem.h"
