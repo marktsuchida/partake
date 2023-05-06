@@ -337,6 +337,7 @@ table UnshareResponse {
 
 table CreateVoucherRequest {
     token: uint64;
+    count: uint32 = 1;
 
     /*
      * The token must refer to an existing object, or else status is
@@ -354,13 +355,21 @@ table CreateVoucherRequest {
      *
      * The only possible operations on a voucher are Open and DiscardVoucher.
      *
+     * The voucher is created with the given count, which specifies the number
+     * of times it can be opened or discarded before it becomes invalid. The
+     * count must not be zero. A count of 4,294,967,295 (maximum value of
+     * uint32) can be used when it is not known how many peers will receive the
+     * voucher (for example in a publish-subscribe scheme where the publisher
+     * does not know the number of its subscribers).
+     *
      * To prevent lost vouchers from causing shared memory to fill up with
      * unused objects (for example when a process handling vouchers crashes),
      * each voucher expires after a set timeout (measured from when the voucher
      * is created). Thus, a voucher should be created just before sending it
      * off to its destination, and the receiver of a voucher should open it (or
      * discard it) without delay. Voucher expiry should not be relied upon for
-     * normal operation.
+     * normal operation, except in the (unavoidable) case of using a voucher to
+     * share an object with an unknown number of receivers.
      *
      * Voucher tokens live in the same namespace as ordinary tokens. Thus they
      * are guaranteed to be unique during the lifetime of the partaked

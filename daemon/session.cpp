@@ -168,7 +168,7 @@ TEST_CASE("session: object ops") {
             SUBCASE("create_voucher -> no such object") {
                 auto err = Status::OK;
                 sess1.create_voucher(
-                    tok, clock::now(),
+                    tok, 1, clock::now(),
                     []([[maybe_unused]] btoken t) { CHECK(false); },
                     [&](auto e) { err = e; });
                 CHECK(err == Status::NO_SUCH_OBJECT);
@@ -356,7 +356,7 @@ TEST_CASE("session: object ops") {
             btoken vtok = 0;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess1.create_voucher(
-                tok, clock::now(), [&](btoken t) { vtok = t; },
+                tok, 1, clock::now(), [&](btoken t) { vtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(vtok != 0);
             CHECK(vtok != tok);
@@ -366,7 +366,7 @@ TEST_CASE("session: object ops") {
             btoken vtok = 0;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess2.create_voucher(
-                tok, clock::now(), [&](btoken t) { vtok = t; },
+                tok, 1, clock::now(), [&](btoken t) { vtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(vtok != 0);
             CHECK(vtok != tok);
@@ -527,7 +527,7 @@ TEST_CASE("session: object ops") {
             btoken vtok = 0;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess1.create_voucher(
-                tok, clock::now(), [&](btoken t) { vtok = t; },
+                tok, 1, clock::now(), [&](btoken t) { vtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(vtok != 0);
             CHECK(vtok != tok);
@@ -537,7 +537,7 @@ TEST_CASE("session: object ops") {
             btoken vtok = 0;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess2.create_voucher(
-                tok, clock::now(), [&](btoken t) { vtok = t; },
+                tok, 1, clock::now(), [&](btoken t) { vtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(vtok != 0);
             CHECK(vtok != tok);
@@ -834,7 +834,7 @@ TEST_CASE("session: object ops") {
                 tok = t;
                 CHECK(r == 532);
                 sess1.create_voucher(
-                    tok, clock::now(), [&](btoken t2) { vtok = t2; },
+                    tok, 1, clock::now(), [&](btoken t2) { vtok = t2; },
                     []([[maybe_unused]] Status e) { CHECK(false); });
             },
             []([[maybe_unused]] Status e) { CHECK(false); });
@@ -886,6 +886,21 @@ TEST_CASE("session: object ops") {
             CHECK(opened == 0);
             CHECK(err == Status::OK);
 
+            SUBCASE("open-wait voucher by sess2 -> no such object") {
+                auto err2 = Status::OK;
+                sess2.open(
+                    vtok, Policy::DEFAULT, true, clock::now(),
+                    []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
+                        CHECK(false);
+                    },
+                    [&](auto e) { err2 = e; },
+                    []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
+                        CHECK(false);
+                    },
+                    []([[maybe_unused]] Status e) { CHECK(false); });
+                CHECK(err2 == Status::NO_SUCH_OBJECT);
+            }
+
             SUBCASE("share by sess1 -> open succeeds") {
                 bool ok = false;
                 sess1.share(
@@ -911,7 +926,7 @@ TEST_CASE("session: object ops") {
             btoken newvtok = 0;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess1.create_voucher(
-                vtok, clock::now(), [&](btoken t) { newvtok = t; },
+                vtok, 1, clock::now(), [&](btoken t) { newvtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(newvtok != 0);
             CHECK(newvtok != vtok);
@@ -967,7 +982,8 @@ TEST_CASE("session: object ops") {
                     tok,
                     [&] {
                         sess1.create_voucher(
-                            tok, clock::now(), [&](btoken t2) { vtok = t2; },
+                            tok, 1, clock::now(),
+                            [&](btoken t2) { vtok = t2; },
                             []([[maybe_unused]] Status e) { CHECK(false); });
                     },
                     []([[maybe_unused]] Status e) { CHECK(false); });
@@ -1204,7 +1220,7 @@ TEST_CASE("session: object ops") {
             btoken vtok = 0;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess1.create_voucher(
-                tok, clock::now(), [&](btoken t) { vtok = t; },
+                tok, 1, clock::now(), [&](btoken t) { vtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(vtok != 0);
             CHECK(vtok != tok);
@@ -1214,7 +1230,7 @@ TEST_CASE("session: object ops") {
             btoken vtok = 0;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess2.create_voucher(
-                tok, clock::now(), [&](btoken t) { vtok = t; },
+                tok, 1, clock::now(), [&](btoken t) { vtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(vtok != 0);
             CHECK(vtok != tok);
@@ -1237,9 +1253,9 @@ TEST_CASE("session: object ops") {
         }
     }
 
-    // Prevent destroyed sessions from resuming requests (in other sessions)
-    // awaiting unique ownership. This is required when destroying sessions in
-    // a top-down manner.
+    // Prevent destroyed sessions from resuming requests (in other
+    // sessions) awaiting unique ownership. This is required when
+    // destroying sessions in a top-down manner.
     sess1.drop_pending_requests();
     sess2.drop_pending_requests();
 }

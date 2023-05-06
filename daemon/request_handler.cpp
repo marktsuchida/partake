@@ -52,8 +52,8 @@ struct mock_session {
                              std::function<void(protocol::Status)>,
                              std::function<void(btoken)>,
                              std::function<void(protocol::Status)>));
-    MAKE_MOCK4(create_voucher,
-               void(btoken, time_point, std::function<void(btoken)>,
+    MAKE_MOCK5(create_voucher,
+               void(btoken, unsigned, time_point, std::function<void(btoken)>,
                     std::function<void(protocol::Status)>));
     MAKE_MOCK4(discard_voucher,
                void(btoken, time_point, std::function<void(btoken)>,
@@ -920,15 +920,15 @@ TEST_CASE("request_handler: create_voucher") {
     b.FinishSizePrefixed(CreateRequestMessage(
         b, b.CreateVector({
                CreateRequest(b, 42, AnyRequest::CreateVoucherRequest,
-                             CreateCreateVoucherRequest(b, 12345).Union()),
+                             CreateCreateVoucherRequest(b, 12345, 3).Union()),
            })));
     auto req_span = b.GetBufferSpan();
 
     using trompeloeil::_;
 
     SUBCASE("success") {
-        REQUIRE_CALL(sess, create_voucher(12345, _, _, _))
-            .SIDE_EFFECT(_3(23456))
+        REQUIRE_CALL(sess, create_voucher(12345, 3, _, _, _))
+            .SIDE_EFFECT(_4(23456))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
         REQUIRE_CALL(write, call(_))
@@ -952,8 +952,8 @@ TEST_CASE("request_handler: create_voucher") {
     }
 
     SUBCASE("failure") {
-        REQUIRE_CALL(sess, create_voucher(12345, _, _, _))
-            .SIDE_EFFECT(_4(Status::NO_SUCH_OBJECT))
+        REQUIRE_CALL(sess, create_voucher(12345, 3, _, _, _))
+            .SIDE_EFFECT(_5(Status::NO_SUCH_OBJECT))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
         REQUIRE_CALL(write, call(_))

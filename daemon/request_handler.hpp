@@ -342,7 +342,7 @@ template <typename Session> class request_handler {
                                time_point now, response_builder &rb) noexcept
         -> bool {
         sess->create_voucher(
-            req->token(), now,
+            req->token(), req->count(), now,
             [seqno, &rb](btoken voucher_token) noexcept {
                 auto &fbb = rb.fbbuilder();
                 auto resp =

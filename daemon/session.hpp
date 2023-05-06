@@ -290,9 +290,12 @@ class session {
     }
 
     template <typename Success, typename Error>
-    void create_voucher(btoken target, time_point now, Success success_cb,
-                        Error error_cb) noexcept {
+    void create_voucher(btoken target, unsigned count, time_point now,
+                        Success success_cb, Error error_cb) noexcept {
         assert(valid);
+
+        if (count == 0)
+            return error_cb(protocol::Status::INVALID_REQUEST);
 
         auto const hnd = find_handle(target);
         std::shared_ptr<object_type> real_target;
@@ -307,8 +310,7 @@ class session {
 
         // TODO Configurable time-to-live
         auto expiration = now + std::chrono::seconds(10);
-        // TODO Support counts > 1
-        auto voucher = repo->create_voucher(real_target, expiration, 1);
+        auto voucher = repo->create_voucher(real_target, expiration, count);
 
         success_cb(voucher->token());
     }

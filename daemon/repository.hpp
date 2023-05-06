@@ -90,6 +90,7 @@ class repository {
         -> std::shared_ptr<object_type> {
         assert(target);
         assert(target->is_proper_object());
+        assert(count > 0);
         target->as_proper_object().add_voucher();
         auto voucher = object_storage.emplace(
             tokseq.generate(), std::move(target), count, expiration);
