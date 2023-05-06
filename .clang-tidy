@@ -1,0 +1,35 @@
+# This file is part of the partake project
+# Copyright 2020-2023 Board of Regents of the University of Wisconsin System
+# SPDX-License-Identifier: BSD-2-Clause
+---
+Checks: >-
+    -*,
+    bugprone-*,
+    clang-analyzer-*,
+    clang-diagnostic-*,
+    cppcoreguidelines-*,
+    misc-*,
+    modernize-*,
+    performance-*,
+    portability-*,
+    readability-*,
+    -bugprone-exception-escape,
+    -bugprone-macro-parentheses,
+    -clang-analyzer-cplusplus.NewDelete,
+    -clang-analyzer-cplusplus.NewDeleteLeaks,
+    -cppcoreguidelines-avoid-magic-numbers,
+    -cppcoreguidelines-special-member-functions,
+    -misc-non-private-member-variables-in-classes,
+    -readability-braces-around-statements,
+    -readability-container-contains,
+    -readability-identifier-length,
+    -readability-identifier-naming,
+    -readability-implicit-bool-conversion,
+    -readability-magic-numbers,
+    -readability-redundant-access-specifiers,
+
+CheckOptions:
+  bugprone-easily-swappable-parameters.MinimumLength: 3
+  readability-uppercase-literal-suffix.NewSuffixes: L;uL;LL;uLL
+  readability-function-cognitive-complexity.IgnoreMacros: true
+...

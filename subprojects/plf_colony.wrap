@@ -1,0 +1,15 @@
+# This file is part of the partake project
+# Copyright 2020-2023 Board of Regents of the University of Wisconsin System
+# SPDX-License-Identifier: BSD-2-Clause
+
+[wrap-git]
+directory = plf_colony-git
+
+url = https://github.com/mattreecebentley/plf_colony.git
+revision = 28abaa9acb683d064033fe32d58ec7d1267224d2
+depth = 1
+
+patch_directory = plf_colony
+
+[provide]
+plf_colony = plf_colony_dep

@@ -1,16 +1,17 @@
 # This file is part of the partake project
-# Copyright 2020-2022 Board of Regents of the University of Wisconsin System
+# Copyright 2020-2023 Board of Regents of the University of Wisconsin System
 # SPDX-License-Identifier: BSD-2-Clause
 
-protocol_headers = custom_target('protocol_headers',
-    output: [
-        'flatbuffers_common_builder.h',
-        'flatbuffers_common_reader.h',
-        'partake_protocol_builder.h',
-        'partake_protocol_reader.h',
-    ],
+protocol_cpp_headers = custom_target(
+    'protocol_cpp_headers',
+    output: 'partake_protocol_generated.h',
     input: 'partake_protocol.fbs',
     command: [
-        prog_flatcc, '-cvwo', '@OUTDIR@', '@INPUT@',
+        flatc_prog,
+        '--cpp',
+        '--cpp-std=c++17',
+        '--scoped-enums',
+        '-o', '@OUTDIR@',
+        '@INPUT@',
     ],
 )

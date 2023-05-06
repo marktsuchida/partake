@@ -1,51 +1,83 @@
 # This file is part of the partake project
-# Copyright 2020-2022 Board of Regents of the University of Wisconsin System
+# Copyright 2020-2023 Board of Regents of the University of Wisconsin System
 # SPDX-License-Identifier: BSD-2-Clause
 
-partaked_sources = [
-    'main.c',
-    'partaked_allocator.c',
-    'partaked_channel.c',
-    'partaked_config.c',
-    'partaked_connection.c',
-    'partaked_daemon.c',
-    'partaked_handle.c',
-    'partaked_iobuf.c',
-    'partaked_malloc.c',
-    'partaked_pool.c',
-    'partaked_random.c',
-    'partaked_request.c',
-    'partaked_response.c',
-    'partaked_segment.c',
-    'partaked_sender.c',
-    'partaked_shmem_mmap.c',
-    'partaked_shmem_shmget.c',
-    'partaked_shmem_win32.c',
-    'partaked_task.c',
-    'partaked_token.c',
-    'partaked_voucherqueue.c',
+daemon_sources = [
+    'allocator.cpp',
+    'asio.cpp',
+    'cli.cpp',
+    'client.cpp',
+    'connection_acceptor.cpp',
+    'daemon.cpp',
+    'errors.cpp',
+    'handle.cpp',
+    'handle_list.cpp',
+    'hive.cpp',
+    'message.cpp',
+    'object.cpp',
+    'overloaded.cpp',
+    'posix.cpp',
+    'proper_object.cpp',
+    'quitter.cpp',
+    'random.cpp',
+    'repository.cpp',
+    'request_handler.cpp',
+    'response_builder.cpp',
+    'segment.cpp',
+    'session.cpp',
+    'shmem_mmap.cpp',
+    'shmem_sysv.cpp',
+    'shmem_win32.cpp',
+    'testing.cpp',
+    'time_point.cpp',
+    'token.cpp',
+    'token_hash_table.cpp',
+    'voucher.cpp',
+    'voucher_queue.cpp',
+    'win32.cpp',
 ]
+
+daemon_deps = [
+    boost_dep,
+    cli11_dep,
+    doctest_dep,
+    expected_dep,
+    flatbuffers_dep,
+    fmt_dep,
+    gsl_dep,
+    librt,
+    plf_colony_dep,
+    spdlog_dep,
+    trompeloeil_dep,
+]
+
+daemon_test = executable(
+    'daemon_test',
+    [
+        'test_main.cpp',
+        daemon_sources,
+        protocol_cpp_headers,
+    ],
+    dependencies: daemon_deps,
+)
+test('daemon test', daemon_test)
 
 executable('partaked',
     sources: [
-        common_sources,
-        partaked_sources,
-        protocol_headers,
+        'main.cpp',
+        # common_sources,
+        daemon_sources,
+        protocol_cpp_headers,
     ],
     include_directories: [
-        common_incdir,
-        dlmalloc_incdir,
-        ssstr_incdir,
+        # common_incdir,
     ],
-    dependencies: [
-        dropt_dep,
-        libbcrypt,
-        libbsd,
-        libflatccrt,
-        librt,
-        libuv,
-        uthash_dep,
-        zf_log_dep,
+    cpp_args: [
+        '-DDOCTEST_CONFIG_DISABLE',
+        # See https://github.com/doctest/doctest/issues/691
+        '-DDOCTEST_CONFIG_ASSERTS_RETURN_VALUES',
+        '-DDOCTEST_CONFIG_EVALUATE_ASSERTS_EVEN_WHEN_DISABLED'
     ],
+    dependencies: daemon_deps,
     gnu_symbol_visibility: 'hidden',
 )

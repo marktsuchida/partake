@@ -1,6 +1,6 @@
 /*
  * This file is part of the partake project
- * Copyright 2020-2022 Board of Regents of the University of Wisconsin System
+ * Copyright 2020-2023 Board of Regents of the University of Wisconsin System
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
@@ -59,8 +59,8 @@ table PosixMmapSpec {
 
 
 table SystemVSharedMemorySpec {
-    // shmget()
-    key: int32;
+    // shmat()
+    shm_id: int32; // >= 0
 }
 
 
@@ -143,17 +143,16 @@ table QuitRequest {
      * but allows partaked to log the disconnection as intentional, potentially
      * helping with diagnosing issues.
      *
-     * No response is sent by partaked to a QuitRequest, and all subsequent
-     * requests are discarded (the client should not send any). Any pending
-     * requests may be canceled without response.
+     * Any subsequent requests are discarded (the client should not send any).
+     * Any pending requests may be canceled without response.
      */
 }
 
 
 table QuitResponse {
     /*
-     * This response is NOT ACTUALLY SENT. It is defined here so that the
-     * AnyResponse union and AnyRequest union can have corresponding type ids.
+     * If this response is received by the client, it is the last message
+     * received.
      */
 }
 
@@ -225,8 +224,9 @@ table OpenRequest {
      * If 'policy' is PRIMITIVE, the object is opened for read and write
      * access.
      *
-     * If the token is a voucher, it is prevented from expiring during any wait
-     * and it always expires upon successful opening.
+     * If the token is a voucher, the object it refers to is opened as above.
+     * If 'wait' is true, opening succeeds even if the voucher expires before
+     * the object can be opened.
      *
      * In all cases, successfully opened objects must be closed when done with.
      */

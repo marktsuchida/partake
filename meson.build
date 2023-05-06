@@ -1,53 +1,94 @@
 # This file is part of the partake project
-# Copyright 2020-2022 Board of Regents of the University of Wisconsin System
+# Copyright 2020-2023 Board of Regents of the University of Wisconsin System
 # SPDX-License-Identifier: BSD-2-Clause
 
-project('partake', 'c',
+project('partake', 'cpp',
+    version: '0.1.0-dev',
     license: 'BSD-2-Clause',
     meson_version: '>=0.56.0',
-)
-
-cc = meson.get_compiler('c')
-
-if cc.get_id() in ['msvc', 'clang-cl']
-    add_global_arguments('/utf-8', language: 'c')
-endif
-
-# POSIX shm_open() and shm_unlink()
-librt = cc.find_library('rt', required: false)
-
-# arc4random() on Linux
-libbsd = cc.find_library('bsd', required: false)
-
-libbcrypt = cc.find_library('bcrypt', required: false)
-
-libuv = dependency(
-    'libuv',
-    fallback: 'libuv',
     default_options: [
-        'build_tests=false',
-        'build_benchmarks=false',
+        'cpp_std=c++17',
+        'werror=true',
+        'warning_level=3',
     ],
 )
 
-dlmalloc_incdir = subproject('dlmalloc').get_variable('dlmalloc_incdir')
+add_project_arguments(
+    '-DPARTAKE_VERSION=' + meson.project_version(),
+    language: 'cpp',
+)
 
-dropt_dep = dependency('dropt', fallback: 'dropt')
+cxx = meson.get_compiler('cpp')
 
-libflatccrt = dependency('flatccrt', fallback: ['flatcc', 'flatccrt_dep'])
-prog_flatcc = find_program('flatcc', required: false)
-if not prog_flatcc.found()
-    prog_flatcc = subproject('flatcc').get_variable('flatcc_prog')
+if cxx.get_id() in ['msvc', 'clang-cl']
+    add_global_arguments('/utf-8', language: 'cpp')
+    add_project_arguments('-DNOMINMAX', language: 'cpp')
+    add_global_arguments('-D_WIN32_WINNT=0x0A00', language: 'cpp') # Windows 10
 endif
 
-# ssstr ought to provide a dependency object, but this will work for now
-ssstr_incdir = subproject('ssstr').get_variable('public_inc')
+if cxx.get_id() in ['gcc', 'clang']
+    # Extra warnings
+    add_project_arguments(['-Wshadow', '-Wconversion'], language: 'cpp')
+endif
 
-uthash_dep = dependency('uthash', fallback: 'uthash')
+if host_machine.system() == 'darwin'
+    # macOS has the libunwind functions always available in libSystem
+    add_project_arguments(
+        '-DBOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED',
+        language: 'cpp',
+    )
+endif
 
-zf_log_dep = dependency('zf_log', fallback: 'zf_log')
+boost_dep = dependency('boost', include_type: 'system')
 
-unity_dep = dependency('unity', fallback: 'unity')
+gsl_dep = dependency(
+    'gsl',
+    fallback: ['microsoft-gsl', 'microsoft_gsl_dep'],
+    include_type: 'system',
+)
+
+expected_dep = dependency(
+    'tl-expected',
+    fallback: 'tl-expected',
+    include_type: 'system',
+)
+
+fmt_dep = dependency('fmt', fallback: 'fmt', include_type: 'system')
+
+cli11_dep = dependency('cli11', fallback: 'cli11', include_type: 'system')
+
+spdlog_dep = dependency('spdlog', fallback: 'spdlog', include_type: 'system')
+
+plf_colony_dep = dependency(
+    'plf_colony',
+    fallback: 'plf_colony',
+    include_type: 'system',
+)
+
+flatbuffers_dep = dependency(
+    'flatbuffers',
+    fallback: 'flatbuffers',
+    include_type: 'system',
+)
+flatc_prog = find_program('flatc', required: false)
+if not flatc_prog.found()
+    flatc_prog = subproject('flatbuffers').get_variable('flatc')
+endif
+
+# POSIX shm_open() and shm_unlink()
+librt = cxx.find_library('rt', required: false)
+
+doctest_dep = dependency(
+    'doctest',
+    fallback: 'doctest',
+    include_type: 'system',
+)
+
+trompeloeil_dep = dependency(
+    'trompeloeil',
+    fallback: ['trompeloeil', 'trompeloeil_dep'],
+    include_type: 'system',
+)
 
 subdir('common')
 subdir('protocol')
