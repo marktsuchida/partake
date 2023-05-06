@@ -111,7 +111,7 @@ TEST_CASE("request_handler: empty request message") {
     CHECK_FALSE(rh.handle_message(req_span));
 }
 
-TEST_CASE("request_handler: echo") {
+TEST_CASE("request_handler: ping") {
     mock_session sess;
     mock_writer write;
     mock_error_handler handle_error;
@@ -122,15 +122,12 @@ TEST_CASE("request_handler: echo") {
     flatbuffers::FlatBufferBuilder b;
     using namespace protocol;
     b.FinishSizePrefixed(CreateRequestMessage(
-        b,
-        b.CreateVector({
-            CreateRequest(
-                b, 42, AnyRequest::EchoRequest,
-                CreateEchoRequest(b, false, b.CreateString("hello")).Union()),
-            CreateRequest(
-                b, 43, AnyRequest::EchoRequest,
-                CreateEchoRequest(b, false, b.CreateString("world")).Union()),
-        })));
+        b, b.CreateVector({
+               CreateRequest(b, 42, AnyRequest::PingRequest,
+                             CreatePingRequest(b).Union()),
+               CreateRequest(b, 43, AnyRequest::PingRequest,
+                             CreatePingRequest(b).Union()),
+           })));
     auto req_span = b.GetBufferSpan();
 
     using trompeloeil::_;
@@ -152,18 +149,12 @@ TEST_CASE("request_handler: echo") {
     auto const *resp0 = resps->Get(0);
     CHECK(resp0->seqno() == 42);
     CHECK(resp0->status() == Status::OK);
-    CHECK(resp0->response_type() == AnyResponse::EchoResponse);
-    auto const *echo_resp0 = resp0->response_as_EchoResponse();
-    auto const *resp_text0 = echo_resp0->text();
-    CHECK(resp_text0->str() == "hello");
+    CHECK(resp0->response_type() == AnyResponse::PingResponse);
 
     auto const *resp1 = resps->Get(1);
     CHECK(resp1->seqno() == 43);
     CHECK(resp1->status() == Status::OK);
-    CHECK(resp1->response_type() == AnyResponse::EchoResponse);
-    auto const *echo_resp1 = resp1->response_as_EchoResponse();
-    auto const *resp_text1 = echo_resp1->text();
-    CHECK(resp_text1->str() == "world");
+    CHECK(resp1->response_type() == AnyResponse::PingResponse);
 }
 
 TEST_CASE("request_handler: hello") {

@@ -38,8 +38,7 @@ TEST_CASE("response_builder: empty response") {
 TEST_CASE("response_builder: successful response") {
     response_builder rb;
     auto &fbb = rb.fbbuilder();
-    auto text = fbb.CreateString("Hello, World!");
-    auto resp = protocol::CreateEchoResponse(fbb, text);
+    auto resp = protocol::CreatePingResponse(fbb);
     rb.add_successful_response(123, resp);
     CHECK_FALSE(rb.empty());
     auto buf = rb.release_buffer();
@@ -53,10 +52,7 @@ TEST_CASE("response_builder: successful response") {
     auto const *resp0 = root->responses()->Get(0);
     CHECK(resp0->seqno() == 123);
     CHECK(resp0->status() == protocol::Status::OK);
-    CHECK(resp0->response_type() == protocol::AnyResponse::EchoResponse);
-    auto const *echo_resp = resp0->response_as_EchoResponse();
-    auto const *echo_text = echo_resp->text();
-    CHECK(echo_text->str() == "Hello, World!");
+    CHECK(resp0->response_type() == protocol::AnyResponse::PingResponse);
 }
 
 TEST_CASE("response_builder: error response") {

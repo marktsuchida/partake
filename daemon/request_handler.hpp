@@ -152,8 +152,8 @@ template <typename Session> class request_handler {
         auto type = req->request_type();
         switch (type) {
             using r = protocol::AnyRequest;
-        case r::EchoRequest:
-            return handle_echo(seqno, req->request_as_EchoRequest(), rb);
+        case r::PingRequest:
+            return handle_ping(seqno, req->request_as_PingRequest(), rb);
         case r::HelloRequest:
             return handle_hello(seqno, req->request_as_HelloRequest(), rb);
         case r::QuitRequest:
@@ -183,16 +183,12 @@ template <typename Session> class request_handler {
         }
     }
 
-    auto handle_echo(std::uint64_t seqno, protocol::EchoRequest const *req,
+    auto handle_ping(std::uint64_t seqno, protocol::PingRequest const *req,
                      response_builder &rb) noexcept -> bool {
-        if (not req->skip_response()) {
-            auto const *text = req->text();
-
-            auto &fbb = rb.fbbuilder();
-            auto resp_text = fbb.CreateString(text);
-            auto resp = protocol::CreateEchoResponse(fbb, resp_text);
-            rb.add_successful_response(seqno, resp);
-        }
+        (void)req;
+        auto &fbb = rb.fbbuilder();
+        auto resp = protocol::CreatePingResponse(fbb);
+        rb.add_successful_response(seqno, resp);
         return false;
     }
 

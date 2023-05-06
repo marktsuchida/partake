@@ -92,19 +92,15 @@ struct Mapping {
 }
 
 
-table EchoRequest {
-    skip_response: bool = false;
-    text: string;
-
+table PingRequest {
     /*
-     * A no-op for client and server testing. A response containing text is
-     * sent. If skip_response is true, nothing is done.
+     * A no-op for client and server testing. Sending pings is not required for
+     * the purpose of maintaining a connection.
      */
 }
 
 
-table EchoResponse {
-    text: string;
+table PingResponse {
 }
 
 
@@ -405,7 +401,7 @@ table DiscardVoucherResponse {
 
 
 union AnyRequest {
-    EchoRequest,
+    PingRequest,
     HelloRequest,
     QuitRequest,
     GetSegmentRequest,
@@ -420,7 +416,7 @@ union AnyRequest {
 
 
 union AnyResponse {
-    EchoResponse,
+    PingResponse,
     HelloResponse,
     QuitResponse, // Never actually sent!
     GetSegmentResponse,
