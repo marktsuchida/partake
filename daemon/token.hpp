@@ -16,7 +16,7 @@ namespace partake::daemon {
 
 // A token is a key used by partaked to locate an object. To clients it is an
 // opaque byte string. Within the lifetime of a partaked instance, tokens are
-// unique and never reused; for REGULAR policy objects, tokens uniquely
+// unique and never reused; for DEFAULT policy objects, tokens uniquely
 // identify shared object content. (There are enough unique 64-bit numbers
 // that we will never loop around.) The null (zero) token is not used.
 // The name 'btoken' stands for 'binary token' (as opposed to proquint

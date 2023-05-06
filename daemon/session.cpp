@@ -115,7 +115,7 @@ TEST_CASE("session: object ops") {
 
             SUBCASE("open -> no such object") {
                 std::vector const waits{false, true};
-                std::vector const policies{Policy::REGULAR, Policy::PRIMITIVE};
+                std::vector const policies{Policy::DEFAULT, Policy::PRIMITIVE};
                 for (bool wait : waits) {
                     CAPTURE(wait);
                     for (Policy policy : policies) {
@@ -185,11 +185,11 @@ TEST_CASE("session: object ops") {
         }
     }
 
-    GIVEN("regular, unshared, opened by sess1") {
+    GIVEN("default policy, unshared, opened by sess1") {
         btoken tok = 0;
         REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
         sess1.alloc(
-            1024, Policy::REGULAR,
+            1024, Policy::DEFAULT,
             [&](btoken t, int r) {
                 CHECK(r == 532);
                 tok = t;
@@ -224,7 +224,7 @@ TEST_CASE("session: object ops") {
         SUBCASE("open-nowait by sess1 -> object busy") {
             auto err = Status::OK;
             sess1.open(
-                tok, Policy::REGULAR, false, clock::now(),
+                tok, Policy::DEFAULT, false, clock::now(),
                 []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                     CHECK(false);
                 },
@@ -239,7 +239,7 @@ TEST_CASE("session: object ops") {
         SUBCASE("open-nowait by sess2 -> object busy") {
             auto err = Status::OK;
             sess2.open(
-                tok, Policy::REGULAR, false, clock::now(),
+                tok, Policy::DEFAULT, false, clock::now(),
                 []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                     CHECK(false);
                 },
@@ -255,7 +255,7 @@ TEST_CASE("session: object ops") {
             btoken opened_tok = 0;
             auto err = Status::OK;
             sess1.open(
-                tok, Policy::REGULAR, true, clock::now(),
+                tok, Policy::DEFAULT, true, clock::now(),
                 []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                     CHECK(false);
                 },
@@ -288,7 +288,7 @@ TEST_CASE("session: object ops") {
             btoken opened_tok = 0;
             auto err = Status::OK;
             sess2.open(
-                tok, Policy::REGULAR, true, clock::now(),
+                tok, Policy::DEFAULT, true, clock::now(),
                 []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                     CHECK(false);
                 },
@@ -397,11 +397,11 @@ TEST_CASE("session: object ops") {
         }
     }
 
-    GIVEN("regular, shared, opened by sess1") {
+    GIVEN("default policy, shared, opened by sess1") {
         btoken tok = 0;
         REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
         sess1.alloc(
-            1024, Policy::REGULAR,
+            1024, Policy::DEFAULT,
             [&](btoken t, int r) {
                 CHECK(r == 532);
                 sess1.share(
@@ -444,7 +444,7 @@ TEST_CASE("session: object ops") {
         SUBCASE("open-wait by sess1 -> succeeds") {
             btoken opened = 0;
             sess1.open(
-                tok, Policy::REGULAR, true, clock::now(),
+                tok, Policy::DEFAULT, true, clock::now(),
                 [&](btoken t, int r) {
                     opened = t;
                     CHECK(r == 532);
@@ -460,7 +460,7 @@ TEST_CASE("session: object ops") {
         SUBCASE("open-wait by sess2 -> succeeds") {
             btoken opened = 0;
             sess2.open(
-                tok, Policy::REGULAR, true, clock::now(),
+                tok, Policy::DEFAULT, true, clock::now(),
                 [&](btoken t, int r) {
                     opened = t;
                     CHECK(r == 532);
@@ -500,7 +500,7 @@ TEST_CASE("session: object ops") {
             SUBCASE("open-wait by sess1 -> no such object") {
                 auto err = Status::OK;
                 sess1.open(
-                    tok, Policy::REGULAR, true, clock::now(),
+                    tok, Policy::DEFAULT, true, clock::now(),
                     []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                         CHECK(false);
                     },
@@ -568,18 +568,18 @@ TEST_CASE("session: object ops") {
         }
     }
 
-    GIVEN("regular, shared, opened by sess1 and sess2") {
+    GIVEN("default policy, shared, opened by sess1 and sess2") {
         btoken tok = 0;
         REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
         sess1.alloc(
-            1024, Policy::REGULAR,
+            1024, Policy::DEFAULT,
             [&](btoken t, int r) {
                 CHECK(r == 532);
                 sess1.share(
                     t,
                     [&] {
                         sess2.open(
-                            t, Policy::REGULAR, false, clock::now(),
+                            t, Policy::DEFAULT, false, clock::now(),
                             [&](btoken t2, [[maybe_unused]] int r2) {
                                 tok = t2;
                             },
@@ -604,7 +604,7 @@ TEST_CASE("session: object ops") {
         SUBCASE("open-wait by sess1 -> succeeds") {
             btoken opened = 0;
             sess1.open(
-                tok, Policy::REGULAR, true, clock::now(),
+                tok, Policy::DEFAULT, true, clock::now(),
                 [&](btoken t, int r) {
                     opened = t;
                     CHECK(r == 532);
@@ -680,7 +680,7 @@ TEST_CASE("session: object ops") {
             SUBCASE("open-wait by sess1 -> succeeds") {
                 btoken opened = 0;
                 sess1.open(
-                    tok, Policy::REGULAR, true, clock::now(),
+                    tok, Policy::DEFAULT, true, clock::now(),
                     [&](btoken t, int r) {
                         opened = t;
                         CHECK(r == 532);
@@ -698,7 +698,7 @@ TEST_CASE("session: object ops") {
             SUBCASE("open-wait by sess2 -> succeeds") {
                 btoken opened = 0;
                 sess2.open(
-                    tok, Policy::REGULAR, true, clock::now(),
+                    tok, Policy::DEFAULT, true, clock::now(),
                     [&](btoken t, int r) {
                         opened = t;
                         CHECK(r == 532);
@@ -715,18 +715,18 @@ TEST_CASE("session: object ops") {
         }
     }
 
-    GIVEN("regular, shared, opened by sess1 twice") {
+    GIVEN("default policy, shared, opened by sess1 twice") {
         btoken tok = 0;
         REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
         sess1.alloc(
-            1024, Policy::REGULAR,
+            1024, Policy::DEFAULT,
             [&](btoken t, int r) {
                 CHECK(r == 532);
                 sess1.share(
                     t,
                     [&] {
                         sess1.open(
-                            t, Policy::REGULAR, false, clock::now(),
+                            t, Policy::DEFAULT, false, clock::now(),
                             [&](btoken t2, [[maybe_unused]] int r2) {
                                 tok = t2;
                             },
@@ -775,7 +775,7 @@ TEST_CASE("session: object ops") {
         SUBCASE("open-wait by sess2 -> succeeds") {
             btoken opened = 0;
             sess2.open(
-                tok, Policy::REGULAR, true, clock::now(),
+                tok, Policy::DEFAULT, true, clock::now(),
                 [&](btoken t, int r) {
                     opened = t;
                     CHECK(r == 532);
@@ -821,7 +821,7 @@ TEST_CASE("session: object ops") {
         }
     }
 
-    GIVEN("regular, unshared, opened by sess1, and voucher") {
+    GIVEN("default policy, unshared, opened by sess1, and voucher") {
         btoken tok = 0;
         btoken vtok = 0;
         // Keep voucher alive despite voucher queue being mocked:
@@ -829,7 +829,7 @@ TEST_CASE("session: object ops") {
         REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
         REQUIRE_CALL(vq, enqueue(_)).LR_SIDE_EFFECT(vptr = _1).TIMES(1);
         sess1.alloc(
-            1024, Policy::REGULAR,
+            1024, Policy::DEFAULT,
             [&](btoken t, int r) {
                 tok = t;
                 CHECK(r == 532);
@@ -855,7 +855,7 @@ TEST_CASE("session: object ops") {
                     .LR_SIDE_EFFECT(vptr.reset())
                     .TIMES(1);
                 sess2.open(
-                    vtok, Policy::REGULAR, true, clock::now(),
+                    vtok, Policy::DEFAULT, true, clock::now(),
                     []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                         CHECK(false);
                     },
@@ -873,7 +873,7 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             REQUIRE_CALL(vq, drop(_)).LR_SIDE_EFFECT(vptr.reset()).TIMES(1);
             sess2.open(
-                vtok, Policy::REGULAR, true, clock::now(),
+                vtok, Policy::DEFAULT, true, clock::now(),
                 []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                     CHECK(false);
                 },
@@ -951,7 +951,7 @@ TEST_CASE("session: object ops") {
         }
     }
 
-    GIVEN("regular, shared, opened by sess1, and voucher") {
+    GIVEN("default policy, shared, opened by sess1, and voucher") {
         btoken tok = 0;
         btoken vtok = 0;
         // Keep voucher alive despite voucher queue being mocked:
@@ -959,7 +959,7 @@ TEST_CASE("session: object ops") {
         REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
         REQUIRE_CALL(vq, enqueue(_)).LR_SIDE_EFFECT(vptr = _1).TIMES(1);
         sess1.alloc(
-            1024, Policy::REGULAR,
+            1024, Policy::DEFAULT,
             [&](btoken t, int r) {
                 tok = t;
                 CHECK(r == 532);
@@ -990,7 +990,7 @@ TEST_CASE("session: object ops") {
                     .LR_SIDE_EFFECT(vptr.reset())
                     .TIMES(1);
                 sess2.open(
-                    vtok, Policy::REGULAR, true, clock::now(),
+                    vtok, Policy::DEFAULT, true, clock::now(),
                     [&](btoken t, int r) {
                         opened = t;
                         CHECK(r == 532);
@@ -1008,7 +1008,7 @@ TEST_CASE("session: object ops") {
             btoken opened = 0;
             REQUIRE_CALL(vq, drop(_)).LR_SIDE_EFFECT(vptr.reset()).TIMES(1);
             sess2.open(
-                vtok, Policy::REGULAR, true, clock::now(),
+                vtok, Policy::DEFAULT, true, clock::now(),
                 [&](btoken t, int r) {
                     opened = t;
                     CHECK(r == 532);
@@ -1060,7 +1060,7 @@ TEST_CASE("session: object ops") {
         }
     }
 
-    GIVEN("primitive, opened by sess1") {
+    GIVEN("primitive policy, opened by sess1") {
         btoken tok = 0;
         REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
         sess1.alloc(
@@ -1090,7 +1090,7 @@ TEST_CASE("session: object ops") {
         SUBCASE("open with wrong policy -> no such object") {
             auto err = Status::OK;
             sess1.open(
-                tok, Policy::REGULAR, true, clock::now(),
+                tok, Policy::DEFAULT, true, clock::now(),
                 []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                     CHECK(false);
                 },

@@ -455,7 +455,7 @@ TEST_CASE("request_handler: alloc") {
 
     SUBCASE("success") {
         auto const rsrc = mock_resource{7, 4096, 1024};
-        REQUIRE_CALL(sess, alloc(1000, Policy::REGULAR, _, _))
+        REQUIRE_CALL(sess, alloc(1000, Policy::DEFAULT, _, _))
             .SIDE_EFFECT(_3(12345, rsrc))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
@@ -485,7 +485,7 @@ TEST_CASE("request_handler: alloc") {
     }
 
     SUBCASE("failure") {
-        REQUIRE_CALL(sess, alloc(1000, Policy::REGULAR, _, _))
+        REQUIRE_CALL(sess, alloc(1000, Policy::DEFAULT, _, _))
             .SIDE_EFFECT(_4(Status::OUT_OF_SHMEM))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
@@ -530,7 +530,7 @@ TEST_CASE("request_handler: open") {
 
     SUBCASE("immediate_success") {
         auto const rsrc = mock_resource{7, 4096, 1024};
-        REQUIRE_CALL(sess, open(12345, Policy::REGULAR, true, _, _, _, _, _))
+        REQUIRE_CALL(sess, open(12345, Policy::DEFAULT, true, _, _, _, _, _))
             .SIDE_EFFECT(_5(23456, rsrc))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
@@ -559,7 +559,7 @@ TEST_CASE("request_handler: open") {
     }
 
     SUBCASE("immediate_failure") {
-        REQUIRE_CALL(sess, open(12345, Policy::REGULAR, true, _, _, _, _, _))
+        REQUIRE_CALL(sess, open(12345, Policy::DEFAULT, true, _, _, _, _, _))
             .SIDE_EFFECT(_6(Status::NO_SUCH_OBJECT))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
@@ -584,7 +584,7 @@ TEST_CASE("request_handler: open") {
 
     SUBCASE("deferred_success") {
         std::function<void(btoken, mock_resource const &)> deferred_success_cb;
-        REQUIRE_CALL(sess, open(12345, Policy::REGULAR, true, _, _, _, _, _))
+        REQUIRE_CALL(sess, open(12345, Policy::DEFAULT, true, _, _, _, _, _))
             .LR_SIDE_EFFECT(deferred_success_cb = _7)
             .TIMES(1);
         REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
@@ -618,7 +618,7 @@ TEST_CASE("request_handler: open") {
 
     SUBCASE("deferred_failure") {
         std::function<void(Status)> deferred_error_cb;
-        REQUIRE_CALL(sess, open(12345, Policy::REGULAR, true, _, _, _, _, _))
+        REQUIRE_CALL(sess, open(12345, Policy::DEFAULT, true, _, _, _, _, _))
             .LR_SIDE_EFFECT(deferred_error_cb = _8)
             .TIMES(1);
         REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));

@@ -165,7 +165,7 @@ class session {
         auto hnd = create_handle(obj);
         hnd->open();
         auto &po = obj->as_proper_object();
-        if (policy == protocol::Policy::REGULAR)
+        if (policy == protocol::Policy::DEFAULT)
             po.exclusive_writer(hnd.get());
         // Segment currently hard-coded to 0.
         auto const &rsrc = po.resource();

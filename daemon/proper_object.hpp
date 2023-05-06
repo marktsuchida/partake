@@ -25,9 +25,9 @@ template <typename Resource, typename Handle> class proper_object {
     unsigned n_vouchers = 0;
     resource_type rsrc;
 
-    // The following are null/empty for PRIMITIVE policy. For REGULAR
-    // policy, non-null pointers are guaranteed to be valid because
-    // sessions and handles deregister themselves before ending lifetime.
+    // The following are null/empty for PRIMITIVE policy. For DEFAULT policy,
+    // non-null pointers are guaranteed to be valid because sessions and
+    // handles deregister themselves before ending lifetime.
     handle_type *exc_writer = nullptr;
     handle_list<handle_type> handles_awaiting_share;
     handle_type *handle_awaiting_unique_ownership = nullptr;

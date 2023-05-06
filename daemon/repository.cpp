@@ -17,7 +17,7 @@ struct mock_object : token_hash_table<mock_object>::hook,
                      std::enable_shared_from_this<mock_object> {
     bool v;
     btoken t = 0;
-    protocol::Policy p = protocol::Policy::REGULAR;
+    protocol::Policy p = protocol::Policy::DEFAULT;
     int r = 0;
     std::size_t nv = 0;
     std::shared_ptr<mock_object> tgt;
@@ -86,7 +86,7 @@ TEST_CASE("repository") {
     repository<mock_object, mock_token_sequence, mock_voucher_queue> r(
         mock_token_sequence(), vq);
 
-    auto obj = r.create_object(protocol::Policy::REGULAR, 42);
+    auto obj = r.create_object(protocol::Policy::DEFAULT, 42);
     CHECK(obj->token() == 1);
 
     auto found = r.find_object(1);
