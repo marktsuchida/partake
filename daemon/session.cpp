@@ -73,7 +73,7 @@ TEST_CASE("session: global ops") {
         auto err = Status::OK;
         sess.hello(
             "", 0, [](std::uint32_t) { CHECK(false); },
-            [&](auto e) { err = e; });
+            [&](Status e) { err = e; });
         CHECK(err == Status::INVALID_REQUEST);
     }
 
@@ -126,7 +126,7 @@ TEST_CASE("session: object ops") {
                             tok, policy, wait, clock::now(),
                             []([[maybe_unused]] btoken t,
                                [[maybe_unused]] int r) { CHECK(false); },
-                            [&](auto e) { err = e; },
+                            [&](Status e) { err = e; },
                             []([[maybe_unused]] btoken t,
                                [[maybe_unused]] int r) { CHECK(false); },
                             []([[maybe_unused]] Status e) { CHECK(false); });
@@ -138,14 +138,14 @@ TEST_CASE("session: object ops") {
             SUBCASE("close -> no such object") {
                 auto err = Status::OK;
                 sess1.close(
-                    tok, [] { CHECK(false); }, [&](auto e) { err = e; });
+                    tok, [] { CHECK(false); }, [&](Status e) { err = e; });
                 CHECK(err == Status::NO_SUCH_OBJECT);
             }
 
             SUBCASE("share -> no such object") {
                 auto err = Status::OK;
                 sess1.share(
-                    tok, [] { CHECK(false); }, [&](auto e) { err = e; });
+                    tok, [] { CHECK(false); }, [&](Status e) { err = e; });
                 CHECK(err == Status::NO_SUCH_OBJECT);
             }
 
@@ -158,7 +158,7 @@ TEST_CASE("session: object ops") {
                     sess1.unshare(
                         tok, wait,
                         []([[maybe_unused]] btoken t) { CHECK(false); },
-                        [&](auto e) { err = e; },
+                        [&](Status e) { err = e; },
                         []([[maybe_unused]] btoken t) { CHECK(false); },
                         []([[maybe_unused]] Status e) { CHECK(false); });
                     CHECK(err == Status::NO_SUCH_OBJECT);
@@ -170,7 +170,7 @@ TEST_CASE("session: object ops") {
                 sess1.create_voucher(
                     tok, 1, clock::now(),
                     []([[maybe_unused]] btoken t) { CHECK(false); },
-                    [&](auto e) { err = e; });
+                    [&](Status e) { err = e; });
                 CHECK(err == Status::NO_SUCH_OBJECT);
             }
 
@@ -179,7 +179,7 @@ TEST_CASE("session: object ops") {
                 sess1.discard_voucher(
                     tok, clock::now(),
                     []([[maybe_unused]] btoken t) { CHECK(false); },
-                    [&](auto e) { err = e; });
+                    [&](Status e) { err = e; });
                 CHECK(err == Status::NO_SUCH_OBJECT);
             }
         }
@@ -209,7 +209,7 @@ TEST_CASE("session: object ops") {
             SUBCASE("close by sess1 -> no such object") {
                 auto err = Status::OK;
                 sess1.close(
-                    tok, [] { CHECK(false); }, [&](auto e) { err = e; });
+                    tok, [] { CHECK(false); }, [&](Status e) { err = e; });
                 CHECK(err == Status::NO_SUCH_OBJECT);
             }
         }
@@ -217,7 +217,7 @@ TEST_CASE("session: object ops") {
         SUBCASE("close by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.close(
-                tok, [] { CHECK(false); }, [&](auto e) { err = e; });
+                tok, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
@@ -228,7 +228,7 @@ TEST_CASE("session: object ops") {
                 []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                     CHECK(false);
                 },
-                [&](auto e) { err = e; },
+                [&](Status e) { err = e; },
                 []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                     CHECK(false);
                 },
@@ -243,7 +243,7 @@ TEST_CASE("session: object ops") {
                 []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                     CHECK(false);
                 },
-                [&](auto e) { err = e; },
+                [&](Status e) { err = e; },
                 []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                     CHECK(false);
                 },
@@ -261,7 +261,7 @@ TEST_CASE("session: object ops") {
                 },
                 []([[maybe_unused]] Status e) { CHECK(false); },
                 [&](btoken t, [[maybe_unused]] int r) { opened_tok = t; },
-                [&](auto e) { err = e; });
+                [&](Status e) { err = e; });
             CHECK(opened_tok == 0);
             CHECK(err == Status::OK);
 
@@ -294,7 +294,7 @@ TEST_CASE("session: object ops") {
                 },
                 []([[maybe_unused]] Status e) { CHECK(false); },
                 [&](btoken t, [[maybe_unused]] int r) { opened_tok = t; },
-                [&](auto e) { err = e; });
+                [&](Status e) { err = e; });
             CHECK(opened_tok == 0);
             CHECK(err == Status::OK);
 
@@ -328,7 +328,7 @@ TEST_CASE("session: object ops") {
         SUBCASE("share by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.share(
-                tok, [] { CHECK(false); }, [&](auto e) { err = e; });
+                tok, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
@@ -336,7 +336,7 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess1.unshare(
                 tok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
-                [&](auto e) { err = e; },
+                [&](Status e) { err = e; },
                 []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(err == Status::NO_SUCH_OBJECT);
@@ -346,7 +346,7 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess2.unshare(
                 tok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
-                [&](auto e) { err = e; },
+                [&](Status e) { err = e; },
                 []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(err == Status::NO_SUCH_OBJECT);
@@ -422,7 +422,7 @@ TEST_CASE("session: object ops") {
         SUBCASE("close by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.close(
-                tok, [] { CHECK(false); }, [&](auto e) { err = e; });
+                tok, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
@@ -433,7 +433,7 @@ TEST_CASE("session: object ops") {
                 []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                     CHECK(false);
                 },
-                [&](auto e) { err = e; },
+                [&](Status e) { err = e; },
                 []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                     CHECK(false);
                 },
@@ -476,14 +476,14 @@ TEST_CASE("session: object ops") {
         SUBCASE("share by sess1 -> no such object") {
             auto err = Status::OK;
             sess1.share(
-                tok, [] { CHECK(false); }, [&](auto e) { err = e; });
+                tok, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
         SUBCASE("share by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.share(
-                tok, [] { CHECK(false); }, [&](auto e) { err = e; });
+                tok, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
@@ -504,7 +504,7 @@ TEST_CASE("session: object ops") {
                     []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                         CHECK(false);
                     },
-                    [&](auto e) { err = e; },
+                    [&](Status e) { err = e; },
                     []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                         CHECK(false);
                     },
@@ -517,7 +517,7 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess2.unshare(
                 tok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
-                [&](auto e) { err = e; },
+                [&](Status e) { err = e; },
                 []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(err == Status::NO_SUCH_OBJECT);
@@ -620,7 +620,7 @@ TEST_CASE("session: object ops") {
         SUBCASE("share by sess1 -> no such object") {
             auto err = Status::OK;
             sess1.share(
-                tok, [] { CHECK(false); }, [&](auto e) { err = e; });
+                tok, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
@@ -628,7 +628,7 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess1.unshare(
                 tok, false, []([[maybe_unused]] btoken t) { CHECK(false); },
-                [&](auto e) { err = e; },
+                [&](Status e) { err = e; },
                 []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(err == Status::OBJECT_BUSY);
@@ -640,7 +640,7 @@ TEST_CASE("session: object ops") {
             sess1.unshare(
                 tok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                [&](btoken t) { newtok = t; }, [&](auto e) { err = e; });
+                [&](btoken t) { newtok = t; }, [&](Status e) { err = e; });
             CHECK(newtok == 0);
             CHECK(err == Status::OK);
 
@@ -669,7 +669,7 @@ TEST_CASE("session: object ops") {
                 auto err2 = Status::OK;
                 sess2.unshare(
                     tok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
-                    [&](auto e) { err2 = e; },
+                    [&](Status e) { err2 = e; },
                     []([[maybe_unused]] btoken t) { CHECK(false); },
                     []([[maybe_unused]] Status e) { CHECK(false); });
                 CHECK(err2 == Status::OBJECT_RESERVED);
@@ -744,7 +744,7 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess1.unshare(
                 tok, false, []([[maybe_unused]] btoken t) { CHECK(false); },
-                [&](auto e) { err = e; },
+                [&](Status e) { err = e; },
                 []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(err == Status::OBJECT_BUSY);
@@ -756,7 +756,7 @@ TEST_CASE("session: object ops") {
             sess1.unshare(
                 tok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                [&](btoken t) { newtok = t; }, [&](auto e) { err = e; });
+                [&](btoken t) { newtok = t; }, [&](Status e) { err = e; });
             CHECK(newtok == 0);
             CHECK(err == Status::OK);
 
@@ -793,7 +793,7 @@ TEST_CASE("session: object ops") {
                 sess2.unshare(
                     tok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
                     []([[maybe_unused]] Status e) { CHECK(false); },
-                    [&](btoken t) { newtok = t; }, [&](auto e) { err = e; });
+                    [&](btoken t) { newtok = t; }, [&](Status e) { err = e; });
                 CHECK(newtok == 0);
                 CHECK(err == Status::OK);
 
@@ -859,7 +859,7 @@ TEST_CASE("session: object ops") {
                     []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                         CHECK(false);
                     },
-                    [&](auto e) { err = e; },
+                    [&](Status e) { err = e; },
                     []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                         CHECK(false);
                     },
@@ -882,7 +882,7 @@ TEST_CASE("session: object ops") {
                     opened = t;
                     CHECK(r == 532);
                 },
-                [&](auto e) { err = e; });
+                [&](Status e) { err = e; });
             CHECK(opened == 0);
             CHECK(err == Status::OK);
 
@@ -893,7 +893,7 @@ TEST_CASE("session: object ops") {
                     []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                         CHECK(false);
                     },
-                    [&](auto e) { err2 = e; },
+                    [&](Status e) { err2 = e; },
                     []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                         CHECK(false);
                     },
@@ -944,14 +944,14 @@ TEST_CASE("session: object ops") {
         SUBCASE("close voucher by sess1 -> no such object") {
             auto err = Status::OK;
             sess1.close(
-                vtok, [] { CHECK(false); }, [&](auto e) { err = e; });
+                vtok, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
         SUBCASE("share voucher by sess1 -> no such object") {
             auto err = Status::OK;
             sess1.share(
-                vtok, [] { CHECK(false); }, [&](auto e) { err = e; });
+                vtok, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
@@ -959,7 +959,7 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess1.unshare(
                 vtok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
-                [&](auto e) { err = e; },
+                [&](Status e) { err = e; },
                 []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(err == Status::NO_SUCH_OBJECT);
@@ -1041,7 +1041,7 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess1.unshare(
                 tok, false, []([[maybe_unused]] btoken t) { CHECK(false); },
-                [&](auto e) { err = e; },
+                [&](Status e) { err = e; },
                 []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(err == Status::OBJECT_BUSY);
@@ -1053,7 +1053,7 @@ TEST_CASE("session: object ops") {
             sess1.unshare(
                 tok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                [&](btoken t) { newtok = t; }, [&](auto e) { err = e; });
+                [&](btoken t) { newtok = t; }, [&](Status e) { err = e; });
             CHECK(newtok == 0);
             CHECK(err == Status::OK);
 
@@ -1099,7 +1099,7 @@ TEST_CASE("session: object ops") {
         SUBCASE("close by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.close(
-                tok, [] { CHECK(false); }, [&](auto e) { err = e; });
+                tok, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
@@ -1110,7 +1110,7 @@ TEST_CASE("session: object ops") {
                 []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                     CHECK(false);
                 },
-                [&](auto e) { err = e; },
+                [&](Status e) { err = e; },
                 []([[maybe_unused]] btoken t, [[maybe_unused]] int r) {
                     CHECK(false);
                 },
@@ -1185,14 +1185,14 @@ TEST_CASE("session: object ops") {
         SUBCASE("share by sess1 -> no such object") {
             auto err = Status::OK;
             sess1.share(
-                tok, [] { CHECK(false); }, [&](auto e) { err = e; });
+                tok, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
         SUBCASE("share by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.share(
-                tok, [] { CHECK(false); }, [&](auto e) { err = e; });
+                tok, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
@@ -1200,7 +1200,7 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess1.unshare(
                 tok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
-                [&](auto e) { err = e; },
+                [&](Status e) { err = e; },
                 []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(err == Status::NO_SUCH_OBJECT);
@@ -1210,7 +1210,7 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess2.unshare(
                 tok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
-                [&](auto e) { err = e; },
+                [&](Status e) { err = e; },
                 []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(err == Status::NO_SUCH_OBJECT);
