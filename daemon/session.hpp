@@ -53,16 +53,19 @@ class session {
     std::uint32_t client_pid = 0;
     std::uint32_t id = 0;
 
+    std::chrono::milliseconds voucher_ttl = std::chrono::seconds(10);
+
   public:
     // Construct in empty state, on which the only valid operations are
     // destruction, move-assignment, and swap.
     session() noexcept = default;
 
     explicit session(std::uint32_t session_id, segment_type const &segment,
-                     allocator_type &allocator,
-                     repository_type &repository) noexcept
+                     allocator_type &allocator, repository_type &repository,
+                     std::chrono::milliseconds voucher_time_to_live) noexcept
         : seg(&segment), allocr(&allocator), repo(&repository),
-          handles(1 << 3), valid(true), id(session_id) {
+          handles(1 << 3), valid(true), id(session_id),
+          voucher_ttl(voucher_time_to_live) {
         assert(seg != nullptr);
         assert(allocr != nullptr);
         assert(repo != nullptr);
@@ -81,7 +84,8 @@ class session {
           valid(std::exchange(other.valid, false)),
           has_said_hello(other.has_said_hello),
           client_name(std::move(other.client_name)),
-          client_pid(other.client_pid), id(other.id) {}
+          client_pid(other.client_pid), id(other.id),
+          voucher_ttl(other.voucher_ttl) {}
 
     auto operator=(session &&rhs) noexcept -> session & {
         close_session();
@@ -101,6 +105,7 @@ class session {
         swap(client_name, other.client_name);
         swap(client_pid, other.client_pid);
         swap(id, other.id);
+        swap(voucher_ttl, other.voucher_ttl);
     }
 
     friend void swap(session &lhs, session &rhs) noexcept { lhs.swap(rhs); }
@@ -308,8 +313,7 @@ class session {
                 return error_cb(protocol::Status::NO_SUCH_OBJECT);
         }
 
-        // TODO Configurable time-to-live
-        auto expiration = now + std::chrono::seconds(10);
+        auto expiration = now + voucher_ttl;
         auto voucher = repo->create_voucher(real_target, expiration, count);
 
         success_cb(voucher->token());

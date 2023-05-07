@@ -23,6 +23,7 @@
 
 #include <tl/expected.hpp>
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <utility>
@@ -33,6 +34,7 @@ struct daemon_config {
     asio::local::stream_protocol::endpoint endpoint;
     segment_config seg_config;
     std::size_t log2_granularity = 0;
+    std::chrono::milliseconds voucher_ttl;
 };
 
 template <typename AsioContext> class partake_daemon {
@@ -54,6 +56,8 @@ template <typename AsioContext> class partake_daemon {
         client<socket_type, message_reader_type, message_writer_type,
                session_type, request_handler_type>;
 
+    daemon_config cfg;
+
     quitter<io_context_type> quitr;
     connection_acceptor<asio::local::stream_protocol, io_context_type>
         acceptor;
@@ -72,8 +76,9 @@ template <typename AsioContext> class partake_daemon {
 
   public:
     explicit partake_daemon(io_context_type &asio_context,
-                            daemon_config const &config) noexcept
-        : quitr(asio_context, [this]() noexcept { acceptor.close(); }),
+                            daemon_config config) noexcept
+        : cfg(std::move(config)),
+          quitr(asio_context, [this]() noexcept { acceptor.close(); }),
           acceptor(asio_context, config.endpoint), seg(config.seg_config),
           allocr(config.seg_config.size, config.log2_granularity),
           clk_traits(asio_context), vq(clk_traits),
@@ -100,6 +105,7 @@ template <typename AsioContext> class partake_daemon {
         clients
             .emplace(
                 std::move(socket), session_counter++, seg, allocr, repo,
+                cfg.voucher_ttl,
                 [this]() noexcept { repo.perform_housekeeping(); },
                 [this](client_type &c) noexcept {
                     clients.erase(clients.get_iterator(&c));

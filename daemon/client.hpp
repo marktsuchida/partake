@@ -13,6 +13,7 @@
 #include <gsl/span>
 #include <spdlog/spdlog.h>
 
+#include <chrono>
 #include <cstdint>
 #include <string_view>
 #include <system_error>
@@ -49,10 +50,11 @@ class client {
     template <typename Repository, typename HousekeepFunc, typename CloseFunc>
     explicit client(socket_type &&socket, std::uint32_t session_id,
                     segment &seg, arena_allocator &allocator, Repository &repo,
+                    std::chrono::milliseconds voucher_time_to_live,
                     HousekeepFunc per_req_housekeeping,
                     CloseFunc close_client) noexcept
         : sock(std::forward<socket_type>(socket)),
-          sess(session_id, seg, allocator, repo),
+          sess(session_id, seg, allocator, repo, voucher_time_to_live),
           writer(sock,
                  [this](std::error_code err) noexcept {
                      if (err)

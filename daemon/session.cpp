@@ -14,6 +14,8 @@
 #include <doctest.h>
 #include <trompeloeil.hpp>
 
+#include <chrono>
+
 namespace partake::daemon {
 
 // Partial integration tests using real object, handle, repository (but mock
@@ -52,13 +54,14 @@ TEST_CASE("session: global ops") {
     repository<object<int>, token_sequence, mock_voucher_queue> repo(
         token_sequence(), vq);
 
-    session_type sess(42, seg, alloc, repo);
+    using protocol::Status;
+    using namespace std::chrono_literals;
+
+    session_type sess(42, seg, alloc, repo, 10s);
     CHECK(sess.is_valid());
     CHECK(sess.session_id() == 42);
     CHECK(sess.name().empty());
     CHECK(sess.pid() == 0);
-
-    using protocol::Status;
 
     SUBCASE("hello") {
         std::uint32_t session_id = 0;
@@ -101,12 +104,13 @@ TEST_CASE("session: object ops") {
     repository<object<int>, token_sequence, mock_voucher_queue> repo(
         token_sequence(), vq);
 
-    session_type sess1(42, seg, alloc, repo);
-    session_type sess2(43, seg, alloc, repo);
-
     using protocol::Policy;
     using protocol::Status;
     using trompeloeil::_;
+    using namespace std::chrono_literals;
+
+    session_type sess1(42, seg, alloc, repo, 10s);
+    session_type sess2(43, seg, alloc, repo, 10s);
 
     GIVEN("nonexistent token") {
         std::vector<btoken> const tokens{0, 12345};

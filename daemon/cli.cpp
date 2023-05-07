@@ -7,8 +7,11 @@
 #include "cli.hpp"
 
 #include <CLI/CLI.hpp>
+#include <fmt/core.h>
 
 #include <cassert>
+#include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <iostream>
 #include <limits>
@@ -30,6 +33,7 @@ struct cli_args {
     bool huge_pages = false;
     bool large_pages = false;
     bool force = false;
+    double voucher_ttl = 10.0;
 };
 
 constexpr auto partake_version =
@@ -227,6 +231,11 @@ auto parse_cli_args_unvalidated(int argc, char const *const *argv) noexcept
 
     app.add_flag("-L,--large-pages", ret.large_pages,
                  "Use Windows large pages");
+
+    app.add_option("--voucher-ttl", ret.voucher_ttl,
+                   fmt::format("Set voucher time-to-live (default: {} s)",
+                               ret.voucher_ttl))
+        ->type_name("SECONDS");
 
     app.add_flag("-f,--force", ret.force,
                  "Overwrite existing shared memory and/or file");
@@ -457,6 +466,12 @@ auto validate_cli_args(cli_args const &args) noexcept
     ret.endpoint = args.socket;
 
     ret.log2_granularity = 12; // 4k; TODO Make configurable.
+
+    if (args.voucher_ttl <= 0.0)
+        return tl::unexpected("Voucher time-to-live must be positive"s);
+    auto const fp_seconds = std::chrono::duration<double>(args.voucher_ttl);
+    ret.voucher_ttl =
+        std::chrono::duration_cast<std::chrono::milliseconds>(fp_seconds);
 
     return validate_segment_config(args).map(
         [&ret](segment_config const &seg_cfg) {
