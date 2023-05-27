@@ -80,6 +80,10 @@ class mmap_shmem {
         return mapping.address();
     }
 
+    [[nodiscard]] auto size() const noexcept -> std::size_t {
+        return mapping.size();
+    }
+
     auto unlink() noexcept -> bool { return ent.unlink(); }
 
     auto unmap() noexcept -> bool { return mapping.unmap(); }

@@ -8,6 +8,7 @@
 
 #ifndef _WIN32
 
+#include "page_size.hpp"
 #include "random.hpp"
 #include "testing.hpp"
 
@@ -341,6 +342,9 @@ TEST_CASE("generate_filename") {
 auto create_posix_mmap_shmem(std::string const &name, std::size_t size,
                              bool force) noexcept -> mmap_shmem {
     auto [shmem, fd] = internal::create_posix_shmem(name, force);
+    auto psize = page_size();
+    if (not round_up_or_check_size(size, psize))
+        return {};
     return mmap_shmem(std::move(shmem), fd, size);
 }
 
@@ -350,10 +354,11 @@ auto create_posix_mmap_shmem(std::size_t size) noexcept -> mmap_shmem {
 }
 
 TEST_CASE("create_posix_mmap_shmem") {
-    auto shm = create_posix_mmap_shmem(4096);
+    auto shm = create_posix_mmap_shmem(100);
     CHECK(shm.is_valid());
     CHECK_FALSE(shm.name().empty());
     CHECK(shm.address() != nullptr);
+    CHECK(shm.size() == page_size());
     CHECK(shm.unlink());
     CHECK(shm.unmap());
 }
@@ -361,6 +366,13 @@ TEST_CASE("create_posix_mmap_shmem") {
 auto create_file_mmap_shmem(std::string const &name, std::size_t size,
                             bool force) noexcept -> mmap_shmem {
     auto [file, fd] = internal::create_regular_file(name, force);
+#ifdef __linux__
+    auto psize = file_page_size(fd.get());
+#else
+    auto psize = page_size();
+#endif
+    if (not round_up_or_check_size(size, psize))
+        return {};
     return mmap_shmem(std::move(file), fd, size);
 }
 
@@ -370,10 +382,11 @@ auto create_file_mmap_shmem(std::size_t size) noexcept -> mmap_shmem {
 }
 
 TEST_CASE("create_posix_file_shmem") {
-    auto shm = create_file_mmap_shmem(4096);
+    auto shm = create_file_mmap_shmem(100);
     CHECK(shm.is_valid());
     CHECK_FALSE(shm.name().empty());
     CHECK(shm.address() != nullptr);
+    CHECK(shm.size() == page_size());
     CHECK(shm.unlink());
     CHECK(shm.unmap());
 }

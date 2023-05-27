@@ -18,26 +18,32 @@ namespace internal {
 // RAII for shmget() - shmctl(IPC_RMID)
 class sysv_shmem_id {
     int shmid = -1;
+    std::size_t siz = 0;
 
   public:
     sysv_shmem_id() noexcept = default;
 
-    explicit sysv_shmem_id(int id) noexcept : shmid(id) {}
+    explicit sysv_shmem_id(int id, std::size_t size) noexcept
+        : shmid(id), siz(size) {}
 
     ~sysv_shmem_id() { remove(); }
 
     sysv_shmem_id(sysv_shmem_id &&other) noexcept
-        : shmid(std::exchange(other.shmid, -1)) {}
+        : shmid(std::exchange(other.shmid, -1)),
+          siz(std::exchange(other.siz, 0)) {}
 
     auto operator=(sysv_shmem_id &&rhs) noexcept -> sysv_shmem_id & {
         remove();
         shmid = std::exchange(rhs.shmid, -1);
+        siz = std::exchange(rhs.siz, 0);
         return *this;
     }
 
     [[nodiscard]] auto is_valid() const noexcept -> bool { return shmid >= 0; }
 
     [[nodiscard]] auto id() const noexcept -> int { return shmid; }
+
+    [[nodiscard]] auto size() const noexcept -> std::size_t { return siz; }
 
     auto remove() noexcept -> bool;
 };
@@ -93,6 +99,10 @@ class sysv_shmem {
 
     [[nodiscard]] auto address() const noexcept -> void * {
         return attachment.address();
+    }
+
+    [[nodiscard]] auto size() const noexcept -> std::size_t {
+        return shmid.size();
     }
 
     auto remove() noexcept -> bool { return shmid.remove(); }

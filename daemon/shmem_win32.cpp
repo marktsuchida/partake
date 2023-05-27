@@ -8,6 +8,7 @@
 
 #ifdef _WIN32
 
+#include "page_size.hpp"
 #include "random.hpp"
 #include "testing.hpp"
 #include "win32.hpp"
@@ -205,7 +206,8 @@ win32_map_view::win32_map_view(win32::win32_handle const &h_mapping,
                               FILE_MAP_READ | FILE_MAP_WRITE |
                                   (use_large_pages ? FILE_MAP_LARGE_PAGES : 0),
                               0, 0, size)
-              : nullptr) {
+              : nullptr),
+      siz(size) {
     if (h_mapping.is_valid() && addr == nullptr) {
         auto err = GetLastError();
         auto msg = win32::strerror(err);
@@ -233,6 +235,7 @@ TEST_CASE("win32_map_view") {
         win32_map_view const mv;
         CHECK_FALSE(mv.is_valid());
         CHECK(mv.address() == nullptr);
+        CHECK(mv.size() == 0);
     }
 
     GIVEN("a file mapping") {
@@ -270,21 +273,32 @@ TEST_CASE("win32_map_view") {
 
 auto create_win32_shmem(std::string const &mapping_name, std::size_t size,
                         bool use_large_pages) noexcept -> win32_shmem {
+    auto const granularity = use_large_pages ? large_page_minimum()
+                                             : system_allocation_granularity();
+    if (not round_up_or_check_size(size, granularity))
+        return {};
+
     return win32_shmem(
         {}, create_file_mapping({}, mapping_name, size, use_large_pages), size,
         use_large_pages);
 }
 
 TEST_CASE("create_win32_shmem") {
-    auto shm = create_win32_shmem(generate_win32_file_mapping_name(), 4096);
+    auto shm = create_win32_shmem(generate_win32_file_mapping_name(), 100);
     CHECK(shm.is_valid());
     CHECK(shm.address() != nullptr);
+    CHECK(shm.size() == system_allocation_granularity());
 }
 
 auto create_win32_file_shmem(std::filesystem::path const &path,
                              std::string const &mapping_name, std::size_t size,
                              bool force, bool use_large_pages) noexcept
     -> win32_shmem {
+    auto const granularity = use_large_pages ? large_page_minimum()
+                                             : system_allocation_granularity();
+    if (not round_up_or_check_size(size, granularity))
+        return {};
+
     auto h_file = create_autodeleted_file(path, force);
     if (not h_file.is_valid())
         return {};
@@ -299,10 +313,11 @@ TEST_CASE("create_win32_file_shmem") {
     auto path = testing::unique_path(
         td.path(), testing::make_test_filename(__FILE__, __LINE__));
 
-    auto shm = create_win32_file_shmem(
-        path, generate_win32_file_mapping_name(), 4096);
+    auto shm =
+        create_win32_file_shmem(path, generate_win32_file_mapping_name(), 100);
     CHECK(shm.is_valid());
     CHECK(shm.address() != nullptr);
+    CHECK(shm.size() == system_allocation_granularity());
 }
 
 } // namespace partake::daemon

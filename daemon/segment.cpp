@@ -49,14 +49,12 @@ class unsupported_segment final : public internal::segment_impl {
 #ifndef _WIN32
 
 class posix_mmap_segment final : public internal::segment_impl {
-    std::size_t siz;
     mmap_shmem shm;
 
   public:
     explicit posix_mmap_segment(posix_mmap_segment_config const &cfg,
                                 std::size_t size) noexcept
-        : siz(size),
-          shm(cfg.name.empty()
+        : shm(cfg.name.empty()
                   ? create_posix_mmap_shmem(size)
                   : create_posix_mmap_shmem(cfg.name, size, cfg.force)) {}
 
@@ -65,22 +63,21 @@ class posix_mmap_segment final : public internal::segment_impl {
     }
 
     [[nodiscard]] auto size() const noexcept -> std::size_t override {
-        return siz;
+        return shm.size();
     }
 
     [[nodiscard]] auto spec() const noexcept -> segment_spec override {
-        return {posix_mmap_segment_spec{shm.name()}, siz};
+        return {posix_mmap_segment_spec{shm.name()}, size()};
     }
 };
 
 class file_mmap_segment final : public internal::segment_impl {
-    std::size_t siz;
     mmap_shmem shm;
 
   public:
     explicit file_mmap_segment(file_mmap_segment_config const &cfg,
                                std::size_t size) noexcept
-        : siz(size), shm([&]() {
+        : shm([&]() {
               if (cfg.filename.empty())
                   return create_file_mmap_shmem(size);
               std::error_code ec;
@@ -98,23 +95,21 @@ class file_mmap_segment final : public internal::segment_impl {
     }
 
     [[nodiscard]] auto size() const noexcept -> std::size_t override {
-        return siz;
+        return shm.size();
     }
 
     [[nodiscard]] auto spec() const noexcept -> segment_spec override {
-        return {file_mmap_segment_spec{shm.name()}, siz};
+        return {file_mmap_segment_spec{shm.name()}, size()};
     }
 };
 
 class sysv_segment final : public internal::segment_impl {
-    std::size_t siz;
     sysv_shmem shm;
 
   public:
     explicit sysv_segment(sysv_segment_config const &cfg,
                           std::size_t size) noexcept
-        : siz(size),
-          shm(cfg.key == 0 ? create_sysv_shmem(size, cfg.use_huge_pages)
+        : shm(cfg.key == 0 ? create_sysv_shmem(size, cfg.use_huge_pages)
                            : create_sysv_shmem(cfg.key, size, cfg.force,
                                                cfg.use_huge_pages)) {}
 
@@ -123,11 +118,11 @@ class sysv_segment final : public internal::segment_impl {
     }
 
     [[nodiscard]] auto size() const noexcept -> std::size_t override {
-        return siz;
+        return shm.size();
     }
 
     [[nodiscard]] auto spec() const noexcept -> segment_spec override {
-        return {sysv_segment_spec{shm.id()}, siz};
+        return {sysv_segment_spec{shm.id()}, size()};
     }
 };
 
@@ -140,7 +135,6 @@ using file_mmap_segment = unsupported_segment;
 using sysv_segment = unsupported_segment;
 
 class win32_segment final : public internal::segment_impl {
-    std::size_t siz;
     std::string mapping_name;
     win32_shmem shm;
     bool large_pages;
@@ -148,8 +142,7 @@ class win32_segment final : public internal::segment_impl {
   public:
     explicit win32_segment(win32_segment_config const &cfg,
                            std::size_t size) noexcept
-        : siz(size),
-          mapping_name(cfg.name.empty() ? generate_win32_file_mapping_name()
+        : mapping_name(cfg.name.empty() ? generate_win32_file_mapping_name()
                                         : cfg.name),
           shm([&]() {
               if (cfg.filename.empty()) {
@@ -173,11 +166,11 @@ class win32_segment final : public internal::segment_impl {
     }
 
     [[nodiscard]] auto size() const noexcept -> std::size_t override {
-        return siz;
+        return shm.size();
     }
 
     [[nodiscard]] auto spec() const noexcept -> segment_spec override {
-        return {win32_segment_spec{mapping_name, large_pages}, siz};
+        return {win32_segment_spec{mapping_name, large_pages}, size()};
     }
 };
 
@@ -228,7 +221,7 @@ TEST_CASE("segment: win32 system paging file") {
                 segment_config{win32_segment_config{{}, name}, 8192};
             segment const seg(conf);
             REQUIRE(seg.is_valid());
-            CHECK(seg.size() == 8192);
+            CHECK(seg.size() >= 8192);
             auto const spec = seg.spec();
             REQUIRE(std::holds_alternative<win32_segment_spec>(spec.spec));
             auto win32_spec = std::get<win32_segment_spec>(spec.spec);
@@ -261,7 +254,7 @@ TEST_CASE("segment: win32 system paging file") {
         auto const conf = segment_config{win32_segment_config{}, 8192};
         segment const seg(conf);
         CHECK(seg.is_valid());
-        CHECK(seg.size() == 8192);
+        CHECK(seg.size() >= 8192);
         auto const spec = seg.spec();
         REQUIRE(std::holds_alternative<win32_segment_spec>(spec.spec));
         auto win32_spec = std::get<win32_segment_spec>(spec.spec);
@@ -284,7 +277,7 @@ TEST_CASE("segment: win32 file") {
                 segment_config{win32_segment_config{path.string(), {}}, 8192};
             segment const seg(conf);
             REQUIRE(seg.is_valid());
-            CHECK(seg.size() == 8192);
+            CHECK(seg.size() >= 8192);
             auto const spec = seg.spec();
             REQUIRE(std::holds_alternative<win32_segment_spec>(spec.spec));
             auto win32_spec = std::get<win32_segment_spec>(spec.spec);
@@ -309,7 +302,7 @@ TEST_CASE("segment: win32 file") {
                 win32_segment_config{file.path().string(), {}, true}, 8192};
             segment const seg(conf);
             REQUIRE(seg.is_valid());
-            CHECK(seg.size() == 8192);
+            CHECK(seg.size() >= 8192);
             auto const spec = seg.spec();
             REQUIRE(std::holds_alternative<win32_segment_spec>(spec.spec));
             auto win32_spec = std::get<win32_segment_spec>(spec.spec);
@@ -335,7 +328,7 @@ TEST_CASE("segment: posix mmap") {
                 segment_config{posix_mmap_segment_config{name}, 8192};
             segment const seg(conf);
             REQUIRE(seg.is_valid());
-            CHECK(seg.size() == 8192);
+            CHECK(seg.size() >= 8192);
             auto const spec = seg.spec();
             REQUIRE(
                 std::holds_alternative<posix_mmap_segment_spec>(spec.spec));
@@ -359,7 +352,7 @@ TEST_CASE("segment: posix mmap") {
                     posix_mmap_segment_config{name, true}, 8192};
                 segment const seg(conf);
                 CHECK(seg.is_valid());
-                CHECK(seg.size() == 8192);
+                CHECK(seg.size() >= 8192);
             }
         }
     }
@@ -368,7 +361,7 @@ TEST_CASE("segment: posix mmap") {
         auto const conf = segment_config{posix_mmap_segment_config{}, 8192};
         segment const seg(conf);
         CHECK(seg.is_valid());
-        CHECK(seg.size() == 8192);
+        CHECK(seg.size() >= 8192);
         auto const spec = seg.spec();
         REQUIRE(std::holds_alternative<posix_mmap_segment_spec>(spec.spec));
         auto mmap_spec = std::get<posix_mmap_segment_spec>(spec.spec);
@@ -388,7 +381,7 @@ TEST_CASE("segment: file mmap") {
                 segment_config{file_mmap_segment_config{path.string()}, 8192};
             segment const seg(conf);
             CHECK(seg.is_valid());
-            CHECK(seg.size() == 8192);
+            CHECK(seg.size() >= 8192);
             auto const spec = seg.spec();
             REQUIRE(std::holds_alternative<file_mmap_segment_spec>(spec.spec));
             auto file_spec = std::get<file_mmap_segment_spec>(spec.spec);
@@ -413,7 +406,7 @@ TEST_CASE("segment: file mmap") {
                     file_mmap_segment_config{path.string(), true}, 8192};
                 segment const seg(conf);
                 CHECK(seg.is_valid());
-                CHECK(seg.size() == 8192);
+                CHECK(seg.size() >= 8192);
             }
         }
     }
@@ -422,7 +415,7 @@ TEST_CASE("segment: file mmap") {
         auto const conf = segment_config{file_mmap_segment_config{}, 8192};
         segment const seg(conf);
         CHECK(seg.is_valid());
-        CHECK(seg.size() == 8192);
+        CHECK(seg.size() >= 8192);
         auto const spec = seg.spec();
         REQUIRE(std::holds_alternative<file_mmap_segment_spec>(spec.spec));
         auto file_spec = std::get<file_mmap_segment_spec>(spec.spec);
@@ -448,7 +441,7 @@ TEST_CASE("segment: sysv") {
             auto const conf = segment_config{sysv_segment_config{key}, 8192};
             segment const seg(conf);
             CHECK(seg.is_valid());
-            CHECK(seg.size() == 8192);
+            CHECK(seg.size() >= 8192);
             auto const spec = seg.spec();
             REQUIRE(std::holds_alternative<sysv_segment_spec>(spec.spec));
             auto sysv_spec = std::get<sysv_segment_spec>(spec.spec);
@@ -467,7 +460,7 @@ TEST_CASE("segment: sysv") {
                 segment_config{sysv_segment_config{key, true}, 8192};
             segment const seg(conf);
             CHECK(seg.is_valid());
-            CHECK(seg.size() == 8192);
+            CHECK(seg.size() >= 8192);
         }
     }
 
@@ -475,7 +468,7 @@ TEST_CASE("segment: sysv") {
         auto const conf = segment_config{sysv_segment_config{}, 8192};
         segment const seg(conf);
         CHECK(seg.is_valid());
-        CHECK(seg.size() == 8192);
+        CHECK(seg.size() >= 8192);
         auto const spec = seg.spec();
         REQUIRE(std::holds_alternative<sysv_segment_spec>(spec.spec));
         auto sysv_spec = std::get<sysv_segment_spec>(spec.spec);

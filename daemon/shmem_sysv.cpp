@@ -8,6 +8,7 @@
 
 #ifndef _WIN32
 
+#include "page_size.hpp"
 #include "posix.hpp"
 #include "random.hpp"
 
@@ -62,6 +63,14 @@ auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
     }
 
 #ifdef __linux__
+    auto const psize = use_huge_pages ? default_huge_page_size() : page_size();
+#else
+    auto const psize = page_size();
+#endif
+    if (not round_up_or_check_size(size, psize))
+        return {};
+
+#ifdef __linux__
     int const huge_pages_flag = use_huge_pages ? SHM_HUGETLB : 0;
 #else
     if (use_huge_pages) {
@@ -82,7 +91,7 @@ auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
     }
 
     spdlog::info("shmget: key {}: success; id {}", key, id);
-    return sysv_shmem_id(id);
+    return sysv_shmem_id(id, size);
 }
 
 auto sysv_shmem_id::remove() noexcept -> bool {
@@ -107,6 +116,7 @@ TEST_CASE("sysv_shmem_id") {
         sysv_shmem_id shmid;
         CHECK_FALSE(shmid.is_valid());
         CHECK(shmid.id() == -1);
+        CHECK(shmid.size() == 0);
 
         SUBCASE("let destructor clean up") {}
 
@@ -121,35 +131,40 @@ TEST_CASE("sysv_shmem_id") {
         sysv_shmem_id shmid;
         while (not shmid.is_valid()) {
             ++key;
-            shmid = create_sysv_shmem_id(key, 8192);
+            shmid = create_sysv_shmem_id(key, 100);
         }
         CHECK(shmid.id() >= 0);
+        CHECK(shmid.size() == page_size());
 
         SUBCASE("create with existing key, no-force") {
             SUBCASE("same size") {
-                auto shmid2 = create_sysv_shmem_id(key, 16384, false);
+                auto shmid2 = create_sysv_shmem_id(key, 100, false);
                 CHECK_FALSE(shmid2.is_valid());
                 CHECK(shmid2.id() == -1);
+                CHECK(shmid2.size() == 0);
             }
 
             SUBCASE("larger size") {
-                auto shmid2 = create_sysv_shmem_id(key, 32768, false);
+                auto shmid2 = create_sysv_shmem_id(key, 100, false);
                 CHECK_FALSE(shmid2.is_valid());
                 CHECK(shmid2.id() == -1);
+                CHECK(shmid2.size() == 0);
             }
         }
 
         SUBCASE("create with existing key, force") {
             SUBCASE("same size") {
-                auto shmid2 = create_sysv_shmem_id(key, 16384, true);
+                auto shmid2 = create_sysv_shmem_id(key, page_size(), true);
                 CHECK(shmid2.is_valid());
                 CHECK(shmid2.id() >= 0);
+                CHECK(shmid2.size() == page_size());
             }
 
             SUBCASE("larger size") {
-                auto shmid2 = create_sysv_shmem_id(key, 32768, true);
+                auto shmid2 = create_sysv_shmem_id(key, 2 * page_size(), true);
                 CHECK(shmid2.is_valid());
                 CHECK(shmid2.id() >= 0);
+                CHECK(shmid2.size() == 2 * page_size());
             }
         }
 
@@ -160,6 +175,7 @@ TEST_CASE("sysv_shmem_id") {
             CHECK_FALSE(shmid.is_valid());
             CHECK(other.is_valid());
             CHECK(other.id() == id);
+            CHECK(other.size() == page_size());
         }
 
         SUBCASE("move-assign") {
@@ -169,14 +185,16 @@ TEST_CASE("sysv_shmem_id") {
             CHECK_FALSE(shmid.is_valid());
             CHECK(other.is_valid());
             CHECK(other.id() == id);
+            CHECK(other.size() == page_size());
         }
         // NOLINTEND(bugprone-use-after-move)
     }
 
     SUBCASE("create id with IPC_PRIVATE") {
-        auto shmid = create_sysv_shmem_id(IPC_PRIVATE, 16384, false);
+        auto shmid = create_sysv_shmem_id(IPC_PRIVATE, 100, false);
         CHECK(shmid.is_valid());
         CHECK(shmid.id() >= 0);
+        CHECK(shmid.size() == page_size());
 
         SUBCASE("let destructor clean up") {}
 
@@ -289,10 +307,11 @@ auto create_sysv_shmem(int key, std::size_t size, bool force,
 }
 
 TEST_CASE("create_sysv_shmem") {
-    auto shm = create_sysv_shmem(4096);
+    auto shm = create_sysv_shmem(100);
     CHECK(shm.is_valid());
     CHECK(shm.id() >= 0);
     CHECK(shm.address() != nullptr);
+    CHECK(shm.size() == page_size());
     CHECK(shm.remove());
     CHECK(shm.detach());
 }

@@ -16,6 +16,7 @@ daemon_sources = [
     'message.cpp',
     'object.cpp',
     'overloaded.cpp',
+    'page_size.cpp',
     'posix.cpp',
     'proper_object.cpp',
     'quitter.cpp',

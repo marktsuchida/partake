@@ -24,6 +24,7 @@ namespace internal {
 // RAII for MapViewOfFile() - UnmapViewOfFile()
 class win32_map_view {
     void *addr = nullptr;
+    std::size_t siz = 0;
 
   public:
     win32_map_view() noexcept = default;
@@ -34,13 +35,16 @@ class win32_map_view {
 
     ~win32_map_view() { unmap(); }
 
-    win32_map_view(win32_map_view &&other) noexcept : addr(other.addr) {
+    win32_map_view(win32_map_view &&other) noexcept
+        : addr(other.addr), siz(other.siz) {
         other.addr = nullptr;
+        other.siz = 0;
     }
 
     auto operator=(win32_map_view &&rhs) noexcept -> win32_map_view & {
         unmap();
         addr = std::exchange(rhs.addr, nullptr);
+        siz = std::exchange(rhs.siz, 0);
         return *this;
     }
 
@@ -49,6 +53,8 @@ class win32_map_view {
     }
 
     [[nodiscard]] auto address() const noexcept -> void * { return addr; }
+
+    [[nodiscard]] auto size() const noexcept -> std::size_t { return siz; }
 
   private:
     void unmap() noexcept;
@@ -76,6 +82,10 @@ class win32_shmem {
 
     [[nodiscard]] auto address() const noexcept -> void * {
         return view.address();
+    }
+
+    [[nodiscard]] auto size() const noexcept -> std::size_t {
+        return view.size();
     }
 };
 
