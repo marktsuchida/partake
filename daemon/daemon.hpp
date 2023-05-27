@@ -86,8 +86,14 @@ template <typename AsioContext> class partake_daemon {
                                                      : log2_size(page_size())),
           clk_traits(asio_context), vq(clk_traits),
           repo(token_sequence(), vq) {
+        std::size_t gran = std::size_t(1) << allocr.log2_granularity();
         spdlog::info("allocation granularity set to {}",
-                     human_readable_size(1u << allocr.log2_granularity()));
+                     human_readable_size(gran));
+        if (seg.size() % gran != 0) {
+            spdlog::warn(
+                "segment size is not a multiple of the allocation granularity; wasting {} bytes",
+                seg.size() % gran);
+        }
     }
 
     // No move or copy (references to members are taken)
