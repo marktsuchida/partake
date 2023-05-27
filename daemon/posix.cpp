@@ -19,6 +19,7 @@
 #include <cstring> // strerror_r
 #include <filesystem>
 
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace partake::daemon::posix {
@@ -132,6 +133,20 @@ TEST_CASE("posix::unlinkable") {
     CHECK_FALSE(std::filesystem::exists(f.path().string()));
     CHECK(unlk.unlink()); // Idempotent
 }
+
+namespace {
+
+::mode_t const the_umask = []() {
+    // Store the umask at static initialization time so that we don't have any
+    // chance of a data race.
+    auto ret = ::umask(0077);
+    (void)::umask(ret); // Restore
+    return ret;
+}();
+
+}
+
+auto get_umask() noexcept -> int { return static_cast<int>(the_umask); }
 
 } // namespace partake::daemon::posix
 

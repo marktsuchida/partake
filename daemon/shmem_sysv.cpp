@@ -117,9 +117,13 @@ auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
 #endif
 
     errno = 0;
-    int id =
-        ::shmget(key, size,
-                 IPC_CREAT | (force ? 0 : IPC_EXCL) | huge_pages_flags | 0666);
+    // shmget() does not use the umask, but we apply it ourselves to match the
+    // behavior of files and POSIX shared memory. The executable bits do
+    // nothing, so leave cleared.
+    auto const perms = 0666 & ~posix::get_umask();
+    int id = ::shmget(key, size,
+                      IPC_CREAT | (force ? 0 : IPC_EXCL) | huge_pages_flags |
+                          perms);
     if (id < 0) {
         auto err = errno;
         auto msg = posix::strerror(err);
