@@ -201,10 +201,7 @@ segment::segment(segment_config const &config) noexcept
                   return std::make_unique<win32_segment>(cfg, config.size);
               },
           },
-          config.method)) {
-    if (size() == 0)
-        spdlog::warn("Segment size is 0 bytes");
-}
+          config.method)) {}
 
 #ifdef _WIN32
 

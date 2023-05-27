@@ -204,6 +204,7 @@ auto parse_cli_args_unvalidated(int argc, char const *const *argv) noexcept
     app.add_option("-m,--memory", ret.memory,
                    "Size of shared memory (suffixes K/M/G allowed)")
         ->type_name("BYTES")
+        ->check(parse_nonempty)
         ->transform(parse_size_suffix);
 
     app.add_option("-s,--socket", ret.socket,
@@ -473,6 +474,10 @@ auto validate_cli_args(cli_args const &args) noexcept
     -> tl::expected<daemon_config, std::string> {
     using namespace std::string_literals;
     daemon_config ret;
+
+    if (args.memory == 0)
+        return tl::unexpected(
+            "--memory is required and its argument must be positive"s);
 
     // Unix domain socket path names have a low length limit. Linux and Windows
     // limits are 107, (some?) BSDs have 103, and apparently some Unices have
