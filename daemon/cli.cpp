@@ -6,7 +6,7 @@
 
 #include "cli.hpp"
 
-#include "page_size.hpp"
+#include "sizes.hpp"
 
 #include <CLI/CLI.hpp>
 #include <fmt/core.h>

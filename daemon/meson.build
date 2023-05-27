@@ -29,6 +29,7 @@ daemon_sources = [
     'shmem_mmap.cpp',
     'shmem_sysv.cpp',
     'shmem_win32.cpp',
+    'sizes.cpp',
     'testing.cpp',
     'time_point.cpp',
     'token.cpp',

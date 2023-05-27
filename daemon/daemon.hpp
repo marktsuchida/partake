@@ -21,6 +21,7 @@
 #include "request_handler.hpp"
 #include "segment.hpp"
 #include "session.hpp"
+#include "sizes.hpp"
 
 #include <tl/expected.hpp>
 

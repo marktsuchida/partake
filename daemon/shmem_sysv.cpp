@@ -11,6 +11,7 @@
 #include "page_size.hpp"
 #include "posix.hpp"
 #include "random.hpp"
+#include "sizes.hpp"
 
 #include <doctest.h>
 #include <spdlog/spdlog.h>
