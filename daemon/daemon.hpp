@@ -86,6 +86,11 @@ template <typename AsioContext> class partake_daemon {
                                                      : log2_size(page_size())),
           clk_traits(asio_context), vq(clk_traits),
           repo(token_sequence(), vq) {
+        if (not seg.is_valid()) {
+            spdlog::error("failed to create shared memory segment");
+            exitcode = 1;
+            return;
+        }
         std::size_t gran = std::size_t(1) << allocr.log2_granularity();
         spdlog::info("allocation granularity set to {}",
                      human_readable_size(gran));
@@ -100,6 +105,8 @@ template <typename AsioContext> class partake_daemon {
     auto operator=(partake_daemon &&) = delete;
 
     void start() noexcept {
+        if (exitcode != 0)
+            return;
         if (not acceptor.start(
                 [this](socket_type &&sock) noexcept {
                     start_client(std::move(sock));
