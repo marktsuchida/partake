@@ -109,9 +109,11 @@ class sysv_segment final : public internal::segment_impl {
   public:
     explicit sysv_segment(sysv_segment_config const &cfg,
                           std::size_t size) noexcept
-        : shm(cfg.key == 0 ? create_sysv_shmem(size, cfg.use_huge_pages)
+        : shm(cfg.key == 0 ? create_sysv_shmem(size, cfg.use_huge_pages,
+                                               cfg.huge_page_size)
                            : create_sysv_shmem(cfg.key, size, cfg.force,
-                                               cfg.use_huge_pages)) {}
+                                               cfg.use_huge_pages,
+                                               cfg.huge_page_size)) {}
 
     [[nodiscard]] auto is_valid() const noexcept -> bool override {
         return shm.is_valid();

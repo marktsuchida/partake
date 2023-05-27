@@ -54,10 +54,10 @@ struct file_mmap_segment_config {
 };
 
 struct sysv_segment_config {
-    std::int32_t key = 0; // Auto-select if zero
-    bool force = false;   // Replace existing key
-    bool use_huge_pages =
-        false; // Linux (TODO: Support choice of huge page size)
+    std::int32_t key = 0;           // Auto-select if zero
+    bool force = false;             // Replace existing key
+    bool use_huge_pages = false;    // Linux
+    std::size_t huge_page_size = 0; // Default huge page size if zero
 };
 
 struct win32_segment_config {

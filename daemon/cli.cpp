@@ -31,6 +31,7 @@ struct cli_args {
     bool systemv = false;
     bool windows = false;
     bool huge_pages = false;
+    std::size_t huge_page_size = 0;
     bool large_pages = false;
     bool force = false;
     double voucher_ttl = 10.0;
@@ -229,6 +230,11 @@ auto parse_cli_args_unvalidated(int argc, char const *const *argv) noexcept
     app.add_flag("-H,--huge-pages", ret.huge_pages,
                  "Use Linux huge pages with --systemv");
 
+    app.add_option("--huge-page-size", ret.huge_page_size,
+                   "Select Linux huge page size (implies --huge-pages)")
+        ->type_name("BYTES")
+        ->transform(parse_size_suffix);
+
     app.add_flag("-L,--large-pages", ret.large_pages,
                  "Use Windows large pages");
 
@@ -409,7 +415,8 @@ auto validate_segment_config(cli_args const &args) noexcept
         return tl::unexpected(type_or_error.error());
     auto const type = *type_or_error;
 
-    if (args.huge_pages && type != shmem_type::system_v)
+    bool const use_huge_pages = args.huge_pages || args.huge_page_size > 0;
+    if (use_huge_pages && type != shmem_type::system_v)
         return tl::unexpected("--huge-pages requires System V shared memory"s);
     if (args.large_pages && type != shmem_type::win32)
         return tl::unexpected(
@@ -427,9 +434,10 @@ auto validate_segment_config(cli_args const &args) noexcept
         auto const maybe_key = validate_sysv_shmem_name(args.name);
         if (not maybe_key.has_value())
             return tl::unexpected(maybe_key.error());
-        return segment_config{
-            sysv_segment_config{*maybe_key, args.force, args.huge_pages},
-            args.memory};
+        return segment_config{sysv_segment_config{*maybe_key, args.force,
+                                                  use_huge_pages,
+                                                  args.huge_page_size},
+                              args.memory};
     }
     case shmem_type::win32: {
         auto const maybe_name = validate_win32_shmem_name(args.name);

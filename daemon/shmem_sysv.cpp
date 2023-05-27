@@ -15,12 +15,19 @@
 #include <doctest.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cerrno>
 #include <type_traits>
 
-#include <sys/ipc.h>
 #include <sys/shm.h>
-#include <sys/types.h>
+
+// SHM_HUGE_SHIFT is defined in linux/shm.h but that header appears to conflict
+// with sys/shm.h. It is safe to hard-code this value because it is part of the
+// stable kernel ABI (ultimately it is defined in asm-generic/hugetlb_encode.h
+// as HUGETLB_FLAG_ENCODE_SHIFT).
+#if defined(__linux__) && not defined(SHM_HUGE_SHIFT)
+#define SHM_HUGE_SHIFT 26
+#endif
 
 namespace partake::daemon {
 
@@ -33,7 +40,8 @@ static_assert(IPC_PRIVATE == 0);
 namespace internal {
 
 auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
-                          bool use_huge_pages = false) noexcept
+                          bool use_huge_pages = false,
+                          std::size_t huge_page_size = 0) noexcept
     -> sysv_shmem_id {
     if (size == 0)
         return {};
@@ -63,26 +71,58 @@ auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
     }
 
 #ifdef __linux__
-    auto const psize = use_huge_pages ? default_huge_page_size() : page_size();
-#else
-    auto const psize = page_size();
-#endif
-    if (not round_up_or_check_size(size, psize))
+    auto const psize = [use_huge_pages, huge_page_size]() -> std::size_t {
+        if (use_huge_pages) {
+            if (huge_page_size == 0)
+                return default_huge_page_size();
+            auto const sizes = huge_page_sizes();
+            if (std::find(sizes.begin(), sizes.end(), huge_page_size) ==
+                sizes.end())
+                return 0;
+            return huge_page_size;
+        } else {
+            return page_size();
+        }
+    }();
+    if (psize == 0) {
+        spdlog::error("{} is not a supported huge page size",
+                      human_readable_size(huge_page_size));
         return {};
-
-#ifdef __linux__
-    int const huge_pages_flag = use_huge_pages ? SHM_HUGETLB : 0;
+    }
 #else
     if (use_huge_pages) {
         spdlog::error("shmget: huge pages not supported on this platform");
         return {};
     }
-    int const huge_pages_flag = 0;
+    (void)huge_page_size;
+    auto const psize = page_size();
 #endif
+
+    if (not round_up_or_check_size(size, psize))
+        return {};
+
+#ifdef __linux__
+    int const huge_pages_flags = [use_huge_pages, huge_page_size]() {
+        if (use_huge_pages) {
+            int ret = SHM_HUGETLB;
+            if (huge_page_size > 0) {
+                int log2_hps = 0;
+                for (auto hps = huge_page_size; hps != 1; hps >>= 1)
+                    ++log2_hps;
+                ret |= (log2_hps << SHM_HUGE_SHIFT);
+            }
+            return ret;
+        }
+        return 0;
+    }();
+#else
+    int const huge_pages_flags = 0;
+#endif
+
     errno = 0;
     int id =
         ::shmget(key, size,
-                 IPC_CREAT | (force ? 0 : IPC_EXCL) | huge_pages_flag | 0666);
+                 IPC_CREAT | (force ? 0 : IPC_EXCL) | huge_pages_flags | 0666);
     if (id < 0) {
         auto err = errno;
         auto msg = posix::strerror(err);
@@ -294,16 +334,17 @@ TEST_CASE("sysv_shmem_attachment") {
 
 } // namespace internal
 
-auto create_sysv_shmem(std::size_t size, bool use_huge_pages) noexcept
-    -> sysv_shmem {
-    return sysv_shmem(internal::create_sysv_shmem_id(IPC_PRIVATE, size, false,
-                                                     use_huge_pages));
+auto create_sysv_shmem(std::size_t size, bool use_huge_pages,
+                       std::size_t huge_page_size) noexcept -> sysv_shmem {
+    return sysv_shmem(internal::create_sysv_shmem_id(
+        IPC_PRIVATE, size, false, use_huge_pages, huge_page_size));
 }
 
 auto create_sysv_shmem(int key, std::size_t size, bool force,
-                       bool use_huge_pages) noexcept -> sysv_shmem {
-    return sysv_shmem(
-        internal::create_sysv_shmem_id(key, size, force, use_huge_pages));
+                       bool use_huge_pages,
+                       std::size_t huge_page_size) noexcept -> sysv_shmem {
+    return sysv_shmem(internal::create_sysv_shmem_id(
+        key, size, force, use_huge_pages, huge_page_size));
 }
 
 TEST_CASE("create_sysv_shmem") {

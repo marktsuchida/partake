@@ -110,11 +110,12 @@ class sysv_shmem {
     auto detach() noexcept -> bool { return attachment.detach(); }
 };
 
-auto create_sysv_shmem(std::size_t size, bool use_huge_pages = false) noexcept
-    -> sysv_shmem;
+auto create_sysv_shmem(std::size_t size, bool use_huge_pages = false,
+                       std::size_t huge_page_size = 0) noexcept -> sysv_shmem;
 
 auto create_sysv_shmem(int key, std::size_t size, bool force = false,
-                       bool use_huge_pages = false) noexcept -> sysv_shmem;
+                       bool use_huge_pages = false,
+                       std::size_t huge_page_size = 0) noexcept -> sysv_shmem;
 
 } // namespace partake::daemon
 
