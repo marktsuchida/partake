@@ -105,12 +105,8 @@ auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
     int const huge_pages_flags = [use_huge_pages, huge_page_size]() {
         if (use_huge_pages) {
             int ret = SHM_HUGETLB;
-            if (huge_page_size > 0) {
-                int log2_hps = 0;
-                for (auto hps = huge_page_size; hps != 1; hps >>= 1)
-                    ++log2_hps;
-                ret |= (log2_hps << SHM_HUGE_SHIFT);
-            }
+            if (huge_page_size > 0)
+                ret |= (log2_size(huge_page_size) << SHM_HUGE_SHIFT);
             return ret;
         }
         return 0;

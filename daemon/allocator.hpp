@@ -362,6 +362,10 @@ template <typename Arena> class basic_allocator {
         return arn.size() << shift;
     }
 
+    [[nodiscard]] auto log2_granularity() const noexcept -> std::size_t {
+        return shift;
+    }
+
     class allocation {
         typename Arena::allocation alloc;
         std::size_t shft;

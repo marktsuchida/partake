@@ -6,6 +6,8 @@
 
 #include "cli.hpp"
 
+#include "page_size.hpp"
+
 #include <CLI/CLI.hpp>
 #include <fmt/core.h>
 
@@ -30,6 +32,7 @@ struct cli_args {
     bool posix = false;
     bool systemv = false;
     bool windows = false;
+    std::size_t granularity = 0;
     bool huge_pages = false;
     std::size_t huge_page_size = 0;
     bool large_pages = false;
@@ -226,6 +229,11 @@ auto parse_cli_args_unvalidated(int argc, char const *const *argv) noexcept
 
     app.add_flag("-W,--windows", ret.windows,
                  "Use Win32 named shared memory (default on Windows)");
+
+    app.add_option("-g,--granularity", ret.granularity,
+                   "Allocation granularity (suffixes K/M/G allowed)")
+        ->type_name("BYTES")
+        ->transform(parse_size_suffix);
 
     app.add_flag("-H,--huge-pages", ret.huge_pages,
                  "Use Linux huge pages with --systemv");
@@ -473,7 +481,17 @@ auto validate_cli_args(cli_args const &args) noexcept
         return tl::unexpected("--socket is required"s);
     ret.endpoint = args.socket;
 
-    ret.log2_granularity = 12; // 4k; TODO Make configurable.
+    if (args.granularity > 0) {
+        if (not is_size_power_of_2(args.granularity))
+            return tl::unexpected(
+                "Allocation granularity must be a power of 2"s);
+        static constexpr std::size_t min_gran = 512;
+        if (args.granularity < min_gran) {
+            return tl::unexpected(fmt::format(
+                "Allocation granularity must not be less than {}", min_gran));
+        }
+        ret.log2_granularity = log2_size(args.granularity);
+    }
 
     if (args.voucher_ttl <= 0.0)
         return tl::unexpected("Voucher time-to-live must be positive"s);

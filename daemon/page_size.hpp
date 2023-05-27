@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <filesystem>
 #include <string>
@@ -43,12 +44,31 @@ auto file_page_size(int fd) noexcept -> std::size_t;
 
 #endif
 
-// Round 'size' up to a multiple of page_size and return true if granularity is
-// small. If granularity is large, return true if size is already a multiple of
-// granularity; otherwise return false. Return false if granularity is zero.
+// Round 'size' up to a multiple of 'granularity' and return true if
+// granularity is small. If granularity is large, return true if size is
+// already a multiple of granularity; otherwise return false. Return false if
+// granularity is zero.
 auto round_up_or_check_size(std::size_t &size,
                             std::size_t granularity) noexcept -> bool;
 
 auto human_readable_size(std::size_t size) noexcept -> std::string;
+
+// 'size' must not be zero.
+inline auto is_size_power_of_2(std::size_t size) noexcept -> bool {
+    assert(size > 0);
+    return (size & (size - 1)) == 0;
+}
+
+// 'size' must be a power of 2.
+inline auto log2_size(std::size_t size) noexcept -> std::size_t {
+    assert(size > 0);
+    assert(is_size_power_of_2(size));
+    std::size_t ret = 0;
+    while (size != 1) {
+        size >>= 1;
+        ++ret;
+    }
+    return ret;
+}
 
 } // namespace partake::daemon

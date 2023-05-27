@@ -15,6 +15,7 @@
 #include "message.hpp"
 #include "object.hpp"
 #include "overloaded.hpp"
+#include "page_size.hpp"
 #include "quitter.hpp"
 #include "repository.hpp"
 #include "request_handler.hpp"
@@ -80,9 +81,13 @@ template <typename AsioContext> class partake_daemon {
         : cfg(std::move(config)),
           quitr(asio_context, [this]() noexcept { acceptor.close(); }),
           acceptor(asio_context, config.endpoint), seg(config.seg_config),
-          allocr(config.seg_config.size, config.log2_granularity),
+          allocr(seg.size(), config.log2_granularity ? config.log2_granularity
+                                                     : log2_size(page_size())),
           clk_traits(asio_context), vq(clk_traits),
-          repo(token_sequence(), vq) {}
+          repo(token_sequence(), vq) {
+        spdlog::info("allocation granularity set to {}",
+                     human_readable_size(1u << allocr.log2_granularity()));
+    }
 
     // No move or copy (references to members are taken)
     auto operator=(partake_daemon &&) = delete;
