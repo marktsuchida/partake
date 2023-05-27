@@ -927,7 +927,7 @@ TEST_CASE("request_handler: create_voucher") {
     using trompeloeil::_;
 
     SUBCASE("success") {
-        REQUIRE_CALL(sess, create_voucher(12345, 3, _, _, _))
+        REQUIRE_CALL(sess, create_voucher(12345, 3u, _, _, _))
             .SIDE_EFFECT(_4(23456))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
@@ -952,7 +952,7 @@ TEST_CASE("request_handler: create_voucher") {
     }
 
     SUBCASE("failure") {
-        REQUIRE_CALL(sess, create_voucher(12345, 3, _, _, _))
+        REQUIRE_CALL(sess, create_voucher(12345, 3u, _, _, _))
             .SIDE_EFFECT(_5(Status::NO_SUCH_OBJECT))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
