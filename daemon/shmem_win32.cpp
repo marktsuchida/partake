@@ -10,6 +10,7 @@
 
 #include "page_size.hpp"
 #include "random.hpp"
+#include "sizes.hpp"
 #include "testing.hpp"
 #include "win32.hpp"
 
