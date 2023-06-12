@@ -16,7 +16,7 @@ namespace {
 struct mock_object : token_hash_table<mock_object>::hook,
                      std::enable_shared_from_this<mock_object> {
     bool v;
-    btoken t = 0;
+    btoken t;
     protocol::Policy p = protocol::Policy::DEFAULT;
     int r = 0;
     std::size_t nv = 0;
@@ -67,9 +67,9 @@ struct mock_object : token_hash_table<mock_object>::hook,
 };
 
 struct mock_token_sequence { // Generate sequential starting at 1.
-    btoken prev_token = 0;
+    std::uint64_t prev_token;
 
-    auto generate() -> btoken { return ++prev_token; }
+    auto generate() -> btoken { return btoken(++prev_token); }
 };
 
 struct mock_voucher_queue {
@@ -87,16 +87,16 @@ TEST_CASE("repository") {
         mock_token_sequence(), vq);
 
     auto obj = r.create_object(protocol::Policy::DEFAULT, 42);
-    CHECK(obj->token() == 1);
+    CHECK(obj->token().as_u64() == 1);
 
-    auto found = r.find_object(1);
+    auto found = r.find_object(btoken(1));
     CHECK(found == obj);
 
     r.reassign_object_token(obj);
-    CHECK(obj->token() == 2);
+    CHECK(obj->token().as_u64() == 2);
 
     using trompeloeil::_;
-    REQUIRE_CALL(vq, enqueue(_)).WITH(_1->token() == 3).TIMES(1);
+    REQUIRE_CALL(vq, enqueue(_)).WITH(_1->token().as_u64() == 3).TIMES(1);
     auto v = r.create_voucher(obj, time_point(std::chrono::seconds(100)), 1);
 
     REQUIRE_CALL(vq, drop(_)).WITH(_1 == v).TIMES(1);

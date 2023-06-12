@@ -66,7 +66,7 @@ inline auto segment_spec_to_fb(flatbuffers::FlatBufferBuilder &fbb,
 template <typename Resource>
 inline auto make_mapping(btoken tok, Resource const &rsrc) noexcept
     -> protocol::Mapping {
-    return protocol::Mapping(tok, rsrc.segment_id(), rsrc.offset(),
+    return protocol::Mapping(tok.as_u64(), rsrc.segment_id(), rsrc.offset(),
                              rsrc.size());
 }
 
@@ -253,7 +253,7 @@ template <typename Session> class request_handler {
     auto handle_open(std::uint64_t seqno, protocol::OpenRequest const *req,
                      time_point now, response_builder &rb) noexcept -> bool {
         sess->open(
-            req->token(), req->policy(), req->wait(), now,
+            btoken(req->token()), req->policy(), req->wait(), now,
             [seqno, &rb](btoken t, resource_type const &rsrc) noexcept {
                 auto &fbb = rb.fbbuilder();
                 auto mapping = internal::make_mapping(t, rsrc);
@@ -282,7 +282,7 @@ template <typename Session> class request_handler {
     auto handle_close(std::uint64_t seqno, protocol::CloseRequest const *req,
                       response_builder &rb) noexcept -> bool {
         sess->close(
-            req->token(),
+            btoken(req->token()),
             [seqno, &rb]() noexcept {
                 auto &fbb = rb.fbbuilder();
                 auto resp = protocol::CreateCloseResponse(fbb);
@@ -297,7 +297,7 @@ template <typename Session> class request_handler {
     auto handle_share(std::uint64_t seqno, protocol::ShareRequest const *req,
                       response_builder &rb) noexcept -> bool {
         sess->share(
-            req->token(),
+            btoken(req->token()),
             [seqno, &rb]() noexcept {
                 auto &fbb = rb.fbbuilder();
                 auto resp = protocol::CreateShareResponse(fbb);
@@ -313,10 +313,11 @@ template <typename Session> class request_handler {
                         protocol::UnshareRequest const *req,
                         response_builder &rb) noexcept -> bool {
         sess->unshare(
-            req->token(), req->wait(),
+            btoken(req->token()), req->wait(),
             [seqno, &rb](btoken new_token) noexcept {
                 auto &fbb = rb.fbbuilder();
-                auto resp = protocol::CreateUnshareResponse(fbb, new_token);
+                auto resp =
+                    protocol::CreateUnshareResponse(fbb, new_token.as_u64());
                 rb.add_successful_response(seqno, resp);
             },
             [seqno, &rb](protocol::Status status) noexcept {
@@ -325,7 +326,8 @@ template <typename Session> class request_handler {
             [seqno, this](btoken new_token) noexcept {
                 auto rb2 = response_builder(1);
                 auto &fbb = rb2.fbbuilder();
-                auto resp = protocol::CreateUnshareResponse(fbb, new_token);
+                auto resp =
+                    protocol::CreateUnshareResponse(fbb, new_token.as_u64());
                 rb2.add_successful_response(seqno, resp);
                 write_resp(rb2.release_buffer());
             },
@@ -342,11 +344,11 @@ template <typename Session> class request_handler {
                                time_point now, response_builder &rb) noexcept
         -> bool {
         sess->create_voucher(
-            req->token(), req->count(), now,
+            btoken(req->token()), req->count(), now,
             [seqno, &rb](btoken voucher_token) noexcept {
                 auto &fbb = rb.fbbuilder();
-                auto resp =
-                    protocol::CreateCreateVoucherResponse(fbb, voucher_token);
+                auto resp = protocol::CreateCreateVoucherResponse(
+                    fbb, voucher_token.as_u64());
                 rb.add_successful_response(seqno, resp);
             },
             [seqno, &rb](protocol::Status status) noexcept {
@@ -360,11 +362,11 @@ template <typename Session> class request_handler {
                                 time_point now, response_builder &rb) noexcept
         -> bool {
         sess->discard_voucher(
-            req->token(), now,
+            btoken(req->token()), now,
             [seqno, &rb](btoken object_token) noexcept {
                 auto &fbb = rb.fbbuilder();
-                auto resp =
-                    protocol::CreateDiscardVoucherResponse(fbb, object_token);
+                auto resp = protocol::CreateDiscardVoucherResponse(
+                    fbb, object_token.as_u64());
                 rb.add_successful_response(seqno, resp);
             },
             [seqno, &rb](protocol::Status status) noexcept {

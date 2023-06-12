@@ -113,7 +113,7 @@ TEST_CASE("session: object ops") {
     session_type sess2(43, seg, alloc, repo, 10s);
 
     GIVEN("nonexistent token") {
-        std::vector<btoken> const tokens{0, 12345};
+        std::vector const tokens{btoken(0), btoken(12345)};
         for (btoken const tok : tokens) {
             CAPTURE(tok);
 
@@ -190,7 +190,7 @@ TEST_CASE("session: object ops") {
     }
 
     GIVEN("default policy, unshared, opened by sess1") {
-        btoken tok = 0;
+        btoken tok;
         REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
         sess1.alloc(
             1024, Policy::DEFAULT,
@@ -199,7 +199,7 @@ TEST_CASE("session: object ops") {
                 tok = t;
             },
             []([[maybe_unused]] Status e) { CHECK(false); });
-        CHECK(tok != 0);
+        CHECK(tok.is_valid());
 
         SUBCASE("nil") {} // Test for correct cleanup when object left over.
 
@@ -256,7 +256,7 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("open-wait by sess1 -> waits") {
-            btoken opened_tok = 0;
+            btoken opened_tok;
             auto err = Status::OK;
             sess1.open(
                 tok, Policy::DEFAULT, true, clock::now(),
@@ -266,7 +266,7 @@ TEST_CASE("session: object ops") {
                 []([[maybe_unused]] Status e) { CHECK(false); },
                 [&](btoken t, [[maybe_unused]] int r) { opened_tok = t; },
                 [&](Status e) { err = e; });
-            CHECK(opened_tok == 0);
+            CHECK_FALSE(opened_tok.is_valid());
             CHECK(err == Status::OK);
 
             SUBCASE("close by sess1 -> open-wait fails, no such object") {
@@ -289,7 +289,7 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("open-wait by sess2 -> waits") {
-            btoken opened_tok = 0;
+            btoken opened_tok;
             auto err = Status::OK;
             sess2.open(
                 tok, Policy::DEFAULT, true, clock::now(),
@@ -299,7 +299,7 @@ TEST_CASE("session: object ops") {
                 []([[maybe_unused]] Status e) { CHECK(false); },
                 [&](btoken t, [[maybe_unused]] int r) { opened_tok = t; },
                 [&](Status e) { err = e; });
-            CHECK(opened_tok == 0);
+            CHECK_FALSE(opened_tok.is_valid());
             CHECK(err == Status::OK);
 
             SUBCASE("close by sess1 -> open-wait fails, no such object") {
@@ -357,27 +357,27 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("create_voucher by sess1 -> succeeds") {
-            btoken vtok = 0;
+            btoken vtok;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess1.create_voucher(
                 tok, 1, clock::now(), [&](btoken t) { vtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
-            CHECK(vtok != 0);
+            CHECK(vtok.is_valid());
             CHECK(vtok != tok);
         }
 
         SUBCASE("create_voucher by sess2 -> succeeds") {
-            btoken vtok = 0;
+            btoken vtok;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess2.create_voucher(
                 tok, 1, clock::now(), [&](btoken t) { vtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
-            CHECK(vtok != 0);
+            CHECK(vtok.is_valid());
             CHECK(vtok != tok);
         }
 
         SUBCASE("discard_voucher by sess1 -> succeeds") {
-            btoken ret = 0;
+            btoken ret;
             sess1.discard_voucher(
                 tok, clock::now(), [&](btoken t) { ret = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
@@ -393,7 +393,7 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("discard_voucher by sess2 -> succeeds") {
-            btoken ret = 0;
+            btoken ret;
             sess2.discard_voucher(
                 tok, clock::now(), [&](btoken t) { ret = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
@@ -402,7 +402,7 @@ TEST_CASE("session: object ops") {
     }
 
     GIVEN("default policy, shared, opened by sess1") {
-        btoken tok = 0;
+        btoken tok;
         REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
         sess1.alloc(
             1024, Policy::DEFAULT,
@@ -413,7 +413,7 @@ TEST_CASE("session: object ops") {
                     []([[maybe_unused]] Status e) { CHECK(false); });
             },
             []([[maybe_unused]] Status e) { CHECK(false); });
-        CHECK(tok != 0);
+        CHECK(tok.is_valid());
 
         SUBCASE("close by sess1 -> succeeds") {
             bool ok = false;
@@ -446,7 +446,7 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("open-wait by sess1 -> succeeds") {
-            btoken opened = 0;
+            btoken opened;
             sess1.open(
                 tok, Policy::DEFAULT, true, clock::now(),
                 [&](btoken t, int r) {
@@ -462,7 +462,7 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("open-wait by sess2 -> succeeds") {
-            btoken opened = 0;
+            btoken opened;
             sess2.open(
                 tok, Policy::DEFAULT, true, clock::now(),
                 [&](btoken t, int r) {
@@ -492,13 +492,13 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("unshare-wait by sess1 -> succeeds") {
-            btoken newtok = 0;
+            btoken newtok;
             sess1.unshare(
                 tok, true, [&](btoken t) { newtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); },
                 []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
-            CHECK(newtok != 0);
+            CHECK(newtok.is_valid());
             CHECK(newtok != tok);
 
             SUBCASE("open-wait by sess1 -> no such object") {
@@ -528,27 +528,27 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("create_voucher by sess1 -> succeeds") {
-            btoken vtok = 0;
+            btoken vtok;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess1.create_voucher(
                 tok, 1, clock::now(), [&](btoken t) { vtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
-            CHECK(vtok != 0);
+            CHECK(vtok.is_valid());
             CHECK(vtok != tok);
         }
 
         SUBCASE("create_voucher by sess2 -> succeeds") {
-            btoken vtok = 0;
+            btoken vtok;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess2.create_voucher(
                 tok, 1, clock::now(), [&](btoken t) { vtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
-            CHECK(vtok != 0);
+            CHECK(vtok.is_valid());
             CHECK(vtok != tok);
         }
 
         SUBCASE("discard_voucher by sess1 -> succeeds") {
-            btoken ret = 0;
+            btoken ret;
             sess1.discard_voucher(
                 tok, clock::now(), [&](btoken t) { ret = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
@@ -564,7 +564,7 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("discard_voucher by sess2 -> succeeds") {
-            btoken ret = 0;
+            btoken ret;
             sess2.discard_voucher(
                 tok, clock::now(), [&](btoken t) { ret = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
@@ -573,7 +573,7 @@ TEST_CASE("session: object ops") {
     }
 
     GIVEN("default policy, shared, opened by sess1 and sess2") {
-        btoken tok = 0;
+        btoken tok;
         REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
         sess1.alloc(
             1024, Policy::DEFAULT,
@@ -595,7 +595,7 @@ TEST_CASE("session: object ops") {
                     []([[maybe_unused]] Status e) { CHECK(false); });
             },
             []([[maybe_unused]] Status e) { CHECK(false); });
-        CHECK(tok != 0);
+        CHECK(tok.is_valid());
 
         SUBCASE("close by sess1 -> succeeds") {
             bool ok = false;
@@ -606,7 +606,7 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("open-wait by sess1 -> succeeds") {
-            btoken opened = 0;
+            btoken opened;
             sess1.open(
                 tok, Policy::DEFAULT, true, clock::now(),
                 [&](btoken t, int r) {
@@ -639,13 +639,13 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("unshare-wait by sess1 -> waits") {
-            btoken newtok = 0;
+            btoken newtok;
             auto err = Status::OK;
             sess1.unshare(
                 tok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); },
                 [&](btoken t) { newtok = t; }, [&](Status e) { err = e; });
-            CHECK(newtok == 0);
+            CHECK_FALSE(newtok.is_valid());
             CHECK(err == Status::OK);
 
             SUBCASE("close by sess1 -> unshare fails, no such object") {
@@ -654,7 +654,7 @@ TEST_CASE("session: object ops") {
                     tok, [&] { ok = true; },
                     []([[maybe_unused]] Status e) { CHECK(false); });
                 CHECK(ok);
-                CHECK(newtok == 0);
+                CHECK_FALSE(newtok.is_valid());
                 CHECK(err == Status::NO_SUCH_OBJECT);
             }
 
@@ -664,7 +664,7 @@ TEST_CASE("session: object ops") {
                     tok, [&] { ok = true; },
                     []([[maybe_unused]] Status e) { CHECK(false); });
                 CHECK(ok);
-                CHECK(newtok != 0);
+                CHECK(newtok.is_valid());
                 CHECK(newtok != tok);
                 CHECK(err == Status::OK);
             }
@@ -677,12 +677,12 @@ TEST_CASE("session: object ops") {
                     []([[maybe_unused]] btoken t) { CHECK(false); },
                     []([[maybe_unused]] Status e) { CHECK(false); });
                 CHECK(err2 == Status::OBJECT_RESERVED);
-                CHECK(newtok == 0); // First unshare still pending.
+                CHECK_FALSE(newtok.is_valid()); // First unshare still pending.
                 CHECK(err == Status::OK);
             }
 
             SUBCASE("open-wait by sess1 -> succeeds") {
-                btoken opened = 0;
+                btoken opened;
                 sess1.open(
                     tok, Policy::DEFAULT, true, clock::now(),
                     [&](btoken t, int r) {
@@ -695,12 +695,12 @@ TEST_CASE("session: object ops") {
                     },
                     []([[maybe_unused]] Status e) { CHECK(false); });
                 CHECK(opened == tok);
-                CHECK(newtok == 0); // First unshare still pending.
+                CHECK_FALSE(newtok.is_valid()); // First unshare still pending.
                 CHECK(err == Status::OK);
             }
 
             SUBCASE("open-wait by sess2 -> succeeds") {
-                btoken opened = 0;
+                btoken opened;
                 sess2.open(
                     tok, Policy::DEFAULT, true, clock::now(),
                     [&](btoken t, int r) {
@@ -713,14 +713,14 @@ TEST_CASE("session: object ops") {
                     },
                     []([[maybe_unused]] Status e) { CHECK(false); });
                 CHECK(opened == tok);
-                CHECK(newtok == 0); // First unshare still pending.
+                CHECK_FALSE(newtok.is_valid()); // First unshare still pending.
                 CHECK(err == Status::OK);
             }
         }
     }
 
     GIVEN("default policy, shared, opened by sess1 twice") {
-        btoken tok = 0;
+        btoken tok;
         REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
         sess1.alloc(
             1024, Policy::DEFAULT,
@@ -742,7 +742,7 @@ TEST_CASE("session: object ops") {
                     []([[maybe_unused]] Status e) { CHECK(false); });
             },
             []([[maybe_unused]] Status e) { CHECK(false); });
-        CHECK(tok != 0);
+        CHECK(tok.is_valid());
 
         SUBCASE("unshare-nowait by sess1 -> object busy") {
             auto err = Status::OK;
@@ -755,13 +755,13 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("unshare-wait by sess1 -> waits") {
-            btoken newtok = 0;
+            btoken newtok;
             auto err = Status::OK;
             sess1.unshare(
                 tok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); },
                 [&](btoken t) { newtok = t; }, [&](Status e) { err = e; });
-            CHECK(newtok == 0);
+            CHECK_FALSE(newtok.is_valid());
             CHECK(err == Status::OK);
 
             SUBCASE("close by sess1 -> unshare succeeds") {
@@ -770,14 +770,14 @@ TEST_CASE("session: object ops") {
                     tok, [&] { ok = true; },
                     []([[maybe_unused]] Status e) { CHECK(false); });
                 CHECK(ok);
-                CHECK(newtok != 0);
+                CHECK(newtok.is_valid());
                 CHECK(newtok != tok);
                 CHECK(err == Status::OK);
             }
         }
 
         SUBCASE("open-wait by sess2 -> succeeds") {
-            btoken opened = 0;
+            btoken opened;
             sess2.open(
                 tok, Policy::DEFAULT, true, clock::now(),
                 [&](btoken t, int r) {
@@ -792,13 +792,13 @@ TEST_CASE("session: object ops") {
             CHECK(opened == tok);
 
             SUBCASE("unshare-wait by sess2 -> waits") {
-                btoken newtok = 0;
+                btoken newtok;
                 auto err = Status::OK;
                 sess2.unshare(
                     tok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
                     []([[maybe_unused]] Status e) { CHECK(false); },
                     [&](btoken t) { newtok = t; }, [&](Status e) { err = e; });
-                CHECK(newtok == 0);
+                CHECK_FALSE(newtok.is_valid());
                 CHECK(err == Status::OK);
 
                 SUBCASE("close by sess1 -> unshare still waiting") {
@@ -807,7 +807,7 @@ TEST_CASE("session: object ops") {
                         tok, [&] { ok = true; },
                         []([[maybe_unused]] Status e) { CHECK(false); });
                     CHECK(ok);
-                    CHECK(newtok == 0);
+                    CHECK_FALSE(newtok.is_valid());
                     CHECK(err == Status::OK);
 
                     SUBCASE("close by sess1 -> unshare succeeds") {
@@ -816,7 +816,7 @@ TEST_CASE("session: object ops") {
                             tok, [&] { ok2 = true; },
                             []([[maybe_unused]] Status e) { CHECK(false); });
                         CHECK(ok2);
-                        CHECK(newtok != 0);
+                        CHECK(newtok.is_valid());
                         CHECK(newtok != tok);
                         CHECK(err == Status::OK);
                     }
@@ -826,8 +826,8 @@ TEST_CASE("session: object ops") {
     }
 
     GIVEN("default policy, unshared, opened by sess1, and voucher") {
-        btoken tok = 0;
-        btoken vtok = 0;
+        btoken tok;
+        btoken vtok;
         // Keep voucher alive despite voucher queue being mocked:
         std::shared_ptr<object<int>> vptr;
         REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
@@ -842,8 +842,8 @@ TEST_CASE("session: object ops") {
                     []([[maybe_unused]] Status e) { CHECK(false); });
             },
             []([[maybe_unused]] Status e) { CHECK(false); });
-        CHECK(tok != 0);
-        CHECK(vtok != 0);
+        CHECK(tok.is_valid());
+        CHECK(vtok.is_valid());
         CHECK(vtok != tok);
 
         SUBCASE("close by sess1 -> succeeds") {
@@ -873,7 +873,7 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("open-wait voucher by sess2 -> waits") {
-            btoken opened = 0;
+            btoken opened;
             auto err = Status::OK;
             REQUIRE_CALL(vq, drop(_)).LR_SIDE_EFFECT(vptr.reset()).TIMES(1);
             sess2.open(
@@ -887,7 +887,7 @@ TEST_CASE("session: object ops") {
                     CHECK(r == 532);
                 },
                 [&](Status e) { err = e; });
-            CHECK(opened == 0);
+            CHECK_FALSE(opened.is_valid());
             CHECK(err == Status::OK);
 
             SUBCASE("open-wait voucher by sess2 -> no such object") {
@@ -921,23 +921,23 @@ TEST_CASE("session: object ops") {
                     tok, [&] { ok = true; },
                     []([[maybe_unused]] Status e) { CHECK(false); });
                 CHECK(ok);
-                CHECK(opened == 0);
+                CHECK_FALSE(opened.is_valid());
                 CHECK(err == Status::NO_SUCH_OBJECT);
             }
         }
 
         SUBCASE("create_voucher voucher by sess1 -> succeeds") {
-            btoken newvtok = 0;
+            btoken newvtok;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess1.create_voucher(
                 vtok, 1, clock::now(), [&](btoken t) { newvtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
-            CHECK(newvtok != 0);
+            CHECK(newvtok.is_valid());
             CHECK(newvtok != vtok);
         }
 
         SUBCASE("discard_voucher voucher by sess1 -> succeeds") {
-            btoken ret = 0;
+            btoken ret;
             REQUIRE_CALL(vq, drop(_)).TIMES(1);
             sess1.discard_voucher(
                 vtok, clock::now(), [&](btoken t) { ret = t; },
@@ -971,8 +971,8 @@ TEST_CASE("session: object ops") {
     }
 
     GIVEN("default policy, shared, opened by sess1, and voucher") {
-        btoken tok = 0;
-        btoken vtok = 0;
+        btoken tok;
+        btoken vtok;
         // Keep voucher alive despite voucher queue being mocked:
         std::shared_ptr<object<int>> vptr;
         REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
@@ -993,8 +993,8 @@ TEST_CASE("session: object ops") {
                     []([[maybe_unused]] Status e) { CHECK(false); });
             },
             []([[maybe_unused]] Status e) { CHECK(false); });
-        CHECK(tok != 0);
-        CHECK(vtok != 0);
+        CHECK(tok.is_valid());
+        CHECK(vtok.is_valid());
         CHECK(vtok != tok);
 
         SUBCASE("close by sess1 -> succeeds") {
@@ -1005,7 +1005,7 @@ TEST_CASE("session: object ops") {
             CHECK(ok);
 
             SUBCASE("open-wait voucher by sess2 -> succeeds") {
-                btoken opened = 0;
+                btoken opened;
                 REQUIRE_CALL(vq, drop(_))
                     .LR_SIDE_EFFECT(vptr.reset())
                     .TIMES(1);
@@ -1025,7 +1025,7 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("open-wait voucher by sess2 -> succeeds") {
-            btoken opened = 0;
+            btoken opened;
             REQUIRE_CALL(vq, drop(_)).LR_SIDE_EFFECT(vptr.reset()).TIMES(1);
             sess2.open(
                 vtok, Policy::DEFAULT, true, clock::now(),
@@ -1052,18 +1052,18 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("unshare-wait by sess1 -> waits") {
-            btoken newtok = 0;
+            btoken newtok;
             auto err = Status::OK;
             sess1.unshare(
                 tok, true, []([[maybe_unused]] btoken t) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); },
                 [&](btoken t) { newtok = t; }, [&](Status e) { err = e; });
-            CHECK(newtok == 0);
+            CHECK_FALSE(newtok.is_valid());
             CHECK(err == Status::OK);
 
             SUBCASE("voucher expires -> unshare succeeds") {
                 vptr.reset(); // Simulate expiration.
-                CHECK(newtok != 0);
+                CHECK(newtok.is_valid());
                 CHECK(newtok != tok);
                 CHECK(err == Status::OK);
             }
@@ -1074,14 +1074,14 @@ TEST_CASE("session: object ops") {
                     tok, [&] { ok = true; },
                     []([[maybe_unused]] Status e) { CHECK(false); });
                 CHECK(ok);
-                CHECK(newtok == 0);
+                CHECK_FALSE(newtok.is_valid());
                 CHECK(err == Status::NO_SUCH_OBJECT);
             }
         }
     }
 
     GIVEN("primitive policy, opened by sess1") {
-        btoken tok = 0;
+        btoken tok;
         REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
         sess1.alloc(
             1024, Policy::PRIMITIVE,
@@ -1090,7 +1090,7 @@ TEST_CASE("session: object ops") {
                 tok = t;
             },
             []([[maybe_unused]] Status e) { CHECK(false); });
-        CHECK(tok != 0);
+        CHECK(tok.is_valid());
 
         SUBCASE("close by sess1 -> succeeds") {
             bool ok = false;
@@ -1123,7 +1123,7 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("open-nowait by sess1 -> succeeds") {
-            btoken opened = 0;
+            btoken opened;
             sess1.open(
                 tok, Policy::PRIMITIVE, false, clock::now(),
                 [&](btoken t, int r) {
@@ -1139,7 +1139,7 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("open-nowait by sess2 -> succeeds") {
-            btoken opened = 0;
+            btoken opened;
             sess2.open(
                 tok, Policy::PRIMITIVE, false, clock::now(),
                 [&](btoken t, int r) {
@@ -1155,7 +1155,7 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("open-wait by sess1 -> succeeds") {
-            btoken opened = 0;
+            btoken opened;
             sess1.open(
                 tok, Policy::PRIMITIVE, true, clock::now(),
                 [&](btoken t, int r) {
@@ -1171,7 +1171,7 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("open-wait by sess2 -> succeeds") {
-            btoken opened = 0;
+            btoken opened;
             sess2.open(
                 tok, Policy::PRIMITIVE, true, clock::now(),
                 [&](btoken t, int r) {
@@ -1221,27 +1221,27 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("create_voucher by sess1 -> succeeds") {
-            btoken vtok = 0;
+            btoken vtok;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess1.create_voucher(
                 tok, 1, clock::now(), [&](btoken t) { vtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
-            CHECK(vtok != 0);
+            CHECK(vtok.is_valid());
             CHECK(vtok != tok);
         }
 
         SUBCASE("create_voucher by sess2 -> succeeds") {
-            btoken vtok = 0;
+            btoken vtok;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess2.create_voucher(
                 tok, 1, clock::now(), [&](btoken t) { vtok = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
-            CHECK(vtok != 0);
+            CHECK(vtok.is_valid());
             CHECK(vtok != tok);
         }
 
         SUBCASE("discard_voucher by sess1 -> succeeds") {
-            btoken ret = 0;
+            btoken ret;
             sess1.discard_voucher(
                 tok, clock::now(), [&](btoken t) { ret = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
@@ -1249,7 +1249,7 @@ TEST_CASE("session: object ops") {
         }
 
         SUBCASE("discard_voucher by sess2 -> succeeds") {
-            btoken ret = 0;
+            btoken ret;
             sess2.discard_voucher(
                 tok, clock::now(), [&](btoken t) { ret = t; },
                 []([[maybe_unused]] Status e) { CHECK(false); });

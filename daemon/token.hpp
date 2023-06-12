@@ -10,6 +10,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <functional>
 #include <utility>
 
 namespace partake::daemon {
@@ -22,10 +23,25 @@ namespace partake::daemon {
 // The name 'btoken' stands for 'binary token' (as opposed to proquint
 // representation). It also avoid clashing with methods and variables named
 // 'token'.
-// TODO Type 'btoken' should be class type to prevent misuse as numeric.
-using btoken = std::uint64_t;
+class btoken {
+    std::uint64_t t = 0;
 
-inline constexpr btoken invalid_token = 0;
+  public:
+    btoken() noexcept = default;
+    explicit btoken(std::uint64_t value) noexcept : t(value) {}
+
+    [[nodiscard]] auto as_u64() const noexcept -> std::uint64_t { return t; }
+
+    [[nodiscard]] auto is_valid() const noexcept -> bool { return t != 0; }
+
+    friend auto operator==(btoken lhs, btoken rhs) noexcept -> bool {
+        return lhs.t == rhs.t;
+    }
+
+    friend auto operator!=(btoken lhs, btoken rhs) noexcept -> bool {
+        return lhs.t != rhs.t;
+    }
+};
 
 // Tokens are generated using a pseudorandom sequence that will emit 2^64 - 1
 // _distinct_ non-zero values before looping around. (Sequential numbers would
@@ -33,7 +49,7 @@ inline constexpr btoken invalid_token = 0;
 // values (unless they are determined to). The pseudorandom tokens also serve
 // as good hash table keys.)
 class token_sequence {
-    btoken prev_token = 0xffff'ffff'ffff'ffffuLL;
+    std::uint64_t prev_token = 0xffff'ffff'ffff'ffffuLL;
 
   public:
     token_sequence() noexcept = default;
@@ -49,7 +65,7 @@ class token_sequence {
     }
 
     [[nodiscard]] auto generate() noexcept -> btoken {
-        btoken t = prev_token;
+        auto t = prev_token;
         assert(t != 0);
 
         // See https://en.wikipedia.org/wiki/Xorshift
@@ -58,15 +74,33 @@ class token_sequence {
         t ^= t << 17;
 
         prev_token = t;
-        return t;
+        return btoken(t);
     }
 };
 
 TEST_CASE("token_sequence") {
     // Smoke test only.
     token_sequence seq;
-    CHECK(~seq.generate() != 0);
+    CHECK(~seq.generate().as_u64() != 0);
+    CHECK(seq.generate().is_valid());
     CHECK(seq.generate() != seq.generate());
 }
 
 } // namespace partake::daemon
+
+namespace std {
+
+// We use btoken value as its own hash, because it is already randomized.
+template <> struct hash<partake::daemon::btoken> {
+    auto operator()(partake::daemon::btoken tok) const noexcept -> size_t {
+        auto const t = tok.as_u64();
+        static_assert(sizeof(size_t) == 4 || sizeof(size_t) == 8);
+        if constexpr (sizeof(size_t) == 8) {
+            return t;
+        } else {
+            return static_cast<size_t>(t >> 32) ^ static_cast<size_t>(t);
+        }
+    }
+};
+
+} // namespace std

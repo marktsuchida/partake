@@ -24,19 +24,19 @@ struct elem : token_hash_table<elem>::hook {
 TEST_CASE("token_hash_table") {
     token_hash_table<elem> t;
     CHECK(t.empty());
-    CHECK(t.find(42) == t.end());
-    elem e{42};
+    CHECK(t.find(btoken(42)) == t.end());
+    elem e{btoken(42)};
     t.insert(e);
-    CHECK(t.find(42)->tok == 42);
-    CHECK(t.iterator_to(e) == t.find(42));
+    CHECK(t.find(btoken(42))->tok.as_u64() == 42);
+    CHECK(t.iterator_to(e) == t.find(btoken(42)));
     t.erase(t.iterator_to(e)); // Table must be empty before destruction.
 }
 
 TEST_CASE("token_hash_table: foreach") {
     token_hash_table<elem> t;
-    elem e{42};
-    elem f{43};
-    elem g{44};
+    elem e{btoken(42)};
+    elem f{btoken(43)};
+    elem g{btoken(44)};
     t.insert(e);
     t.insert(f);
     t.insert(g);
@@ -55,8 +55,8 @@ TEST_CASE("token_hash_table: rehash") {
 
     std::vector<elem> v;
     v.reserve(1000);
-    for (int i = 0; i < 1000; ++i)
-        v.emplace_back(i);
+    for (std::uint64_t i = 0; i < 1000; ++i)
+        v.emplace_back(btoken(i));
 
     for (elem &e : v) {
         t.insert(e);

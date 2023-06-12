@@ -35,10 +35,9 @@ template <typename E> class token_hash_table {
         }
     };
 
-    using table_impl_type =
-        intru::unordered_set<element_type, intru::base_hook<hook>,
-                             intru::key_of_value<key_getter>,
-                             intru::power_2_buckets<true>>;
+    using table_impl_type = intru::unordered_set<
+        element_type, intru::base_hook<hook>, intru::hash<std::hash<btoken>>,
+        intru::key_of_value<key_getter>, intru::power_2_buckets<true>>;
 
     std::vector<typename table_impl_type::bucket_type> buckets;
     table_impl_type table;
