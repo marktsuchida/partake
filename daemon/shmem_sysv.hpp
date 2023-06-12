@@ -23,6 +23,7 @@ class sysv_shmem_id {
   public:
     sysv_shmem_id() noexcept = default;
 
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     explicit sysv_shmem_id(int id, std::size_t size) noexcept
         : shmid(id), siz(size) {}
 

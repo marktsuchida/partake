@@ -141,6 +141,7 @@ class arena {
         std::size_t cnt;
         bool in_use;
 
+        // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
         explicit chunk(std::size_t start, std::size_t count,
                        bool is_in_use) noexcept
             : strt(start), cnt(count), in_use(is_in_use) {}

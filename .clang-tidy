@@ -47,7 +47,6 @@ Checks: >-
 #   Too many false positives.
 
 CheckOptions:
-  bugprone-easily-swappable-parameters.MinimumLength: 3
   misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: true
   readability-braces-around-statements.ShortStatementLines: 3
   readability-function-cognitive-complexity.IgnoreMacros: true
