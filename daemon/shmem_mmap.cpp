@@ -44,7 +44,7 @@ auto create_posix_shmem(std::string const &name, bool force) noexcept
         // need to unlink before reusing a name (even with shm_open(O_CREAT)
         // below).
         errno = 0;
-        if (::shm_unlink(name.c_str())) {
+        if (::shm_unlink(name.c_str()) != 0) {
             auto err = errno;
             if (err != ENOENT) {
                 auto msg = posix::strerror(err);
@@ -200,7 +200,7 @@ mmap_mapping::mmap_mapping(std::size_t size,
         return;
 
     errno = 0;
-    if (::ftruncate(fd.get(), static_cast<off_t>(size))) {
+    if (::ftruncate(fd.get(), static_cast<off_t>(size)) != 0) {
         int err = errno;
         auto msg = posix::strerror(err);
         spdlog::error("ftruncate: fd {}, size {}: {} ({})", fd.get(), size,
@@ -230,7 +230,7 @@ auto mmap_mapping::unmap() noexcept -> bool {
         return true;
     bool ret = false;
     errno = 0;
-    if (::munmap(addr, siz)) {
+    if (::munmap(addr, siz) != 0) {
         int err = errno;
         auto msg = posix::strerror(err);
         spdlog::error("munmap: addr {}: {} ({})", addr, msg, err);

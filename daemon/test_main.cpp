@@ -32,7 +32,7 @@ auto main(int argc, char const *const *argv) -> int {
 
     trompeloeil::set_reporter([](trompeloeil::severity s, char const *file,
                                  unsigned long line, std::string const &msg) {
-        auto const *f = line ? file : "[file/line unavailable]";
+        auto const *f = line != 0u ? file : "[file/line unavailable]";
         if (s == trompeloeil::severity::fatal)
             ADD_FAIL_AT(f, static_cast<int>(line), msg);
         else

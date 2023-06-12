@@ -31,8 +31,8 @@ namespace {
 auto add_lock_memory_privilege() noexcept -> bool {
     win32::win32_handle const h_token([] {
         HANDLE h = INVALID_HANDLE_VALUE;
-        if (not OpenProcessToken(GetCurrentProcess(),
-                                 TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, &h)) {
+        if (OpenProcessToken(GetCurrentProcess(),
+                             TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, &h) == 0) {
             auto err = GetLastError();
             auto msg = win32::strerror(err);
             spdlog::error("OpenProcessToken: {} ({})", msg, err);
@@ -44,8 +44,8 @@ auto add_lock_memory_privilege() noexcept -> bool {
         return false;
 
     LUID lock_mem_luid;
-    if (not LookupPrivilegeValueA(nullptr, SE_LOCK_MEMORY_NAME,
-                                  &lock_mem_luid)) {
+    if (LookupPrivilegeValueA(nullptr, SE_LOCK_MEMORY_NAME, &lock_mem_luid) ==
+        0) {
         auto err = GetLastError();
         auto msg = win32::strerror(err);
         spdlog::error("LookupPrivilegeValue: {} ({})", msg, err);
@@ -57,8 +57,8 @@ auto add_lock_memory_privilege() noexcept -> bool {
     privileges.Privileges[0].Luid = lock_mem_luid;
     privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 
-    auto ok = AdjustTokenPrivileges(h_token.get(), FALSE, &privileges,
-                                    sizeof(privileges), nullptr, nullptr);
+    bool ok = AdjustTokenPrivileges(h_token.get(), FALSE, &privileges,
+                                    sizeof(privileges), nullptr, nullptr) != 0;
     // ERROR_NOT_ALL_ASSIGNED (only) may be returned even if ok is true.
     auto err = GetLastError();
     if (not ok || err == ERROR_NOT_ALL_ASSIGNED) {
@@ -220,8 +220,8 @@ win32_map_view::win32_map_view(win32::win32_handle const &h_mapping,
 }
 
 void win32_map_view::unmap() noexcept {
-    if (addr) {
-        if (not UnmapViewOfFile(addr)) {
+    if (addr != nullptr) {
+        if (UnmapViewOfFile(addr) == 0) {
             auto err = GetLastError();
             auto msg = win32::strerror(err);
             spdlog::error("UnmapViewOfFile: addr {}: {} ({})", addr, msg, err);

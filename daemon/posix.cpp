@@ -34,7 +34,7 @@ auto strerror(int errn) noexcept -> std::string {
     return msg;
 #else
     int const failed = ::strerror_r(errn, ret.data(), ret.size());
-    if (failed)
+    if (failed != 0)
         return fmt::format("Unknown error {}", errn);
     ret.resize(std::strlen(ret.data()));
     return ret;
@@ -52,7 +52,7 @@ auto file_descriptor::close() noexcept -> bool {
         return true;
     bool ret = false;
     errno = 0;
-    if (::close(fd)) {
+    if (::close(fd) != 0) {
         auto err = errno;
         auto msg = strerror(err);
         spdlog::error("close: fd {}: {} ({})", fd, msg, err);

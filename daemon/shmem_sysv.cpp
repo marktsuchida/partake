@@ -60,7 +60,7 @@ auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
             }
         } else {
             errno = 0;
-            if (::shmctl(id, IPC_RMID, nullptr)) {
+            if (::shmctl(id, IPC_RMID, nullptr) != 0) {
                 auto e = errno;
                 if (e != ENOENT) {
                     auto msg = posix::strerror(e);
@@ -141,7 +141,7 @@ auto sysv_shmem_id::remove() noexcept -> bool {
         return true;
     bool ret = false;
     errno = 0;
-    if (::shmctl(shmid, IPC_RMID, nullptr)) {
+    if (::shmctl(shmid, IPC_RMID, nullptr) != 0) {
         int e = errno;
         auto msg = posix::strerror(e);
         spdlog::error("shmctl IPC_RMID: id {}: {} ({})", shmid, msg, e);

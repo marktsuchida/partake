@@ -50,7 +50,7 @@ TEST_CASE("connection_acceptor: started") {
     CHECK(attrs != INVALID_FILE_ATTRIBUTES);
     // Sockets have a reparse point (IO_REPARSE_TAG_AF_UNIX). Do a simple check
     // only here.
-    bool looks_like_a_socket = attrs & FILE_ATTRIBUTE_REPARSE_POINT;
+    bool looks_like_a_socket = (attrs & FILE_ATTRIBUTE_REPARSE_POINT) != 0u;
     CHECK(looks_like_a_socket);
 #else
     CHECK(std::filesystem::is_socket(path));

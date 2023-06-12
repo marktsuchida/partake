@@ -70,22 +70,22 @@ auto human_readable_size(std::size_t size) noexcept -> std::string {
         return "0 bytes";
     if (size == 1)
         return "1 byte";
-    if (size & sub_kilo_mask)
+    if ((size & sub_kilo_mask) != 0u)
         return fmt::format("{} bytes", size);
     size >>= 10;
-    if (size & sub_kilo_mask)
+    if ((size & sub_kilo_mask) != 0u)
         return fmt::format("{} KiB", size);
     size >>= 10;
-    if (size & sub_kilo_mask)
+    if ((size & sub_kilo_mask) != 0u)
         return fmt::format("{} MiB", size);
     size >>= 10;
-    if (size & sub_kilo_mask)
+    if ((size & sub_kilo_mask) != 0u)
         return fmt::format("{} GiB", size);
     size >>= 10;
-    if (size & sub_kilo_mask)
+    if ((size & sub_kilo_mask) != 0u)
         return fmt::format("{} TiB", size);
     size >>= 10;
-    if (size & sub_kilo_mask)
+    if ((size & sub_kilo_mask) != 0u)
         return fmt::format("{} PiB", size);
     size >>= 10;
     return fmt::format("{} EiB", size);

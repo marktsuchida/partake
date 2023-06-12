@@ -49,7 +49,7 @@ auto win32_handle::close() noexcept -> bool {
     if (h == invalid_handle())
         return true;
     bool ret = false;
-    if (not CloseHandle(h)) {
+    if (CloseHandle(h) == 0) {
         auto err = GetLastError();
         auto msg = strerror(err);
         spdlog::error("CloseHandle: {}: {} ({})", h, msg, err);
@@ -107,7 +107,7 @@ auto unlinkable::unlink() noexcept -> bool {
     if (nm.empty())
         return true;
     bool ret = false;
-    if (not unlink_fn(nm.c_str())) {
+    if (unlink_fn(nm.c_str()) == 0) {
         auto err = GetLastError();
         auto msg = strerror(err);
         spdlog::error("{}: {}: {} ({})", fn_name, nm, msg, err);

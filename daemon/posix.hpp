@@ -103,7 +103,7 @@ class unlinkable {
             return true;
         bool ret = false;
         errno = 0;
-        if (unlink_fn(nm.c_str())) {
+        if (unlink_fn(nm.c_str()) != 0) {
             auto err = errno;
             auto msg = strerror(err);
             spdlog::error("{}: {}: {} ({})", fn_name, nm, msg, err);

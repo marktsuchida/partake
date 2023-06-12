@@ -82,8 +82,9 @@ template <typename AsioContext> class partake_daemon {
         : cfg(std::move(config)),
           quitr(asio_context, [this]() noexcept { acceptor.close(); }),
           acceptor(asio_context, config.endpoint), seg(config.seg_config),
-          allocr(seg.size(), config.log2_granularity ? config.log2_granularity
-                                                     : log2_size(page_size())),
+          allocr(seg.size(), config.log2_granularity != 0u
+                                 ? config.log2_granularity
+                                 : log2_size(page_size())),
           clk_traits(asio_context), vq(clk_traits),
           repo(token_sequence(), vq) {
         if (not seg.is_valid()) {

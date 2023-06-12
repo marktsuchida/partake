@@ -215,7 +215,7 @@ class arena {
         allocation() noexcept = default;
 
         ~allocation() {
-            if (arn)
+            if (arn != nullptr)
                 arn->deallocate(chk);
         }
 
@@ -226,7 +226,7 @@ class arena {
               chk(std::exchange(other.chk, nullptr)) {}
 
         auto operator=(allocation &&rhs) noexcept -> allocation & {
-            if (arn)
+            if (arn != nullptr)
                 arn->deallocate(chk);
             arn = std::exchange(rhs.arn, nullptr);
             chk = std::exchange(rhs.chk, nullptr);
@@ -237,11 +237,11 @@ class arena {
         operator bool() const noexcept { return chk != nullptr; }
 
         [[nodiscard]] auto start() const noexcept -> std::size_t {
-            return chk ? chk->strt : 0;
+            return chk != nullptr ? chk->strt : 0;
         }
 
         [[nodiscard]] auto count() const noexcept -> std::size_t {
-            return chk ? chk->cnt : 0;
+            return chk != nullptr ? chk->cnt : 0;
         }
     };
 
@@ -303,7 +303,7 @@ class arena {
     }
 
     void deallocate(chunk *chk) noexcept {
-        if (not chk)
+        if (chk == nullptr)
             return;
         assert(chk->in_use);
         assert(chk->cnt > 0);

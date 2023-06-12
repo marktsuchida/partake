@@ -22,7 +22,6 @@ Checks: >-
     -readability-braces-around-statements,
     -readability-container-contains,
     -readability-identifier-length,
-    -readability-implicit-bool-conversion,
     -readability-magic-numbers,
 
 # Reasons for disabled checks:
@@ -47,8 +46,6 @@ Checks: >-
 #   This check is for C++20+.
 # readability-identifier-length
 #   Short variable names are not always evil.
-# readability-implicit-bool-conversion
-#   TODO Fix
 # readability-magic-numbers
 #   Too many false positives.
 
