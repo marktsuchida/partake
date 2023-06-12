@@ -93,11 +93,12 @@ class connection_acceptor {
 
         boost::system::error_code err;
         acceptor.close(err);
-        if (err)
+        if (err) {
             spdlog::error("error while closing listening socket: {}: {} ({})",
                           endpt.path(), err.message(), err.value());
-        else
+        } else {
             spdlog::info("closed listening socket: {}", endpt.path());
+        }
 
         // A connection may have been accepted asynchronously before the close.
         if (next_sock.is_open()) {

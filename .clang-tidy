@@ -19,7 +19,6 @@ Checks: >-
     -clang-analyzer-cplusplus.NewDeleteLeaks,
     -cppcoreguidelines-avoid-magic-numbers,
     -cppcoreguidelines-special-member-functions,
-    -readability-braces-around-statements,
     -readability-container-contains,
     -readability-identifier-length,
     -readability-magic-numbers,
@@ -40,8 +39,6 @@ Checks: >-
 #   See readability-magic-numbers.
 # cppcoreguidelines-special-member-functions
 #   We use DesDeMovA style.
-# readability-braces-around-statements
-#   TODO Fix
 # readability-container-contains
 #   This check is for C++20+.
 # readability-identifier-length
@@ -52,6 +49,9 @@ Checks: >-
 CheckOptions:
   bugprone-easily-swappable-parameters.MinimumLength: 3
   misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: true
-  readability-uppercase-literal-suffix.NewSuffixes: L;uL;LL;uLL
+  readability-braces-around-statements.ShortStatementLines: 3
   readability-function-cognitive-complexity.IgnoreMacros: true
+  readability-uppercase-literal-suffix.NewSuffixes: L;uL;LL;uLL
+
+FormatStyle: file
 ...
