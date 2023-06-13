@@ -27,7 +27,7 @@
 // stable kernel ABI (ultimately it is defined in asm-generic/hugetlb_encode.h
 // as HUGETLB_FLAG_ENCODE_SHIFT).
 #if defined(__linux__) && not defined(SHM_HUGE_SHIFT)
-#define SHM_HUGE_SHIFT 26
+#define SHM_HUGE_SHIFT 26 // NOLINT(cppcoreguidelines-macro-usage)
 #endif
 
 namespace partake::daemon {
@@ -39,6 +39,27 @@ static_assert(std::is_same_v<int, key_t>);
 static_assert(IPC_PRIVATE == 0);
 
 namespace internal {
+
+#ifdef __linux__
+namespace {
+
+// Returns 0 if invalid size requested.
+auto linux_page_size(bool use_huge_pages, std::size_t huge_page_size)
+    -> std::size_t {
+    if (use_huge_pages) {
+        if (huge_page_size == 0)
+            return default_huge_page_size();
+        auto const sizes = huge_page_sizes();
+        if (std::find(sizes.begin(), sizes.end(), huge_page_size) ==
+            sizes.end())
+            return 0;
+        return huge_page_size;
+    }
+    return page_size();
+}
+
+} // namespace
+#endif
 
 auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
                           bool use_huge_pages = false,
@@ -72,19 +93,7 @@ auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
     }
 
 #ifdef __linux__
-    auto const psize = [use_huge_pages, huge_page_size]() -> std::size_t {
-        if (use_huge_pages) {
-            if (huge_page_size == 0)
-                return default_huge_page_size();
-            auto const sizes = huge_page_sizes();
-            if (std::find(sizes.begin(), sizes.end(), huge_page_size) ==
-                sizes.end())
-                return 0;
-            return huge_page_size;
-        } else {
-            return page_size();
-        }
-    }();
+    auto const psize = linux_page_size(use_huge_pages, huge_page_size);
     if (psize == 0) {
         spdlog::error("{} is not a supported huge page size",
                       human_readable_size(huge_page_size));
