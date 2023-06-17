@@ -39,7 +39,7 @@ class tempdir {
     }
 
   public:
-    tempdir() : p(tdp() / "partake-test") {
+    tempdir() : p(tdp() / ("partake-test-" + daemon::random_string(6))) {
         REQUIRE_FALSE(std::filesystem::exists(p));
         std::filesystem::create_directories(p);
     }

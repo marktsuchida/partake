@@ -6,8 +6,17 @@ common_incdir = include_directories('.')
 
 common_sources = files([
     'asio.cpp',
+    'errors.cpp',
+    'message.cpp',
+    'posix.cpp',
     'proquint.cpp',
+    'random.cpp',
+    'testing.cpp',
+    'win32.cpp',
 ])
+
+# TODO: common_test is now redundant: all these tests are also part of
+# daemon_test. Just remove?
 
 common_test = executable(
     'common_test',
@@ -18,7 +27,10 @@ common_test = executable(
     dependencies: [
         boost_dep,
         doctest_dep,
+        flatbuffers_dep,
+        fmt_dep,
         gsl_dep,
+        spdlog_dep,
     ],
 )
 test('common test', common_test)
