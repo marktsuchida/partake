@@ -5,16 +5,18 @@
 common_incdir = include_directories('.')
 
 common_sources = files([
+    'asio.cpp',
     'proquint.cpp',
 ])
 
 common_test = executable(
     'common_test',
     [
-        common_sources,
         'test_main.cpp',
+        common_sources,
     ],
     dependencies: [
+        boost_dep,
         doctest_dep,
         gsl_dep,
     ],

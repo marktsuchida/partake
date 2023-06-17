@@ -87,15 +87,21 @@ void proquint_from_u64(gsl::span<char, 23> dest, std::uint64_t i) noexcept {
     uint16_to_proquint(u16(i >> 0), dest.subspan<18, 5>());
 }
 
+#ifndef DOCTEST_CONFIG_DISABLE
+
 TEST_CASE("u64 to proquint") {
     std::string dest;
     dest.resize(23);
     auto span = gsl::span<char, 23>(dest);
     for (auto [n, pq] : pq_test_data) {
+        // Structured binding doesn't work with lambda capture of CHECK().
+        auto const proq = pq;
         proquint_from_u64(span, n);
-        CHECK(dest == std::string(pq));
+        CHECK(dest == std::string(proq));
     }
 }
+
+#endif // DOCTEST_CONFIG_DISABLE
 
 namespace {
 
@@ -222,15 +228,25 @@ auto proquint_to_u64(gsl::span<char const, 23> pq) noexcept
     return {result, ok};
 }
 
+#ifndef DOCTEST_CONFIG_DISABLE
+
 TEST_CASE("proquint to u64") {
     for (auto [n, pq] : pq_test_data) {
-        CHECK(pq.size() == 23);
+        // Structured binding doesn't work with lambda capture of CHECK().
+        auto const number = n;
+        auto const proq = pq;
+
+        CHECK(proq.size() == 23);
         auto pqspan = gsl::span<char const, 23>(pq);
-        auto [r, ok] = proquint_to_u64(pqspan);
+        std::uint64_t result{};
+        bool ok{};
+        std::tie(result, ok) = proquint_to_u64(pqspan);
         CHECK(ok);
-        CHECK(r == n);
+        CHECK(result == number);
     }
 }
+
+#endif // DOCTEST_CONFIG_DISABLE
 
 TEST_CASE("invalid proquint64") {
     static std::vector<std::string> const bad_pq{

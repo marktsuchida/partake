@@ -4,7 +4,6 @@
 
 daemon_sources = [
     'allocator.cpp',
-    'asio.cpp',
     'cli.cpp',
     'client.cpp',
     'connection_acceptor.cpp',
@@ -60,6 +59,9 @@ daemon_test = executable(
         daemon_sources,
         protocol_cpp_headers,
     ],
+    include_directories: [
+        common_incdir,
+    ],
     dependencies: daemon_deps,
 )
 test('daemon test', daemon_test)
@@ -67,12 +69,12 @@ test('daemon test', daemon_test)
 executable('partaked',
     sources: [
         'main.cpp',
-        # common_sources,
+        common_sources,
         daemon_sources,
         protocol_cpp_headers,
     ],
     include_directories: [
-        # common_incdir,
+        common_incdir,
     ],
     cpp_args: [
         '-DDOCTEST_CONFIG_DISABLE',
