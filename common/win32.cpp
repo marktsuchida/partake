@@ -19,7 +19,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-namespace partake::daemon::win32 {
+namespace partake::common::win32 {
 
 auto strerror(unsigned err) noexcept -> std::string {
     std::string ret;
@@ -151,6 +151,6 @@ TEST_CASE("win32::unlinkable") {
     CHECK(unlk.unlink());
 }
 
-} // namespace partake::daemon::win32
+} // namespace partake::common::win32
 
 #endif // _WIN32

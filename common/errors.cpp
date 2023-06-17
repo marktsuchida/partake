@@ -12,20 +12,20 @@
 #include <system_error>
 
 TEST_CASE("errc") {
-    std::error_code ec = partake::daemon::errc::message_too_long;
+    std::error_code ec = partake::common::errc::message_too_long;
     CHECK(ec);
     CHECK(ec != std::make_error_code(static_cast<std::errc>(
-                    partake::daemon::errc::message_too_long)));
-    CHECK(ec == partake::daemon::errc::message_too_long);
-    CHECK(ec != partake::daemon::errc::invalid_message);
+                    partake::common::errc::message_too_long)));
+    CHECK(ec == partake::common::errc::message_too_long);
+    CHECK(ec != partake::common::errc::invalid_message);
     auto msg = ec.message();
     CHECK(msg.find("message") != msg.npos);
 
-    std::error_code const ok = partake::daemon::errc(0);
+    std::error_code const ok = partake::common::errc(0);
     CHECK_FALSE(ok);
     CHECK(ok.message() == "Success");
 
-    std::error_code const unk = partake::daemon::errc(-1);
+    std::error_code const unk = partake::common::errc(-1);
     CHECK(unk);
     CHECK(unk.message() == "Unknown error");
 }

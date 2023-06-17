@@ -76,7 +76,7 @@ auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
         if (id < 0) {
             auto e = errno;
             if (e != ENOENT) {
-                auto msg = posix::strerror(e);
+                auto msg = common::posix::strerror(e);
                 spdlog::error("shmget: key {}: {} ({})", key, msg, e);
             }
         } else {
@@ -84,7 +84,7 @@ auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
             if (::shmctl(id, IPC_RMID, nullptr) != 0) {
                 auto e = errno;
                 if (e != ENOENT) {
-                    auto msg = posix::strerror(e);
+                    auto msg = common::posix::strerror(e);
                     spdlog::error("shmctl IPC_RMID: id {}: {} ({})", id, msg,
                                   e);
                 }
@@ -130,13 +130,13 @@ auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
     // shmget() does not use the umask, but we apply it ourselves to match the
     // behavior of files and POSIX shared memory. The executable bits do
     // nothing, so leave cleared.
-    auto const perms = 0666 & ~posix::get_umask();
+    auto const perms = 0666 & ~common::posix::get_umask();
     int id = ::shmget(key, size,
                       IPC_CREAT | (force ? 0 : IPC_EXCL) | huge_pages_flags |
                           perms);
     if (id < 0) {
         auto err = errno;
-        auto msg = posix::strerror(err);
+        auto msg = common::posix::strerror(err);
         spdlog::error("shmget: key {}: {} ({})", key, msg, err);
         return {};
     }
@@ -152,7 +152,7 @@ auto sysv_shmem_id::remove() noexcept -> bool {
     errno = 0;
     if (::shmctl(shmid, IPC_RMID, nullptr) != 0) {
         int e = errno;
-        auto msg = posix::strerror(e);
+        auto msg = common::posix::strerror(e);
         spdlog::error("shmctl IPC_RMID: id {}: {} ({})", shmid, msg, e);
     } else {
         spdlog::info("shmctl IPC_RMID: id {}: success", shmid);
@@ -263,7 +263,7 @@ sysv_shmem_attachment::sysv_shmem_attachment(int id) noexcept {
     void *a = ::shmat(id, nullptr, 0);
     if (a == (void *)-1) { // NOLINT
         auto err = errno;
-        auto msg = posix::strerror(err);
+        auto msg = common::posix::strerror(err);
         spdlog::error("shmat: id {}: {} ({})", id, msg, err);
     } else {
         spdlog::info("shmat: id {}: success; addr {}", id, a);
@@ -278,7 +278,7 @@ auto sysv_shmem_attachment::detach() noexcept -> bool {
     errno = 0;
     if (::shmdt(addr) != 0) {
         int e = errno;
-        auto msg = posix::strerror(e);
+        auto msg = common::posix::strerror(e);
         spdlog::error("shmdt: addr {}: {} ({})", addr, msg, e);
     } else {
         spdlog::info("shmdt: addr {}: success", addr);

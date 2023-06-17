@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-namespace partake::daemon {
+namespace partake::common {
 
 // Testing async_message_writer and async_message_reader is slightly
 // complicated due to platform differences in Asio support.
@@ -393,4 +393,4 @@ TEST_CASE("async_message_reader: eof in message") {
     CHECK(ended);
 }
 
-} // namespace partake::daemon
+} // namespace partake::common

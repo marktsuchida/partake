@@ -103,7 +103,7 @@ template <typename Session> class request_handler {
     // Deserialize and handle one FlatBuffers message.
     auto handle_message(gsl::span<std::uint8_t const> bytes) noexcept -> bool {
         if (not internal::verify_request_message(bytes)) {
-            handle_err(std::error_code(errc::invalid_message));
+            handle_err(std::error_code(common::errc::invalid_message));
             return true;
         }
         auto const *req_msg =
@@ -125,7 +125,8 @@ template <typename Session> class request_handler {
                 // we do end the session.
                 rb.add_error_response(req->seqno(),
                                       protocol::Status::INVALID_REQUEST);
-                handle_err(std::error_code(errc::invalid_request_type));
+                handle_err(
+                    std::error_code(common::errc::invalid_request_type));
                 done = true;
             }
             if (done)

@@ -39,7 +39,7 @@ class tempdir {
     }
 
   public:
-    tempdir() : p(tdp() / ("partake-test-" + daemon::random_string(6))) {
+    tempdir() : p(tdp() / ("partake-test-" + common::random_string(6))) {
         REQUIRE_FALSE(std::filesystem::exists(p));
         std::filesystem::create_directories(p);
     }
@@ -68,7 +68,7 @@ inline auto make_test_filename(std::string_view sourcefile, unsigned lineno)
 
 inline auto unique_path(std::filesystem::path const &parent,
                         std::string const &hint) -> std::filesystem::path {
-    auto fname = hint + "-" + daemon::random_string(20);
+    auto fname = hint + "-" + common::random_string(20);
     auto p = parent / fname;
     REQUIRE_FALSE(std::filesystem::exists(p));
     return p;

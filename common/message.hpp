@@ -28,7 +28,7 @@
 #include <utility>
 #include <vector>
 
-namespace partake::daemon {
+namespace partake::common {
 
 constexpr std::size_t message_frame_alignment = 8;
 constexpr std::size_t max_message_frame_len = 32768;
@@ -259,4 +259,4 @@ template <typename Socket> class async_message_reader {
     }
 };
 
-} // namespace partake::daemon
+} // namespace partake::common

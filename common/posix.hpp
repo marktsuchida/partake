@@ -18,7 +18,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace partake::daemon::posix {
+namespace partake::common::posix {
 
 auto strerror(int errn) noexcept -> std::string;
 
@@ -118,6 +118,6 @@ class unlinkable {
 
 auto get_umask() noexcept -> int;
 
-} // namespace partake::daemon::posix
+} // namespace partake::common::posix
 
 #endif // _WIN32

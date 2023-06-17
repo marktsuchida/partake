@@ -16,7 +16,7 @@
 // Avoid including Windows.h in this header
 using HANDLE = void *;
 
-namespace partake::daemon::win32 {
+namespace partake::common::win32 {
 
 auto strerror(unsigned err) noexcept -> std::string;
 
@@ -102,6 +102,6 @@ class unlinkable {
     auto unlink() noexcept -> bool;
 };
 
-} // namespace partake::daemon::win32
+} // namespace partake::common::win32
 
 #endif // _WIN32

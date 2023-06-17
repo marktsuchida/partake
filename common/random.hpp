@@ -10,8 +10,8 @@
 #include <cstdint>
 #include <string>
 
-namespace partake::daemon {
+namespace partake::common {
 
 auto random_string(std::size_t len) noexcept -> std::string;
 
-} // namespace partake::daemon
+} // namespace partake::common

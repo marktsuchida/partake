@@ -13,7 +13,7 @@
 #include <random>
 #include <string_view>
 
-namespace partake::daemon {
+namespace partake::common {
 
 namespace {
 
@@ -50,4 +50,4 @@ TEST_CASE("random_string") {
                       [](char c) noexcept { return std::isalnum(c); }));
 }
 
-} // namespace partake::daemon
+} // namespace partake::common

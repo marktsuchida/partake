@@ -37,7 +37,7 @@ namespace partake::daemon {
 namespace internal {
 
 auto create_posix_shmem(std::string const &name, bool force) noexcept
-    -> std::pair<posix::unlinkable, posix::file_descriptor> {
+    -> std::pair<common::posix::unlinkable, common::posix::file_descriptor> {
 #ifdef __APPLE__
     if (force) {
         // On macOS, ftruncate() only succeeds once on a POSIX shmem, so we
@@ -47,7 +47,7 @@ auto create_posix_shmem(std::string const &name, bool force) noexcept
         if (::shm_unlink(name.c_str()) != 0) {
             auto err = errno;
             if (err != ENOENT) {
-                auto msg = posix::strerror(err);
+                auto msg = common::posix::strerror(err);
                 spdlog::error("shm_unlink: {}: {} ({})", name, msg, err);
             }
         }
@@ -56,28 +56,28 @@ auto create_posix_shmem(std::string const &name, bool force) noexcept
 
     errno = 0;
     // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
-    auto fd = posix::file_descriptor(::shm_open(
+    auto fd = common::posix::file_descriptor(::shm_open(
         name.c_str(), O_RDWR | O_CREAT | (force ? 0 : O_EXCL), 0666));
     // NOLINTEND(cppcoreguidelines-pro-type-vararg)
     if (not fd.is_valid()) {
         int err = errno;
-        auto msg = posix::strerror(err);
+        auto msg = common::posix::strerror(err);
         spdlog::error("shm_open: {}: {} ({})", name, msg, err);
         return {};
     }
     spdlog::info("shm_open: {}: success; fd {}", name, fd.get());
-    return {posix::unlinkable(name, ::shm_unlink, "shm_unlink"),
+    return {common::posix::unlinkable(name, ::shm_unlink, "shm_unlink"),
             std::move(fd)};
 }
 
 TEST_CASE("create_posix_shmem") {
     GIVEN("unique shmem name") {
-        auto const name = "/partake-test-" + random_string(10);
+        auto const name = "/partake-test-" + common::random_string(10);
 
         // Structured binding doesn't work with lambda capture (used by
         // doctest), so use std::tie() instead.
-        posix::unlinkable unlk;
-        posix::file_descriptor fd;
+        common::posix::unlinkable unlk;
+        common::posix::file_descriptor fd;
 
         SUBCASE("create, no-force") {
             std::tie(unlk, fd) = create_posix_shmem(name, false);
@@ -85,8 +85,8 @@ TEST_CASE("create_posix_shmem") {
             CHECK(fd.is_valid());
             CHECK(unlk.name() == name);
 
-            posix::unlinkable unlk2;
-            posix::file_descriptor fd2;
+            common::posix::unlinkable unlk2;
+            common::posix::file_descriptor fd2;
 
             SUBCASE("create with existing name, no-force") {
                 std::tie(unlk2, fd2) = create_posix_shmem(name, false);
@@ -125,21 +125,21 @@ TEST_CASE("create_posix_shmem") {
 }
 
 auto create_regular_file(std::string const &path, bool force) noexcept
-    -> std::pair<posix::unlinkable, posix::file_descriptor> {
+    -> std::pair<common::posix::unlinkable, common::posix::file_descriptor> {
     errno = 0;
     // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
-    auto fd = posix::file_descriptor(
+    auto fd = common::posix::file_descriptor(
         ::open(path.c_str(),
                O_RDWR | O_CREAT | (force ? 0 : O_EXCL) | O_CLOEXEC, 0666));
     // NOLINTEND(cppcoreguidelines-pro-type-vararg)
     if (not fd.is_valid()) {
         int err = errno;
-        auto msg = posix::strerror(err);
+        auto msg = common::posix::strerror(err);
         spdlog::error("open: {}: {} ({})", path, msg, err);
         return {};
     }
     spdlog::info("open: {}: success; fd {}", path, fd.get());
-    return {posix::unlinkable(path), std::move(fd)};
+    return {common::posix::unlinkable(path), std::move(fd)};
 }
 
 TEST_CASE("create_regular_file") {
@@ -148,8 +148,8 @@ TEST_CASE("create_regular_file") {
         auto path = testing::unique_path(
             td.path(), testing::make_test_filename(__FILE__, __LINE__));
 
-        posix::unlinkable unlk;
-        posix::file_descriptor fd;
+        common::posix::unlinkable unlk;
+        common::posix::file_descriptor fd;
 
         SUBCASE("create, no-force") {
             std::tie(unlk, fd) = create_regular_file(path.string(), false);
@@ -157,8 +157,8 @@ TEST_CASE("create_regular_file") {
             CHECK(fd.is_valid());
             CHECK(unlk.name() == path.string());
 
-            posix::unlinkable unlk2;
-            posix::file_descriptor fd2;
+            common::posix::unlinkable unlk2;
+            common::posix::file_descriptor fd2;
 
             SUBCASE("create with existing name, no-force") {
                 std::tie(unlk2, fd2) =
@@ -194,7 +194,7 @@ TEST_CASE("create_regular_file") {
 }
 
 mmap_mapping::mmap_mapping(std::size_t size,
-                           posix::file_descriptor const &fd) noexcept
+                           common::posix::file_descriptor const &fd) noexcept
     : siz(size) {
     if (not fd.is_valid())
         return;
@@ -202,7 +202,7 @@ mmap_mapping::mmap_mapping(std::size_t size,
     errno = 0;
     if (::ftruncate(fd.get(), static_cast<off_t>(size)) != 0) {
         int err = errno;
-        auto msg = posix::strerror(err);
+        auto msg = common::posix::strerror(err);
         spdlog::error("ftruncate: fd {}, size {}: {} ({})", fd.get(), size,
                       msg, err);
         return;
@@ -215,7 +215,7 @@ mmap_mapping::mmap_mapping(std::size_t size,
                       fd.get(), 0);
         if (addr == nullptr) {
             int err = errno;
-            auto msg = posix::strerror(err);
+            auto msg = common::posix::strerror(err);
             spdlog::error("mmap: fd {}, size {}: {} ({})", fd.get(), size, msg,
                           err);
         } else {
@@ -232,7 +232,7 @@ auto mmap_mapping::unmap() noexcept -> bool {
     errno = 0;
     if (::munmap(addr, siz) != 0) {
         int err = errno;
-        auto msg = posix::strerror(err);
+        auto msg = common::posix::strerror(err);
         spdlog::error("munmap: addr {}: {} ({})", addr, msg, err);
     } else {
         spdlog::info("munmap: addr {}: success", addr);
@@ -262,8 +262,8 @@ TEST_CASE("mmap_mapping") {
         testing::tempdir const td;
         auto path = testing::unique_path(
             td.path(), testing::make_test_filename(__FILE__, __LINE__));
-        posix::unlinkable unlk;
-        posix::file_descriptor fd;
+        common::posix::unlinkable unlk;
+        common::posix::file_descriptor fd;
         std::tie(unlk, fd) = create_regular_file(path.string(), true);
         REQUIRE(unlk.is_valid());
         REQUIRE(fd.is_valid());
@@ -308,7 +308,7 @@ auto generate_posix_shmem_name() noexcept -> std::string {
     // Max: macOS 31, Linux 255, FreeBSD 1023.
     static constexpr std::size_t name_len = 31;
     std::string name = "/partake-";
-    name += random_string(name_len - name.size()); // 22 random chars
+    name += common::random_string(name_len - name.size()); // 22 random chars
     return name;
 }
 
@@ -320,7 +320,7 @@ TEST_CASE("generate_posix_shmem_name") {
 }
 
 auto generate_filename() noexcept -> std::string {
-    auto const filename = "partake-" + random_string(24);
+    auto const filename = "partake-" + common::random_string(24);
 #ifdef __APPLE__
     // Avoid the long, messy path returned by temp_directory_path().
     // Assume no macOS system is without /tmp.

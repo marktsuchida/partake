@@ -22,7 +22,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-namespace partake::daemon::posix {
+namespace partake::common::posix {
 
 auto strerror(int errn) noexcept -> std::string {
     // See Linux man strerror_r(3) regarding POSIX vs GNU variants. We assign
@@ -148,6 +148,6 @@ namespace {
 
 auto get_umask() noexcept -> int { return static_cast<int>(the_umask); }
 
-} // namespace partake::daemon::posix
+} // namespace partake::common::posix
 
 #endif // _WIN32

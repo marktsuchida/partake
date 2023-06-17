@@ -29,7 +29,7 @@ class mmap_mapping {
     mmap_mapping() noexcept = default;
 
     explicit mmap_mapping(std::size_t size,
-                          posix::file_descriptor const &fd) noexcept;
+                          common::posix::file_descriptor const &fd) noexcept;
 
     ~mmap_mapping() { unmap(); }
 
@@ -57,14 +57,14 @@ class mmap_mapping {
 } // namespace internal
 
 class mmap_shmem {
-    posix::unlinkable ent;
+    common::posix::unlinkable ent;
     internal::mmap_mapping mapping;
 
   public:
     mmap_shmem() noexcept = default;
 
-    explicit mmap_shmem(posix::unlinkable &&entry,
-                        posix::file_descriptor const &fd,
+    explicit mmap_shmem(common::posix::unlinkable &&entry,
+                        common::posix::file_descriptor const &fd,
                         std::size_t size) noexcept
         : ent(std::move(entry)), mapping(size, fd) {}
 

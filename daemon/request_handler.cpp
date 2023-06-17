@@ -83,7 +83,8 @@ TEST_CASE("request_handler: invalid request message") {
         std::reference_wrapper(handle_error));
 
     using trompeloeil::_;
-    REQUIRE_CALL(handle_error, call(std::error_code(errc::invalid_message)))
+    REQUIRE_CALL(handle_error,
+                 call(std::error_code(common::errc::invalid_message)))
         .TIMES(1);
     REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
 

@@ -9,7 +9,7 @@
 #include <system_error>
 #include <type_traits>
 
-namespace partake::daemon {
+namespace partake::common {
 
 // Hint: See https://akrzemi1.wordpress.com/2017/07/12/your-own-error-code/
 // for an introduction to how std::error_code works.
@@ -50,10 +50,10 @@ inline auto make_error_code(errc c) noexcept -> std::error_code {
     return {static_cast<int>(c), the_partake_error_category};
 }
 
-} // namespace partake::daemon
+} // namespace partake::common
 
 namespace std {
 
-template <> struct is_error_code_enum<partake::daemon::errc> : true_type {};
+template <> struct is_error_code_enum<partake::common::errc> : true_type {};
 
 } // namespace std

@@ -323,7 +323,7 @@ TEST_CASE("segment: invalid on non-Win32") {
 
 TEST_CASE("segment: posix mmap") {
     GIVEN("unique shmem name") {
-        auto const name = "/partake-test-" + random_string(10);
+        auto const name = "/partake-test-" + common::random_string(10);
 
         SUBCASE("create named, no-force") {
             auto const conf =

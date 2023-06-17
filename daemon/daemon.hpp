@@ -43,9 +43,9 @@ template <typename AsioContext> class partake_daemon {
   private:
     using io_context_type = AsioContext;
     using socket_type = asio::local::stream_protocol::socket;
-    using message_reader_type = async_message_reader<socket_type>;
+    using message_reader_type = common::async_message_reader<socket_type>;
     using message_writer_type =
-        async_message_writer<socket_type, flatbuffers::DetachedBuffer>;
+        common::async_message_writer<socket_type, flatbuffers::DetachedBuffer>;
     using object_type = object<arena_allocator::allocation>;
     using voucher_queue_type = voucher_queue<object_type>;
     using repository_type =

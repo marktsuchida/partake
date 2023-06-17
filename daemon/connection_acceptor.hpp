@@ -28,9 +28,9 @@ class connection_acceptor {
 
   private:
 #ifdef _WIN32
-    using unlinkable_type = typename win32::unlinkable;
+    using unlinkable_type = typename common::win32::unlinkable;
 #else
-    using unlinkable_type = typename posix::unlinkable;
+    using unlinkable_type = typename common::posix::unlinkable;
 #endif
 
     gsl::not_null<io_context_type *> asio_context;
