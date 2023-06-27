@@ -14,7 +14,6 @@
 #include <fmt/core.h>
 #include <gsl/pointers>
 #include <gsl/span>
-#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <array>

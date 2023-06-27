@@ -67,7 +67,8 @@ class connection_acceptor {
             return false;
         }
 
-        sock_unlinkable = unlinkable_type(endpt.path());
+        sock_unlinkable =
+            unlinkable_type(endpt.path(), spdlog::default_logger());
 
         acceptor.listen(socket_type::max_listen_connections, err);
         if (err) {

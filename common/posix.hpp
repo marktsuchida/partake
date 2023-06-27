@@ -8,11 +8,14 @@
 
 #ifndef _WIN32
 
+#include "logging.hpp"
+
 #include <spdlog/spdlog.h>
 
 #include <cerrno>
 #include <cstddef>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -29,20 +32,25 @@ class file_descriptor {
 
   private:
     int fd = invalid_fd;
+    std::shared_ptr<spdlog::logger> lgr; // Never null if fd valid.
 
   public:
     file_descriptor() noexcept = default;
 
-    explicit file_descriptor(int filedes) noexcept : fd(filedes) {}
+    explicit file_descriptor(
+        int filedes, std::shared_ptr<spdlog::logger> logger = {}) noexcept
+        : fd(filedes), lgr(logger ? std::move(logger) : null_logger()) {}
 
     ~file_descriptor() { close(); }
 
     file_descriptor(file_descriptor &&other) noexcept
-        : fd(std::exchange(other.fd, invalid_fd)) {}
+        : fd(std::exchange(other.fd, invalid_fd)),
+          lgr(std::exchange(other.lgr, {})) {}
 
     auto operator=(file_descriptor &&rhs) noexcept -> file_descriptor & {
         close();
         fd = std::exchange(rhs.fd, invalid_fd);
+        lgr = std::exchange(rhs.lgr, {});
         return *this;
     }
 
@@ -64,15 +72,19 @@ class unlinkable {
     std::string nm;
     unlink_func unlink_fn = nullptr;
     std::string fn_name;
+    std::shared_ptr<spdlog::logger> lgr;
 
   public:
     unlinkable() noexcept = default;
 
-    explicit unlinkable(std::string_view name) noexcept;
+    explicit unlinkable(std::string_view name,
+                        std::shared_ptr<spdlog::logger> logger = {}) noexcept;
 
     explicit unlinkable(std::string_view name, unlink_func func,
-                        std::string_view func_name) noexcept
-        : nm(name), unlink_fn(func), fn_name(func_name) {
+                        std::string_view func_name,
+                        std::shared_ptr<spdlog::logger> logger = {}) noexcept
+        : nm(name), unlink_fn(func), fn_name(func_name),
+          lgr(logger ? std::move(logger) : null_logger()) {
         assert(func != nullptr);
         assert(not func_name.empty());
     }
@@ -82,13 +94,15 @@ class unlinkable {
     unlinkable(unlinkable &&other) noexcept
         : nm(std::exchange(other.nm, {})),
           unlink_fn(std::exchange(other.unlink_fn, nullptr)),
-          fn_name(std::exchange(other.fn_name, {})) {}
+          fn_name(std::exchange(other.fn_name, {})),
+          lgr(std::exchange(other.lgr, {})) {}
 
     auto operator=(unlinkable &&rhs) noexcept -> unlinkable & {
         unlink();
         nm = std::exchange(rhs.nm, {});
         unlink_fn = std::exchange(rhs.unlink_fn, nullptr);
         fn_name = std::exchange(rhs.fn_name, {});
+        lgr = std::exchange(rhs.lgr, {});
         return *this;
     }
 
@@ -106,9 +120,9 @@ class unlinkable {
         if (unlink_fn(nm.c_str()) != 0) {
             auto err = errno;
             auto msg = strerror(err);
-            spdlog::error("{}: {}: {} ({})", fn_name, nm, msg, err);
+            lgr->error("{}: {}: {} ({})", fn_name, nm, msg, err);
         } else {
-            spdlog::info("{}: {}: success", fn_name, nm);
+            lgr->info("{}: {}: success", fn_name, nm);
             ret = true;
         }
         nm.clear();

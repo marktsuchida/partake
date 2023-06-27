@@ -52,9 +52,9 @@ auto win32_handle::close() noexcept -> bool {
     if (CloseHandle(h) == 0) {
         auto err = GetLastError();
         auto msg = strerror(err);
-        spdlog::error("CloseHandle: {}: {} ({})", h, msg, err);
+        lgr->error("CloseHandle: {}: {} ({})", h, msg, err);
     } else {
-        spdlog::info("CloseHandle: {}: success", h);
+        lgr->info("CloseHandle: {}: success", h);
         ret = true;
     }
     h = invalid_handle();
@@ -100,8 +100,9 @@ TEST_CASE("win32_handle") {
     CHECK(h.close()); // Idempotent
 }
 
-unlinkable::unlinkable(std::string_view name) noexcept
-    : unlinkable(name, DeleteFileA, "DeleteFile") {}
+unlinkable::unlinkable(std::string_view name,
+                       std::shared_ptr<spdlog::logger> logger) noexcept
+    : unlinkable(name, DeleteFileA, "DeleteFile", std::move(logger)) {}
 
 auto unlinkable::unlink() noexcept -> bool {
     if (nm.empty())
@@ -110,9 +111,9 @@ auto unlinkable::unlink() noexcept -> bool {
     if (unlink_fn(nm.c_str()) == 0) {
         auto err = GetLastError();
         auto msg = strerror(err);
-        spdlog::error("{}: {}: {} ({})", fn_name, nm, msg, err);
+        lgr->error("{}: {}: {} ({})", fn_name, nm, msg, err);
     } else {
-        spdlog::info("{}: {}: success", fn_name, nm);
+        lgr->info("{}: {}: success", fn_name, nm);
         ret = true;
     }
     nm.clear();

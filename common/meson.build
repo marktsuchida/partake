@@ -7,6 +7,7 @@ common_incdir = include_directories('.')
 common_sources = files([
     'asio.cpp',
     'errors.cpp',
+    'logging.cpp',
     'message.cpp',
     'posix.cpp',
     'proquint.cpp',

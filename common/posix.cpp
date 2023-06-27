@@ -55,9 +55,9 @@ auto file_descriptor::close() noexcept -> bool {
     if (::close(fd) != 0) {
         auto err = errno;
         auto msg = strerror(err);
-        spdlog::error("close: fd {}: {} ({})", fd, msg, err);
+        lgr->error("close: fd {}: {} ({})", fd, msg, err);
     } else {
-        spdlog::info("close: fd {}: success", fd);
+        lgr->info("close: fd {}: success", fd);
         ret = true;
     }
     fd = invalid_fd;
@@ -99,8 +99,9 @@ TEST_CASE("file_descriptor") {
     CHECK(fdo.close()); // Idempotent
 }
 
-unlinkable::unlinkable(std::string_view name) noexcept
-    : unlinkable(name, ::unlink, "unlink") {}
+unlinkable::unlinkable(std::string_view name,
+                       std::shared_ptr<spdlog::logger> logger) noexcept
+    : unlinkable(name, ::unlink, "unlink", std::move(logger)) {}
 
 TEST_CASE("posix::unlinkable") {
     unlinkable default_instance;

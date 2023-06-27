@@ -29,17 +29,20 @@ namespace partake::daemon {
 namespace {
 
 auto add_lock_memory_privilege() noexcept -> bool {
-    win32::win32_handle const h_token([] {
-        HANDLE h = INVALID_HANDLE_VALUE;
-        if (OpenProcessToken(GetCurrentProcess(),
-                             TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, &h) == 0) {
-            auto err = GetLastError();
-            auto msg = win32::strerror(err);
-            spdlog::error("OpenProcessToken: {} ({})", msg, err);
-            return INVALID_HANDLE_VALUE;
-        }
-        return h;
-    }());
+    win32::win32_handle const h_token(
+        [] {
+            HANDLE h = INVALID_HANDLE_VALUE;
+            if (OpenProcessToken(GetCurrentProcess(),
+                                 TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES,
+                                 &h) == 0) {
+                auto err = GetLastError();
+                auto msg = win32::strerror(err);
+                spdlog::error("OpenProcessToken: {} ({})", msg, err);
+                return INVALID_HANDLE_VALUE;
+            }
+            return h;
+        }(),
+        spdlog::default_logger());
     if (not h_token.is_valid())
         return false;
 
@@ -75,10 +78,12 @@ TEST_CASE("add_lock_memory_privilege") { CHECK(add_lock_memory_privilege()); }
 
 auto create_autodeleted_file(std::filesystem::path const &path,
                              bool force) noexcept -> win32::win32_handle {
-    auto h_file = win32::win32_handle(CreateFileA(
-        path.string().c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr,
-        force ? CREATE_ALWAYS : CREATE_NEW,
-        FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr));
+    auto h_file = win32::win32_handle(
+        CreateFileA(path.string().c_str(), GENERIC_READ | GENERIC_WRITE, 0,
+                    nullptr, force ? CREATE_ALWAYS : CREATE_NEW,
+                    FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE,
+                    nullptr),
+        spdlog::default_logger());
     if (not h_file.is_valid()) {
         auto err = GetLastError();
         auto msg = win32::strerror(err);
@@ -142,8 +147,10 @@ auto create_file_mapping(win32::win32_handle const &file_handle,
         sizeof(std::size_t) > 4 ? size >> 32 : 0, size & UINT_MAX,
         name.c_str());
     // Docs say return value is NULL (not INVALID_HANDLE_VALUE) on failure.
-    auto h_mapping = raw_handle == nullptr ? win32::win32_handle()
-                                           : win32::win32_handle(raw_handle);
+    auto h_mapping =
+        raw_handle == nullptr
+            ? win32::win32_handle()
+            : win32::win32_handle(raw_handle, spdlog::default_logger());
     // Return value does not indicate failure when the mapping already exists,
     // but GetLastError() does.
     auto err = GetLastError();

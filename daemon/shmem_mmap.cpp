@@ -56,8 +56,10 @@ auto create_posix_shmem(std::string const &name, bool force) noexcept
 
     errno = 0;
     // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
-    auto fd = common::posix::file_descriptor(::shm_open(
-        name.c_str(), O_RDWR | O_CREAT | (force ? 0 : O_EXCL), 0666));
+    auto fd = common::posix::file_descriptor(
+        ::shm_open(name.c_str(), O_RDWR | O_CREAT | (force ? 0 : O_EXCL),
+                   0666),
+        spdlog::default_logger());
     // NOLINTEND(cppcoreguidelines-pro-type-vararg)
     if (not fd.is_valid()) {
         int err = errno;
@@ -66,7 +68,8 @@ auto create_posix_shmem(std::string const &name, bool force) noexcept
         return {};
     }
     spdlog::info("shm_open: {}: success; fd {}", name, fd.get());
-    return {common::posix::unlinkable(name, ::shm_unlink, "shm_unlink"),
+    return {common::posix::unlinkable(name, ::shm_unlink, "shm_unlink",
+                                      spdlog::default_logger()),
             std::move(fd)};
 }
 
@@ -130,7 +133,8 @@ auto create_regular_file(std::string const &path, bool force) noexcept
     // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
     auto fd = common::posix::file_descriptor(
         ::open(path.c_str(),
-               O_RDWR | O_CREAT | (force ? 0 : O_EXCL) | O_CLOEXEC, 0666));
+               O_RDWR | O_CREAT | (force ? 0 : O_EXCL) | O_CLOEXEC, 0666),
+        spdlog::default_logger());
     // NOLINTEND(cppcoreguidelines-pro-type-vararg)
     if (not fd.is_valid()) {
         int err = errno;
@@ -139,7 +143,8 @@ auto create_regular_file(std::string const &path, bool force) noexcept
         return {};
     }
     spdlog::info("open: {}: success; fd {}", path, fd.get());
-    return {common::posix::unlinkable(path), std::move(fd)};
+    return {common::posix::unlinkable(path, spdlog::default_logger()),
+            std::move(fd)};
 }
 
 TEST_CASE("create_regular_file") {
