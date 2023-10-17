@@ -59,7 +59,7 @@ class win32_handle {
 
 class unlinkable {
   public:
-    using unlink_func = auto(*)(char const *) -> int; // (*)(LPCSTR) -> BOOL
+    using unlink_func = auto (*)(char const *) -> int; // (*)(LPCSTR) -> BOOL
 
   private:
     std::string nm;

@@ -58,7 +58,7 @@ class file_descriptor {
 // RAII to ensure given file(-like) is unlinked
 class unlinkable {
   public:
-    using unlink_func = auto(*)(char const *) -> int;
+    using unlink_func = auto (*)(char const *) -> int;
 
   private:
     std::string nm;
