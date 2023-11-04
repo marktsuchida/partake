@@ -7,6 +7,7 @@
 #include "session.hpp"
 
 #include "handle.hpp"
+#include "key_sequence.hpp"
 #include "object.hpp"
 #include "repository.hpp"
 #include "token.hpp"

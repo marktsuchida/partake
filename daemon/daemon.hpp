@@ -12,6 +12,7 @@
 #include "connection_acceptor.hpp"
 #include "handle.hpp"
 #include "hive.hpp"
+#include "key_sequence.hpp"
 #include "message.hpp"
 #include "object.hpp"
 #include "overloaded.hpp"

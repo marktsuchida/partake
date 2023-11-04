@@ -11,6 +11,7 @@ daemon_sources = [
     'handle.cpp',
     'handle_list.cpp',
     'hive.cpp',
+    'key_sequence.cpp',
     'object.cpp',
     'overloaded.cpp',
     'page_size.cpp',
