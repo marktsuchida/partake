@@ -63,8 +63,7 @@ auto linux_page_size(bool use_huge_pages, std::size_t huge_page_size)
 
 auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
                           bool use_huge_pages = false,
-                          std::size_t huge_page_size = 0) noexcept
-    -> sysv_shmem_id {
+                          std::size_t huge_page_size = 0) -> sysv_shmem_id {
     if (size == 0)
         return {};
 
@@ -145,7 +144,7 @@ auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
     return sysv_shmem_id(id, size);
 }
 
-auto sysv_shmem_id::remove() noexcept -> bool {
+auto sysv_shmem_id::remove() -> bool {
     if (shmid < 0)
         return true;
     bool ret = false;
@@ -256,7 +255,7 @@ TEST_CASE("sysv_shmem_id") {
     }
 }
 
-sysv_shmem_attachment::sysv_shmem_attachment(int id) noexcept {
+sysv_shmem_attachment::sysv_shmem_attachment(int id) {
     if (id < 0)
         return;
     errno = 0;
@@ -271,7 +270,7 @@ sysv_shmem_attachment::sysv_shmem_attachment(int id) noexcept {
     }
 }
 
-auto sysv_shmem_attachment::detach() noexcept -> bool {
+auto sysv_shmem_attachment::detach() -> bool {
     if (addr == nullptr)
         return true;
     bool ret = false;
@@ -346,14 +345,14 @@ TEST_CASE("sysv_shmem_attachment") {
 } // namespace internal
 
 auto create_sysv_shmem(std::size_t size, bool use_huge_pages,
-                       std::size_t huge_page_size) noexcept -> sysv_shmem {
+                       std::size_t huge_page_size) -> sysv_shmem {
     return sysv_shmem(internal::create_sysv_shmem_id(
         IPC_PRIVATE, size, false, use_huge_pages, huge_page_size));
 }
 
 auto create_sysv_shmem(int key, std::size_t size, bool force,
-                       bool use_huge_pages,
-                       std::size_t huge_page_size) noexcept -> sysv_shmem {
+                       bool use_huge_pages, std::size_t huge_page_size)
+    -> sysv_shmem {
     return sysv_shmem(internal::create_sysv_shmem_id(
         key, size, force, use_huge_pages, huge_page_size));
 }

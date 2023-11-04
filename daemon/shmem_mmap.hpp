@@ -29,7 +29,7 @@ class mmap_mapping {
     mmap_mapping() noexcept = default;
 
     explicit mmap_mapping(std::size_t size,
-                          common::posix::file_descriptor const &fd) noexcept;
+                          common::posix::file_descriptor const &fd);
 
     ~mmap_mapping() { unmap(); }
 
@@ -51,7 +51,7 @@ class mmap_mapping {
     [[nodiscard]] auto size() const noexcept -> std::size_t { return siz; }
     [[nodiscard]] auto address() const noexcept -> void * { return addr; }
 
-    auto unmap() noexcept -> bool;
+    auto unmap() -> bool;
 };
 
 } // namespace internal
@@ -65,16 +65,14 @@ class mmap_shmem {
 
     explicit mmap_shmem(common::posix::unlinkable &&entry,
                         common::posix::file_descriptor const &fd,
-                        std::size_t size) noexcept
+                        std::size_t size)
         : ent(std::move(entry)), mapping(size, fd) {}
 
     [[nodiscard]] auto is_valid() const noexcept -> bool {
         return mapping.is_valid();
     }
 
-    [[nodiscard]] auto name() const noexcept -> std::string {
-        return ent.name();
-    }
+    [[nodiscard]] auto name() const -> std::string { return ent.name(); }
 
     [[nodiscard]] auto address() const noexcept -> void * {
         return mapping.address();
@@ -84,20 +82,20 @@ class mmap_shmem {
         return mapping.size();
     }
 
-    auto unlink() noexcept -> bool { return ent.unlink(); }
+    auto unlink() -> bool { return ent.unlink(); }
 
-    auto unmap() noexcept -> bool { return mapping.unmap(); }
+    auto unmap() -> bool { return mapping.unmap(); }
 };
 
 auto create_posix_mmap_shmem(std::string const &name, std::size_t size,
-                             bool force) noexcept -> mmap_shmem;
+                             bool force) -> mmap_shmem;
 
-auto create_posix_mmap_shmem(std::size_t size) noexcept -> mmap_shmem;
+auto create_posix_mmap_shmem(std::size_t size) -> mmap_shmem;
 
 auto create_file_mmap_shmem(std::string const &filename, std::size_t size,
-                            bool force) noexcept -> mmap_shmem;
+                            bool force) -> mmap_shmem;
 
-auto create_file_mmap_shmem(std::size_t size) noexcept -> mmap_shmem;
+auto create_file_mmap_shmem(std::size_t size) -> mmap_shmem;
 
 } // namespace partake::daemon
 

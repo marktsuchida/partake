@@ -33,14 +33,14 @@ auto large_page_minimum() noexcept -> std::size_t;
 #ifdef __linux__
 
 // Return the default huge page size. Return 0 if huge pages not supported.
-auto default_huge_page_size() noexcept -> std::size_t;
+auto default_huge_page_size() -> std::size_t;
 
 // Return the available huge page sizes in increasing order. Empty if huge
 // pages not supported.
-auto huge_page_sizes() noexcept -> std::vector<std::size_t>;
+auto huge_page_sizes() -> std::vector<std::size_t>;
 
 // Return the page size for the given fd, taking hugetlbfs into account.
-auto file_page_size(int fd) noexcept -> std::size_t;
+auto file_page_size(int fd) -> std::size_t;
 
 #endif
 

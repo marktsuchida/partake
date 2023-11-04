@@ -20,7 +20,7 @@ template <typename AsioContext> class quitter {
 
   public:
     explicit quitter(AsioContext &asio_context,
-                     std::function<void()> notify_quit) noexcept
+                     std::function<void()> notify_quit)
         : signals(asio_context,
 #ifdef _WIN32
                   SIGINT, SIGBREAK, SIGTERM
@@ -31,9 +31,9 @@ template <typename AsioContext> class quitter {
           notify(std::move(notify_quit)) {
     }
 
-    void start() noexcept {
+    void start() {
         signals.async_wait(
-            [this](boost::system::error_code const &err, int sig) noexcept {
+            [this](boost::system::error_code const &err, int sig) {
                 if (not err) {
                     spdlog::info("signal {} received", sig);
                     notify();
@@ -41,7 +41,7 @@ template <typename AsioContext> class quitter {
             });
     }
 
-    void stop() noexcept {
+    void stop() {
         boost::system::error_code err;
         signals.cancel(err);
         if (err)

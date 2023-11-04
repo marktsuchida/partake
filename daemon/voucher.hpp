@@ -29,7 +29,7 @@ template <typename Object> class voucher {
 
   public:
     explicit voucher(std::shared_ptr<object_type> target, unsigned count,
-                     time_point expiration) noexcept
+                     time_point expiration)
         : tgt(std::move(target)), ct(count), expiry(expiration) {}
 
     ~voucher() { assert(not handle_in_queue.has_value()); }
@@ -65,13 +65,12 @@ template <typename Object> class voucher {
     // in the queue and auto-clears on destruction (still need function to get
     // handle-in-queue)
 
-    void set_queued(typename queue_type::handle_type handle) noexcept {
+    void set_queued(typename queue_type::handle_type handle) {
         assert(not handle_in_queue.has_value());
         handle_in_queue = handle;
     }
 
-    auto clear_queued() noexcept
-        -> std::optional<typename queue_type::handle_type> {
+    auto clear_queued() -> std::optional<typename queue_type::handle_type> {
         auto ret = handle_in_queue;
         handle_in_queue.reset();
         return ret;

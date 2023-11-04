@@ -41,12 +41,12 @@ class object : public token_hash_table<object<Resource>>::hook,
 
   public:
     explicit object(common::token key, object_policy policy,
-                    resource_type &&mem) noexcept
+                    resource_type &&mem)
         : ky(key), pol(policy), body(std::in_place_type<proper_object_type>,
                                      std::forward<resource_type>(mem)) {}
 
     explicit object(common::token key, std::shared_ptr<object> target,
-                    unsigned count, time_point expiration) noexcept
+                    unsigned count, time_point expiration)
         : ky(key), pol(target->policy()),
           body(std::in_place_type<voucher_type>, std::move(target), count,
                expiration) {}
@@ -70,11 +70,11 @@ class object : public token_hash_table<object<Resource>>::hook,
         return std::holds_alternative<voucher_type>(body);
     }
 
-    [[nodiscard]] auto as_proper_object() noexcept -> proper_object_type & {
+    [[nodiscard]] auto as_proper_object() -> proper_object_type & {
         return std::get<proper_object_type>(body);
     }
 
-    [[nodiscard]] auto as_voucher() noexcept -> voucher_type & {
+    [[nodiscard]] auto as_voucher() -> voucher_type & {
         return std::get<voucher_type>(body);
     }
 };

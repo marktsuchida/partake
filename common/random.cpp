@@ -17,14 +17,14 @@ namespace partake::common {
 
 namespace {
 
-auto randev() noexcept -> auto & {
+auto randev() -> auto & {
     static std::random_device rd;
     return rd;
 }
 
 } // namespace
 
-auto random_string(std::size_t len) noexcept -> std::string {
+auto random_string(std::size_t len) -> std::string {
     static constexpr std::string_view letters = "0123456789"
                                                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                                                 "abcdefghijklmnopqrstuvwxyz";
@@ -33,7 +33,7 @@ auto random_string(std::size_t len) noexcept -> std::string {
         std::uniform_int_distribution<std::size_t>(0, letters.size() - 1);
     std::string ret(len, '\0');
     std::generate(ret.begin(), ret.end(),
-                  [&]() noexcept { return letters[distrib(rd)]; });
+                  [&]() { return letters[distrib(rd)]; });
     return ret;
 }
 
@@ -47,7 +47,7 @@ TEST_CASE("random_string") {
     auto const r237 = random_string(237);
     CHECK(r237.size() == 237);
     CHECK(std::all_of(r237.begin(), r237.end(),
-                      [](char c) noexcept { return std::isalnum(c); }));
+                      [](char c) { return std::isalnum(c); }));
 }
 
 } // namespace partake::common

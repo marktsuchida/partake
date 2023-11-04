@@ -24,8 +24,7 @@ class sysv_shmem_id {
     sysv_shmem_id() noexcept = default;
 
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    explicit sysv_shmem_id(int id, std::size_t size) noexcept
-        : shmid(id), siz(size) {}
+    explicit sysv_shmem_id(int id, std::size_t size) : shmid(id), siz(size) {}
 
     ~sysv_shmem_id() { remove(); }
 
@@ -46,7 +45,7 @@ class sysv_shmem_id {
 
     [[nodiscard]] auto size() const noexcept -> std::size_t { return siz; }
 
-    auto remove() noexcept -> bool;
+    auto remove() -> bool;
 };
 
 // RAII for shmat() - shmdt()
@@ -57,7 +56,7 @@ class sysv_shmem_attachment {
     sysv_shmem_attachment() noexcept = default;
 
     // The shared memory may need to outlive the attachment on some systems.
-    explicit sysv_shmem_attachment(int id) noexcept;
+    explicit sysv_shmem_attachment(int id);
 
     ~sysv_shmem_attachment() { detach(); }
 
@@ -77,7 +76,7 @@ class sysv_shmem_attachment {
 
     [[nodiscard]] auto address() const noexcept -> void * { return addr; }
 
-    auto detach() noexcept -> bool;
+    auto detach() -> bool;
 };
 
 } // namespace internal
@@ -89,7 +88,7 @@ class sysv_shmem {
   public:
     sysv_shmem() noexcept = default;
 
-    explicit sysv_shmem(internal::sysv_shmem_id &&id) noexcept
+    explicit sysv_shmem(internal::sysv_shmem_id &&id)
         : shmid(std::move(id)), attachment(shmid.id()) {}
 
     [[nodiscard]] auto is_valid() const noexcept -> bool {
@@ -106,17 +105,17 @@ class sysv_shmem {
         return shmid.size();
     }
 
-    auto remove() noexcept -> bool { return shmid.remove(); }
+    auto remove() -> bool { return shmid.remove(); }
 
-    auto detach() noexcept -> bool { return attachment.detach(); }
+    auto detach() -> bool { return attachment.detach(); }
 };
 
 auto create_sysv_shmem(std::size_t size, bool use_huge_pages = false,
-                       std::size_t huge_page_size = 0) noexcept -> sysv_shmem;
+                       std::size_t huge_page_size = 0) -> sysv_shmem;
 
 auto create_sysv_shmem(int key, std::size_t size, bool force = false,
                        bool use_huge_pages = false,
-                       std::size_t huge_page_size = 0) noexcept -> sysv_shmem;
+                       std::size_t huge_page_size = 0) -> sysv_shmem;
 
 } // namespace partake::daemon
 

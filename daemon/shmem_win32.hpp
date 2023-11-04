@@ -30,8 +30,7 @@ class win32_map_view {
     win32_map_view() noexcept = default;
 
     explicit win32_map_view(win32::win32_handle const &h_mapping,
-                            std::size_t size,
-                            bool use_large_pages = false) noexcept;
+                            std::size_t size, bool use_large_pages = false);
 
     ~win32_map_view() { unmap(); }
 
@@ -57,7 +56,7 @@ class win32_map_view {
     [[nodiscard]] auto size() const noexcept -> std::size_t { return siz; }
 
   private:
-    void unmap() noexcept;
+    void unmap();
 };
 
 } // namespace internal
@@ -72,7 +71,7 @@ class win32_shmem {
 
     explicit win32_shmem(win32::win32_handle &&file_handle,
                          win32::win32_handle &&mapping_handle,
-                         std::size_t size, bool use_large_pages) noexcept
+                         std::size_t size, bool use_large_pages)
         : h_file(std::move(file_handle)), h_mapping(std::move(mapping_handle)),
           view(h_mapping, size, use_large_pages) {}
 
@@ -89,17 +88,16 @@ class win32_shmem {
     }
 };
 
-inline auto generate_win32_file_mapping_name() noexcept -> std::string {
+inline auto generate_win32_file_mapping_name() -> std::string {
     return "Local\\partake-" + random_string(24);
 }
 
 auto create_win32_shmem(std::string const &mapping_name, std::size_t size,
-                        bool use_large_pages = false) noexcept -> win32_shmem;
+                        bool use_large_pages = false) -> win32_shmem;
 
 auto create_win32_file_shmem(std::filesystem::path const &path,
                              std::string const &mapping_name, std::size_t size,
-                             bool force = false,
-                             bool use_large_pages = false) noexcept
+                             bool force = false, bool use_large_pages = false)
     -> win32_shmem;
 
 } // namespace partake::daemon

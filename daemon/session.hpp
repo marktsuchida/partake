@@ -62,7 +62,7 @@ class session {
 
     explicit session(std::uint32_t session_id, segment_type const &segment,
                      allocator_type &allocator, repository_type &repository,
-                     std::chrono::milliseconds voucher_time_to_live) noexcept
+                     std::chrono::milliseconds voucher_time_to_live)
         : seg(&segment), allocr(&allocator), repo(&repository),
           handles(1 << 3), valid(true), id(session_id),
           voucher_ttl(voucher_time_to_live) {
@@ -112,24 +112,24 @@ class session {
 
     [[nodiscard]] auto is_valid() const noexcept -> bool { return valid; }
 
-    [[nodiscard]] auto session_id() const noexcept -> std::uint32_t {
+    [[nodiscard]] auto session_id() const -> std::uint32_t {
         assert(valid);
         return id;
     }
 
-    [[nodiscard]] auto name() const noexcept -> std::string {
+    [[nodiscard]] auto name() const -> std::string {
         assert(valid);
         return client_name;
     }
 
-    [[nodiscard]] auto pid() const noexcept -> std::uint32_t {
+    [[nodiscard]] auto pid() const -> std::uint32_t {
         assert(valid);
         return client_pid;
     }
 
     template <typename Success, typename Error>
     void hello(std::string_view name, std::uint32_t pid, Success success_cb,
-               Error error_cb) noexcept {
+               Error error_cb) {
         assert(valid);
         if (has_said_hello) {
             error_cb(protocol::Status::INVALID_REQUEST);
@@ -144,7 +144,7 @@ class session {
 
     template <typename Success, typename Error>
     void get_segment(std::uint32_t segment_id, Success success_cb,
-                     Error error_cb) noexcept {
+                     Error error_cb) {
         assert(valid);
 
         // For now there is only one segment, id 0.
@@ -157,7 +157,7 @@ class session {
 
     template <typename Success, typename Error>
     void alloc(std::uint64_t size, protocol::Policy policy, Success success_cb,
-               Error error_cb) noexcept {
+               Error error_cb) {
         assert(valid);
 
         if (size > std::numeric_limits<std::size_t>::max()) // 32-bit Systems
@@ -182,7 +182,7 @@ class session {
     void open(common::token key, protocol::Policy policy, bool wait,
               time_point now, ImmediateSuccess success_cb,
               ImmediateError error_cb, DeferredSuccess deferred_success_cb,
-              DeferredError deferred_error_cb) noexcept {
+              DeferredError deferred_error_cb) {
         assert(valid);
 
         std::shared_ptr<object_type> obj;
@@ -227,8 +227,8 @@ class session {
         }
 
         hnd->add_request_pending_on_share(
-            [deferred_success_cb, deferred_error_cb](
-                std::shared_ptr<handle_type> const &handle) noexcept {
+            [deferred_success_cb,
+             deferred_error_cb](std::shared_ptr<handle_type> const &handle) {
                 auto o = handle->object();
                 auto const &po = o->as_proper_object();
                 if (po.is_shared()) {
@@ -242,8 +242,7 @@ class session {
     }
 
     template <typename Success, typename Error>
-    void close(common::token key, Success success_cb,
-               Error error_cb) noexcept {
+    void close(common::token key, Success success_cb, Error error_cb) {
         assert(valid);
         auto hnd = find_handle(key);
         if (not hnd || not hnd->is_open())
@@ -253,8 +252,7 @@ class session {
     }
 
     template <typename Success, typename Error>
-    void share(common::token key, Success success_cb,
-               Error error_cb) noexcept {
+    void share(common::token key, Success success_cb, Error error_cb) {
         assert(valid);
         auto hnd = find_handle(key);
         if (not hnd ||
@@ -268,7 +266,7 @@ class session {
               typename DeferredSuccess, typename DeferredError>
     void unshare(common::token key, bool wait, ImmediateSuccess success_cb,
                  ImmediateError error_cb, DeferredSuccess deferred_success_cb,
-                 DeferredError deferred_error_cb) noexcept {
+                 DeferredError deferred_error_cb) {
         assert(valid);
 
         auto hnd = find_handle(key);
@@ -289,7 +287,7 @@ class session {
 
         hnd->set_request_pending_on_unique_ownership(
             [deferred_success_cb, deferred_error_cb,
-             this](std::shared_ptr<handle_type> const &handle) noexcept {
+             this](std::shared_ptr<handle_type> const &handle) {
                 if (handle->is_open_uniquely())
                     return deferred_success_cb(do_unshare(handle));
                 return deferred_error_cb(protocol::Status::NO_SUCH_OBJECT);
@@ -298,7 +296,7 @@ class session {
 
     template <typename Success, typename Error>
     void create_voucher(common::token target, unsigned count, time_point now,
-                        Success success_cb, Error error_cb) noexcept {
+                        Success success_cb, Error error_cb) {
         assert(valid);
 
         if (count == 0)
@@ -323,7 +321,7 @@ class session {
 
     template <typename Success, typename Error>
     void discard_voucher(common::token key, time_point now, Success success_cb,
-                         Error error_cb) noexcept {
+                         Error error_cb) {
         assert(valid);
 
         auto obj = repo->find_object(key);
@@ -338,7 +336,7 @@ class session {
         return error_cb(protocol::Status::NO_SUCH_OBJECT);
     }
 
-    void drop_pending_requests() noexcept {
+    void drop_pending_requests() {
         assert(valid);
         // Iterate in a manner that allows item erasure.
         for (auto i = handles.begin(), e = handles.end(); i != e;) {
@@ -348,13 +346,13 @@ class session {
         }
     }
 
-    void perform_housekeeping() noexcept {
+    void perform_housekeeping() {
         assert(valid);
         handles.rehash_if_appropriate(true);
     }
 
   private:
-    void close_session() noexcept {
+    void close_session() {
         if (not valid)
             return;
 
@@ -375,18 +373,17 @@ class session {
         valid = false;
     }
 
-    auto create_handle(std::shared_ptr<object_type> object) noexcept
+    auto create_handle(std::shared_ptr<object_type> object)
         -> std::shared_ptr<handle_type> {
         auto hnd = handle_storage.emplace(std::move(object));
         handles.insert(*hnd);
-        return {&*hnd, [this](handle_type *h) noexcept {
+        return {&*hnd, [this](handle_type *h) {
                     handles.erase(handles.iterator_to(*h));
                     handle_storage.erase(handle_storage.get_iterator(h));
                 }};
     }
 
-    auto find_handle(common::token key) noexcept
-        -> std::shared_ptr<handle_type> {
+    auto find_handle(common::token key) -> std::shared_ptr<handle_type> {
         auto hnd = handles.find(key);
         if (hnd == handles.end())
             return {};
@@ -394,7 +391,7 @@ class session {
     }
 
     // Returns pair of shared_ptr<object>s: {target, voucher}.
-    auto find_target(common::token key, time_point now) noexcept {
+    auto find_target(common::token key, time_point now) {
         auto obj = repo->find_object(key);
         std::shared_ptr<object_type> vchr;
         if (obj && obj->is_voucher()) {
@@ -407,8 +404,7 @@ class session {
         return std::pair{obj, vchr};
     }
 
-    auto do_unshare(std::shared_ptr<handle_type> const &hnd) noexcept
-        -> common::token {
+    auto do_unshare(std::shared_ptr<handle_type> const &hnd) -> common::token {
         auto obj = hnd->object();
 
         // Temporarily remove from handle table while key changes.

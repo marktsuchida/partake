@@ -89,13 +89,13 @@ In all cases, partaked will exit with an error if the filename given
 by --file or the name given by --name already exists, unless --force
 is also given.)";
 
-auto parse_nonempty(std::string const &s) noexcept -> std::string {
+auto parse_nonempty(std::string const &s) -> std::string {
     if (s.empty())
         return "Argument must not be empty";
     return {};
 }
 
-auto parse_size_suffix(std::string const &s) noexcept(false) -> std::string {
+auto parse_size_suffix(std::string const &s) -> std::string {
     if (s.empty())
         throw CLI::ValidationError("Size must not be empty");
 
@@ -186,7 +186,7 @@ TEST_CASE("parse_size_suffix") {
                     CLI::ValidationError const &);
 }
 
-auto parse_cli_args_unvalidated(int argc, char const *const *argv) noexcept
+auto parse_cli_args_unvalidated(int argc, char const *const *argv)
     -> tl::expected<cli_args, int> {
     using namespace std::string_literals;
 
@@ -275,7 +275,7 @@ template <bool IsWindows =
               false
 #endif
           >
-auto validate_segment_type(cli_args const &args) noexcept
+auto validate_segment_type(cli_args const &args)
     -> tl::expected<shmem_type, std::string> {
     using namespace std::string_literals;
     int const shmem_type_count = int(args.posix) + int(args.systemv) +
@@ -341,7 +341,7 @@ TEST_CASE("validate_segment_type") {
     CHECK_FALSE(validate_segment_type(args).has_value());
 }
 
-auto validate_posix_shmem_name(std::string const &name) noexcept
+auto validate_posix_shmem_name(std::string const &name)
     -> tl::expected<std::string, std::string> {
     using namespace std::string_literals;
     if (name.empty())
@@ -365,7 +365,7 @@ TEST_CASE("validate_posix_shmem_name") {
     CHECK_FALSE(validate_posix_shmem_name("/a/").has_value());
 }
 
-auto validate_sysv_shmem_name(std::string const &name) noexcept
+auto validate_sysv_shmem_name(std::string const &name)
     -> tl::expected<int, std::string> {
     using namespace std::string_literals;
     if (name.empty())
@@ -390,7 +390,7 @@ TEST_CASE("validate_sysv_shmem_name") {
     CHECK_FALSE(validate_sysv_shmem_name("abc").has_value());
 }
 
-auto validate_win32_shmem_name(std::string const &name) noexcept
+auto validate_win32_shmem_name(std::string const &name)
     -> tl::expected<std::string, std::string> {
     using namespace std::string_literals;
     static auto const required_prefix = R"(Local\)"s;
@@ -416,7 +416,7 @@ TEST_CASE("validate_win32_shmem_name") {
     CHECK_FALSE(validate_win32_shmem_name(R"(Local\x\)").has_value());
 }
 
-auto validate_segment_config(cli_args const &args) noexcept
+auto validate_segment_config(cli_args const &args)
     -> tl::expected<segment_config, std::string> {
     using namespace std::string_literals;
     auto const type_or_error = validate_segment_type(args);
@@ -470,7 +470,7 @@ auto validate_segment_config(cli_args const &args) noexcept
     }
 }
 
-auto validate_cli_args(cli_args const &args) noexcept
+auto validate_cli_args(cli_args const &args)
     -> tl::expected<daemon_config, std::string> {
     using namespace std::string_literals;
     daemon_config ret;
@@ -513,7 +513,7 @@ auto validate_cli_args(cli_args const &args) noexcept
 
 } // namespace
 
-auto parse_cli_args(int argc, char const *const *argv) noexcept
+auto parse_cli_args(int argc, char const *const *argv)
     -> tl::expected<daemon_config, int> {
     return parse_cli_args_unvalidated(argc, argv)
         .and_then([](cli_args const &args) {

@@ -36,7 +36,7 @@ namespace partake::daemon {
 
 namespace internal {
 
-auto create_posix_shmem(std::string const &name, bool force) noexcept
+auto create_posix_shmem(std::string const &name, bool force)
     -> std::pair<common::posix::unlinkable, common::posix::file_descriptor> {
 #ifdef __APPLE__
     if (force) {
@@ -127,7 +127,7 @@ TEST_CASE("create_posix_shmem") {
     }
 }
 
-auto create_regular_file(std::string const &path, bool force) noexcept
+auto create_regular_file(std::string const &path, bool force)
     -> std::pair<common::posix::unlinkable, common::posix::file_descriptor> {
     errno = 0;
     // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
@@ -199,7 +199,7 @@ TEST_CASE("create_regular_file") {
 }
 
 mmap_mapping::mmap_mapping(std::size_t size,
-                           common::posix::file_descriptor const &fd) noexcept
+                           common::posix::file_descriptor const &fd)
     : siz(size) {
     if (not fd.is_valid())
         return;
@@ -230,7 +230,7 @@ mmap_mapping::mmap_mapping(std::size_t size,
     }
 }
 
-auto mmap_mapping::unmap() noexcept -> bool {
+auto mmap_mapping::unmap() -> bool {
     if (addr == nullptr)
         return true;
     bool ret = false;
@@ -309,7 +309,7 @@ TEST_CASE("mmap_mapping") {
     }
 }
 
-auto generate_posix_shmem_name() noexcept -> std::string {
+auto generate_posix_shmem_name() -> std::string {
     // Max: macOS 31, Linux 255, FreeBSD 1023.
     static constexpr std::size_t name_len = 31;
     std::string name = "/partake-";
@@ -324,7 +324,7 @@ TEST_CASE("generate_posix_shmem_name") {
     CHECK(n.front() == '/');
 }
 
-auto generate_filename() noexcept -> std::string {
+auto generate_filename() -> std::string {
     auto const filename = "partake-" + common::random_string(24);
 #ifdef __APPLE__
     // Avoid the long, messy path returned by temp_directory_path().
@@ -346,7 +346,7 @@ TEST_CASE("generate_filename") {
 } // namespace internal
 
 auto create_posix_mmap_shmem(std::string const &name, std::size_t size,
-                             bool force) noexcept -> mmap_shmem {
+                             bool force) -> mmap_shmem {
     auto [shmem, fd] = internal::create_posix_shmem(name, force);
     auto psize = page_size();
     if (not round_up_or_check_size(size, psize))
@@ -354,7 +354,7 @@ auto create_posix_mmap_shmem(std::string const &name, std::size_t size,
     return mmap_shmem(std::move(shmem), fd, size);
 }
 
-auto create_posix_mmap_shmem(std::size_t size) noexcept -> mmap_shmem {
+auto create_posix_mmap_shmem(std::size_t size) -> mmap_shmem {
     auto name = internal::generate_posix_shmem_name();
     return create_posix_mmap_shmem(name, size, false);
 }
@@ -370,7 +370,7 @@ TEST_CASE("create_posix_mmap_shmem") {
 }
 
 auto create_file_mmap_shmem(std::string const &name, std::size_t size,
-                            bool force) noexcept -> mmap_shmem {
+                            bool force) -> mmap_shmem {
     auto [file, fd] = internal::create_regular_file(name, force);
 #ifdef __linux__
     auto psize = file_page_size(fd.get());
@@ -382,7 +382,7 @@ auto create_file_mmap_shmem(std::string const &name, std::size_t size,
     return mmap_shmem(std::move(file), fd, size);
 }
 
-auto create_file_mmap_shmem(std::size_t size) noexcept -> mmap_shmem {
+auto create_file_mmap_shmem(std::size_t size) -> mmap_shmem {
     auto name = internal::generate_filename();
     return create_file_mmap_shmem(name, size, false);
 }

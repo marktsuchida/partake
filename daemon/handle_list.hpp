@@ -40,15 +40,13 @@ template <typename Handle> class handle_list {
         return list.iterator_to(h);
     }
 
-    [[nodiscard]] auto front() noexcept -> handle_type & {
-        return list.front();
-    }
+    [[nodiscard]] auto front() -> handle_type & { return list.front(); }
 
-    void push_back(handle_type &h) noexcept { list.push_back(h); }
+    void push_back(handle_type &h) { list.push_back(h); }
 
-    void pop_front() noexcept { list.pop_front(); }
+    void pop_front() { list.pop_front(); }
 
-    auto erase(iterator it) noexcept -> iterator { return list.erase(it); }
+    auto erase(iterator it) -> iterator { return list.erase(it); }
 };
 
 } // namespace partake::daemon

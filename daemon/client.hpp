@@ -51,33 +51,29 @@ class client {
     explicit client(socket_type &&socket, std::uint32_t session_id,
                     segment &seg, arena_allocator &allocator, Repository &repo,
                     std::chrono::milliseconds voucher_time_to_live,
-                    HousekeepFunc per_req_housekeeping,
-                    CloseFunc close_client) noexcept
+                    HousekeepFunc per_req_housekeeping, CloseFunc close_client)
         : sock(std::forward<socket_type>(socket)),
           sess(session_id, seg, allocator, repo, voucher_time_to_live),
           writer(sock,
-                 [this](std::error_code err) noexcept {
+                 [this](std::error_code err) {
                      if (err)
                          handle_read_write_error(err);
                      decrement_io_refcount();
                  }),
           handler(
               sess,
-              [this](auto &&buf) noexcept {
+              [this](auto &&buf) {
                   increment_io_refcount();
                   writer.async_write_message(std::forward<decltype(buf)>(buf));
               },
               std::move(per_req_housekeeping),
-              [this](std::error_code err) noexcept {
-                  handle_read_write_error(err);
-              }),
+              [this](std::error_code err) { handle_read_write_error(err); }),
           reader(
               sock,
-              [&handler =
-                   handler](gsl::span<std::uint8_t const> bytes) noexcept {
+              [&handler = handler](gsl::span<std::uint8_t const> bytes) {
                   return handler.handle_message(bytes);
               },
-              [this](std::error_code err) noexcept {
+              [this](std::error_code err) {
                   if (err)
                       handle_read_write_error(err);
                   else
@@ -89,15 +85,15 @@ class client {
     // No move or copy (member references taken)
     auto operator=(client &&) = delete;
 
-    void start() noexcept {
+    void start() {
         reader.start();
         increment_io_refcount();
     }
 
-    void prepare_for_shutdown() noexcept { sess.drop_pending_requests(); }
+    void prepare_for_shutdown() { sess.drop_pending_requests(); }
 
   private:
-    void handle_end_of_read() noexcept {
+    void handle_end_of_read() {
         boost::system::error_code ignore;
         sock.shutdown(asio::socket_base::shutdown_type::shutdown_receive,
                       ignore);
@@ -106,7 +102,7 @@ class client {
         // receive responses from requests sent before a 'Quit'.
     }
 
-    void handle_read_write_error(std::error_code err) noexcept {
+    void handle_read_write_error(std::error_code err) {
         if (err == boost::system::error_code(asio::error::operation_aborted))
             return;
 
@@ -123,7 +119,7 @@ class client {
 
     void increment_io_refcount() noexcept { ++io_refcount; }
 
-    void decrement_io_refcount() noexcept {
+    void decrement_io_refcount() {
         --io_refcount;
         if (io_refcount == 0) {
             close_self(*this);

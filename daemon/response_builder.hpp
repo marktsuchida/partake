@@ -24,7 +24,7 @@ class response_builder {
     static constexpr std::size_t approx_bytes_per_response = 64;
 
   public:
-    explicit response_builder(std::size_t count_hint = 0) noexcept
+    explicit response_builder(std::size_t count_hint = 0)
         : bldr(approx_bytes_per_response * count_hint),
           alloc_hint(count_hint) {}
 
@@ -35,9 +35,8 @@ class response_builder {
 
     // response_offset must have been created using this.fbbuilder()
     template <typename R>
-    void
-    add_successful_response(std::uint64_t seqno,
-                            flatbuffers::Offset<R> response_offset) noexcept {
+    void add_successful_response(std::uint64_t seqno,
+                                 flatbuffers::Offset<R> response_offset) {
         auto resp_enum = protocol::AnyResponseTraits<R>::enum_value;
         auto resp =
             protocol::CreateResponse(bldr, seqno, protocol::Status::OK,
@@ -45,8 +44,7 @@ class response_builder {
         add_response(resp);
     }
 
-    void add_error_response(std::uint64_t seqno,
-                            protocol::Status status) noexcept {
+    void add_error_response(std::uint64_t seqno, protocol::Status status) {
         assert(status != protocol::Status::OK);
         auto resp = protocol::CreateResponse(bldr, seqno, status);
         add_response(resp);
@@ -57,8 +55,7 @@ class response_builder {
     }
 
     // After call to this function, the instance may not be used.
-    [[nodiscard]] auto release_buffer() noexcept
-        -> flatbuffers::DetachedBuffer {
+    [[nodiscard]] auto release_buffer() -> flatbuffers::DetachedBuffer {
         auto resp_vec = bldr.CreateVector(resp_offsets);
         auto root = protocol::CreateResponseMessage(bldr, resp_vec);
         bldr.FinishSizePrefixed(root);
@@ -66,7 +63,7 @@ class response_builder {
     }
 
   private:
-    void add_response(resp_off resp) noexcept {
+    void add_response(resp_off resp) {
         // Minimize allocations by deferring until first response added.
         if (resp_offsets.empty())
             resp_offsets.reserve(alloc_hint);

@@ -26,30 +26,30 @@ namespace partake::daemon {
 namespace internal {
 
 inline auto segment_spec_to_fb(flatbuffers::FlatBufferBuilder &fbb,
-                               segment_spec const &spec) noexcept {
+                               segment_spec const &spec) {
     auto [seg_type, seg_mapping_spec] = std::visit(
         internal::overloaded{
-            [&fbb](posix_mmap_segment_spec const &s) noexcept {
+            [&fbb](posix_mmap_segment_spec const &s) {
                 return std::make_pair(
                     protocol::SegmentMappingSpec::PosixMmapSpec,
                     protocol::CreatePosixMmapSpec(
                         fbb, fbb.CreateString(s.name), true)
                         .Union());
             },
-            [&fbb](file_mmap_segment_spec const &s) noexcept {
+            [&fbb](file_mmap_segment_spec const &s) {
                 return std::make_pair(
                     protocol::SegmentMappingSpec::PosixMmapSpec,
                     protocol::CreatePosixMmapSpec(
                         fbb, fbb.CreateString(s.filename), false)
                         .Union());
             },
-            [&fbb](sysv_segment_spec const &s) noexcept {
+            [&fbb](sysv_segment_spec const &s) {
                 return std::make_pair(
                     protocol::SegmentMappingSpec::SystemVSharedMemorySpec,
                     protocol::CreateSystemVSharedMemorySpec(fbb, s.shm_id)
                         .Union());
             },
-            [&fbb](win32_segment_spec const &s) noexcept {
+            [&fbb](win32_segment_spec const &s) {
                 return std::make_pair(
                     protocol::SegmentMappingSpec::Win32FileMappingSpec,
                     protocol::CreateWin32FileMappingSpec(
@@ -64,14 +64,14 @@ inline auto segment_spec_to_fb(flatbuffers::FlatBufferBuilder &fbb,
 }
 
 template <typename Resource>
-inline auto make_mapping(common::token key, Resource const &rsrc) noexcept
+inline auto make_mapping(common::token key, Resource const &rsrc)
     -> protocol::Mapping {
     return protocol::Mapping(key.as_u64(), rsrc.segment_id(), rsrc.offset(),
                              rsrc.size());
 }
 
-inline auto
-verify_request_message(gsl::span<std::uint8_t const> bytes) noexcept -> bool {
+inline auto verify_request_message(gsl::span<std::uint8_t const> bytes)
+    -> bool {
     auto verifier = flatbuffers::Verifier(bytes.data(), bytes.size());
     return verifier.VerifySizePrefixedBuffer<protocol::RequestMessage>(
         nullptr);
@@ -92,7 +92,7 @@ template <typename Session> class request_handler {
         Session &session,
         std::function<void(flatbuffers::DetachedBuffer &&)> write_response,
         std::function<void()> per_request_housekeeping,
-        std::function<void(std::error_code)> handle_error) noexcept
+        std::function<void(std::error_code)> handle_error)
         : sess(&session), write_resp(std::move(write_response)),
           housekeep(std::move(per_request_housekeeping)),
           handle_err(std::move(handle_error)) {}
@@ -101,7 +101,7 @@ template <typename Session> class request_handler {
     auto operator=(request_handler &&) = delete;
 
     // Deserialize and handle one FlatBuffers message.
-    auto handle_message(gsl::span<std::uint8_t const> bytes) noexcept -> bool {
+    auto handle_message(gsl::span<std::uint8_t const> bytes) -> bool {
         if (not internal::verify_request_message(bytes)) {
             handle_err(std::error_code(common::errc::invalid_message));
             return true;
@@ -148,7 +148,7 @@ template <typename Session> class request_handler {
 
   private:
     auto handle_request(protocol::Request const *req, time_point now,
-                        response_builder &rb) noexcept -> bool {
+                        response_builder &rb) -> bool {
         auto seqno = req->seqno();
         auto type = req->request_type();
         switch (type) {
@@ -185,7 +185,7 @@ template <typename Session> class request_handler {
     }
 
     auto handle_ping(std::uint64_t seqno, protocol::PingRequest const *req,
-                     response_builder &rb) noexcept -> bool {
+                     response_builder &rb) -> bool {
         (void)req;
         auto &fbb = rb.fbbuilder();
         auto resp = protocol::CreatePingResponse(fbb);
@@ -194,23 +194,23 @@ template <typename Session> class request_handler {
     }
 
     auto handle_hello(std::uint64_t seqno, protocol::HelloRequest const *req,
-                      response_builder &rb) noexcept -> bool {
+                      response_builder &rb) -> bool {
         auto const *name = req->name();
         sess->hello(
             {name->c_str(), name->size()}, req->pid(),
-            [seqno, &rb](std::uint32_t session_id) noexcept {
+            [seqno, &rb](std::uint32_t session_id) {
                 auto &fbb = rb.fbbuilder();
                 auto resp = protocol::CreateHelloResponse(fbb, session_id);
                 rb.add_successful_response(seqno, resp);
             },
-            [seqno, &rb](protocol::Status status) noexcept {
+            [seqno, &rb](protocol::Status status) {
                 rb.add_error_response(seqno, status);
             });
         return false;
     }
 
     auto handle_quit(std::uint64_t seqno, protocol::QuitRequest const *req,
-                     response_builder &rb) noexcept -> bool {
+                     response_builder &rb) -> bool {
         (void)req;
         auto &fbb = rb.fbbuilder();
         auto resp = protocol::CreateQuitResponse(fbb);
@@ -220,52 +220,51 @@ template <typename Session> class request_handler {
 
     auto handle_get_segment(std::uint64_t seqno,
                             protocol::GetSegmentRequest const *req,
-                            response_builder &rb) noexcept -> bool {
+                            response_builder &rb) -> bool {
         sess->get_segment(
             req->segment(),
-            [seqno, &rb](segment_spec const &spec) noexcept {
+            [seqno, &rb](segment_spec const &spec) {
                 auto &fbb = rb.fbbuilder();
                 auto seg_spec = internal::segment_spec_to_fb(fbb, spec);
                 auto resp = protocol::CreateGetSegmentResponse(fbb, seg_spec);
                 rb.add_successful_response(seqno, resp);
             },
-            [seqno, &rb](protocol::Status status) noexcept {
+            [seqno, &rb](protocol::Status status) {
                 rb.add_error_response(seqno, status);
             });
         return false;
     }
 
     auto handle_alloc(std::uint64_t seqno, protocol::AllocRequest const *req,
-                      response_builder &rb) noexcept -> bool {
+                      response_builder &rb) -> bool {
         sess->alloc(
             req->size(), req->policy(),
-            [seqno, &rb](common::token k, resource_type const &rsrc) noexcept {
+            [seqno, &rb](common::token k, resource_type const &rsrc) {
                 auto &fbb = rb.fbbuilder();
                 auto mapping = internal::make_mapping(k, rsrc);
                 auto resp = protocol::CreateAllocResponse(fbb, &mapping);
                 rb.add_successful_response(seqno, resp);
             },
-            [seqno, &rb](protocol::Status status) noexcept {
+            [seqno, &rb](protocol::Status status) {
                 rb.add_error_response(seqno, status);
             });
         return false;
     }
 
     auto handle_open(std::uint64_t seqno, protocol::OpenRequest const *req,
-                     time_point now, response_builder &rb) noexcept -> bool {
+                     time_point now, response_builder &rb) -> bool {
         sess->open(
             common::token(req->key()), req->policy(), req->wait(), now,
-            [seqno, &rb](common::token k, resource_type const &rsrc) noexcept {
+            [seqno, &rb](common::token k, resource_type const &rsrc) {
                 auto &fbb = rb.fbbuilder();
                 auto mapping = internal::make_mapping(k, rsrc);
                 auto resp = protocol::CreateOpenResponse(fbb, &mapping);
                 rb.add_successful_response(seqno, resp);
             },
-            [seqno, &rb](protocol::Status status) noexcept {
+            [seqno, &rb](protocol::Status status) {
                 rb.add_error_response(seqno, status);
             },
-            [seqno, this](common::token k,
-                          resource_type const &rsrc) noexcept {
+            [seqno, this](common::token k, resource_type const &rsrc) {
                 auto rb2 = response_builder(1);
                 auto &fbb = rb2.fbbuilder();
                 auto mapping = internal::make_mapping(k, rsrc);
@@ -273,7 +272,7 @@ template <typename Session> class request_handler {
                 rb2.add_successful_response(seqno, resp);
                 write_resp(rb2.release_buffer());
             },
-            [seqno, this](protocol::Status status) noexcept {
+            [seqno, this](protocol::Status status) {
                 auto rb2 = response_builder(1);
                 rb2.add_error_response(seqno, status);
                 write_resp(rb2.release_buffer());
@@ -282,30 +281,30 @@ template <typename Session> class request_handler {
     }
 
     auto handle_close(std::uint64_t seqno, protocol::CloseRequest const *req,
-                      response_builder &rb) noexcept -> bool {
+                      response_builder &rb) -> bool {
         sess->close(
             common::token(req->key()),
-            [seqno, &rb]() noexcept {
+            [seqno, &rb]() {
                 auto &fbb = rb.fbbuilder();
                 auto resp = protocol::CreateCloseResponse(fbb);
                 rb.add_successful_response(seqno, resp);
             },
-            [seqno, &rb](protocol::Status status) noexcept {
+            [seqno, &rb](protocol::Status status) {
                 rb.add_error_response(seqno, status);
             });
         return false;
     }
 
     auto handle_share(std::uint64_t seqno, protocol::ShareRequest const *req,
-                      response_builder &rb) noexcept -> bool {
+                      response_builder &rb) -> bool {
         sess->share(
             common::token(req->key()),
-            [seqno, &rb]() noexcept {
+            [seqno, &rb]() {
                 auto &fbb = rb.fbbuilder();
                 auto resp = protocol::CreateShareResponse(fbb);
                 rb.add_successful_response(seqno, resp);
             },
-            [seqno, &rb](protocol::Status status) noexcept {
+            [seqno, &rb](protocol::Status status) {
                 rb.add_error_response(seqno, status);
             });
         return false;
@@ -313,19 +312,19 @@ template <typename Session> class request_handler {
 
     auto handle_unshare(std::uint64_t seqno,
                         protocol::UnshareRequest const *req,
-                        response_builder &rb) noexcept -> bool {
+                        response_builder &rb) -> bool {
         sess->unshare(
             common::token(req->key()), req->wait(),
-            [seqno, &rb](common::token new_key) noexcept {
+            [seqno, &rb](common::token new_key) {
                 auto &fbb = rb.fbbuilder();
                 auto resp =
                     protocol::CreateUnshareResponse(fbb, new_key.as_u64());
                 rb.add_successful_response(seqno, resp);
             },
-            [seqno, &rb](protocol::Status status) noexcept {
+            [seqno, &rb](protocol::Status status) {
                 rb.add_error_response(seqno, status);
             },
-            [seqno, this](common::token new_key) noexcept {
+            [seqno, this](common::token new_key) {
                 auto rb2 = response_builder(1);
                 auto &fbb = rb2.fbbuilder();
                 auto resp =
@@ -333,7 +332,7 @@ template <typename Session> class request_handler {
                 rb2.add_successful_response(seqno, resp);
                 write_resp(rb2.release_buffer());
             },
-            [seqno, this](protocol::Status status) noexcept {
+            [seqno, this](protocol::Status status) {
                 auto rb2 = response_builder(1);
                 rb2.add_error_response(seqno, status);
                 write_resp(rb2.release_buffer());
@@ -343,17 +342,16 @@ template <typename Session> class request_handler {
 
     auto handle_create_voucher(std::uint64_t seqno,
                                protocol::CreateVoucherRequest const *req,
-                               time_point now, response_builder &rb) noexcept
-        -> bool {
+                               time_point now, response_builder &rb) -> bool {
         sess->create_voucher(
             common::token(req->key()), req->count(), now,
-            [seqno, &rb](common::token voucher_key) noexcept {
+            [seqno, &rb](common::token voucher_key) {
                 auto &fbb = rb.fbbuilder();
                 auto resp = protocol::CreateCreateVoucherResponse(
                     fbb, voucher_key.as_u64());
                 rb.add_successful_response(seqno, resp);
             },
-            [seqno, &rb](protocol::Status status) noexcept {
+            [seqno, &rb](protocol::Status status) {
                 rb.add_error_response(seqno, status);
             });
         return false;
@@ -361,17 +359,16 @@ template <typename Session> class request_handler {
 
     auto handle_discard_voucher(std::uint64_t seqno,
                                 protocol::DiscardVoucherRequest const *req,
-                                time_point now, response_builder &rb) noexcept
-        -> bool {
+                                time_point now, response_builder &rb) -> bool {
         sess->discard_voucher(
             common::token(req->key()), now,
-            [seqno, &rb](common::token object_key) noexcept {
+            [seqno, &rb](common::token object_key) {
                 auto &fbb = rb.fbbuilder();
                 auto resp = protocol::CreateDiscardVoucherResponse(
                     fbb, object_key.as_u64());
                 rb.add_successful_response(seqno, resp);
             },
-            [seqno, &rb](protocol::Status status) noexcept {
+            [seqno, &rb](protocol::Status status) {
                 rb.add_error_response(seqno, status);
             });
         return false;

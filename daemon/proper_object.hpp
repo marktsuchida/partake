@@ -33,7 +33,7 @@ template <typename Resource, typename Handle> class proper_object {
     handle_type *handle_awaiting_unique_ownership = nullptr;
 
   public:
-    explicit proper_object(resource_type &&resource) noexcept
+    explicit proper_object(resource_type &&resource)
         : rsrc(std::forward<resource_type>(resource)) {}
 
     ~proper_object() {
@@ -61,7 +61,7 @@ template <typename Resource, typename Handle> class proper_object {
 
     [[nodiscard]] auto is_shared() const noexcept -> bool { return shared; }
 
-    void exclusive_writer(handle_type *hnd) noexcept {
+    void exclusive_writer(handle_type *hnd) {
         assert(exc_writer == nullptr);
         assert(hnd != nullptr);
         exc_writer = hnd;
@@ -71,9 +71,9 @@ template <typename Resource, typename Handle> class proper_object {
         return exc_writer;
     }
 
-    void open() noexcept { ++n_open_handles; }
+    void open() { ++n_open_handles; }
 
-    void close(handle_type *hnd) noexcept {
+    void close(handle_type *hnd) {
         assert(hnd != nullptr);
         assert(n_open_handles > 0);
         --n_open_handles;
@@ -105,7 +105,7 @@ template <typename Resource, typename Handle> class proper_object {
         }
     }
 
-    void share() noexcept {
+    void share() {
         assert(not shared);
         assert(exc_writer != nullptr);
         shared = true;
@@ -116,7 +116,7 @@ template <typename Resource, typename Handle> class proper_object {
         handles_awaiting_share.clear();
     }
 
-    void unshare(handle_type *new_exclusive_writer) noexcept {
+    void unshare(handle_type *new_exclusive_writer) {
         assert(new_exclusive_writer != nullptr);
         assert(shared);
         assert(n_open_handles == 1);
@@ -125,16 +125,16 @@ template <typename Resource, typename Handle> class proper_object {
         exc_writer = new_exclusive_writer;
     }
 
-    void add_handle_awaiting_share(handle_type *hnd) noexcept {
+    void add_handle_awaiting_share(handle_type *hnd) {
         assert(not shared);
         handles_awaiting_share.push_back(*hnd);
     }
 
-    void remove_handle_awaiting_share(handle_type *hnd) noexcept {
+    void remove_handle_awaiting_share(handle_type *hnd) {
         handles_awaiting_share.erase(handles_awaiting_share.iterator_to(*hnd));
     }
 
-    void set_handle_awaiting_unique_ownership(handle_type *hnd) noexcept {
+    void set_handle_awaiting_unique_ownership(handle_type *hnd) {
         assert(shared);
         assert(handle_awaiting_unique_ownership == nullptr);
         handle_awaiting_unique_ownership = hnd;
@@ -144,14 +144,14 @@ template <typename Resource, typename Handle> class proper_object {
         return handle_awaiting_unique_ownership != nullptr;
     }
 
-    void clear_handle_awaiting_unique_ownership(handle_type *hnd) noexcept {
+    void clear_handle_awaiting_unique_ownership(handle_type *hnd) {
         assert(handle_awaiting_unique_ownership == hnd);
         handle_awaiting_unique_ownership = nullptr;
     }
 
-    void add_voucher() noexcept { ++n_vouchers; }
+    void add_voucher() { ++n_vouchers; }
 
-    void drop_voucher() noexcept {
+    void drop_voucher() {
         assert(n_vouchers > 0);
         --n_vouchers;
 

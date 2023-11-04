@@ -64,15 +64,13 @@ template <typename E> class token_hash_table {
         return table.iterator_to(e);
     }
 
-    void insert(element_type &e) noexcept { table.insert(e); }
-    void erase(iterator it) noexcept { table.erase(it); }
+    void insert(element_type &e) { table.insert(e); }
+    void erase(iterator it) { table.erase(it); }
 
-    auto find(common::token key) noexcept -> iterator {
-        return table.find(key);
-    }
+    auto find(common::token key) -> iterator { return table.find(key); }
 
     // Iterators will be invalidated
-    void rehash_if_appropriate(bool allow_shrink = true) noexcept {
+    void rehash_if_appropriate(bool allow_shrink = true) {
         auto const current = table.bucket_count();
         auto const usage = table.size();
 

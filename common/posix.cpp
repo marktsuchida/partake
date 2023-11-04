@@ -24,7 +24,7 @@
 
 namespace partake::common::posix {
 
-auto strerror(int errn) noexcept -> std::string {
+auto strerror(int errn) -> std::string {
     // See Linux man strerror_r(3) regarding POSIX vs GNU variants. We assign
     // the result to a specific type so as to catch any misconfiguration.
     std::string ret;
@@ -47,7 +47,7 @@ TEST_CASE("posix::strerror") {
     CHECK_FALSE(strerror(-1).empty());
 }
 
-auto file_descriptor::close() noexcept -> bool {
+auto file_descriptor::close() -> bool {
     if (fd == invalid_fd)
         return true;
     bool ret = false;
@@ -100,7 +100,7 @@ TEST_CASE("file_descriptor") {
 }
 
 unlinkable::unlinkable(std::string_view name,
-                       std::shared_ptr<spdlog::logger> logger) noexcept
+                       std::shared_ptr<spdlog::logger> logger)
     : unlinkable(name, ::unlink, "unlink", std::move(logger)) {}
 
 TEST_CASE("posix::unlinkable") {

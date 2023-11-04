@@ -83,8 +83,7 @@ TEST_CASE("countl_zero") {
     CHECK(countl_zero(std::size_t(1) << (size_bits - 1)) == 0);
 }
 
-inline auto free_list_index_for_size(std::size_t size) noexcept
-    -> std::size_t {
+inline auto free_list_index_for_size(std::size_t size) -> std::size_t {
     assert(size > 0);
     // At least for now, we use a separate free list for each size range whose
     // maximum is a power of 2: 1, 2, 4, ..., N, where N is the first power of
@@ -142,8 +141,7 @@ class arena {
         bool in_use;
 
         // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-        explicit chunk(std::size_t start, std::size_t count,
-                       bool is_in_use) noexcept
+        explicit chunk(std::size_t start, std::size_t count, bool is_in_use)
             : strt(start), cnt(count), in_use(is_in_use) {}
 
         // No move or copy (used with intrusive data structures).
@@ -171,7 +169,7 @@ class arena {
     std::vector<free_list> free_lists;
 
   public:
-    explicit arena(std::size_t size) noexcept : siz(size) {
+    explicit arena(std::size_t size) : siz(size) {
         // Sentinels simplify coalescence of deallocated chunks. They are the
         // only 'chunk' instances with count == 0 and they never appear in free
         // lists.
@@ -207,7 +205,7 @@ class arena {
 
         friend class arena;
 
-        explicit allocation(arena *arena, chunk *chunk) noexcept
+        explicit allocation(arena *arena, chunk *chunk)
             : arn(arena), chk(chunk) {
             assert(not arn == not chk); // Both valid or both nullptr
         }
@@ -246,7 +244,7 @@ class arena {
         }
     };
 
-    [[nodiscard]] auto allocate(std::size_t count) noexcept -> allocation {
+    [[nodiscard]] auto allocate(std::size_t count) -> allocation {
         // For the sake of regularity of behavior, we allow allocation of
         // zero-block chunks, but treat them as count 1 so that they have
         // distinct start offsets.
@@ -288,14 +286,13 @@ class arena {
     }
 
   private:
-    [[nodiscard]] auto free_list_for_count(std::size_t count) noexcept
-        -> free_list & {
+    [[nodiscard]] auto free_list_for_count(std::size_t count) -> free_list & {
         assert(count > 0);
         assert(count <= siz);
         return free_lists[internal::free_list_index_for_size(count)];
     }
 
-    [[nodiscard]] auto free_lists_for_count(std::size_t count) noexcept
+    [[nodiscard]] auto free_lists_for_count(std::size_t count)
         -> gsl::span<free_list> {
         assert(count > 0);
         auto index = internal::free_list_index_for_size(count);
@@ -303,7 +300,7 @@ class arena {
         return gsl::span<free_list>(free_lists).subspan(index);
     }
 
-    void deallocate(chunk *chk) noexcept {
+    void deallocate(chunk *chk) {
         if (chk == nullptr)
             return;
         assert(chk->in_use);
@@ -353,8 +350,7 @@ template <typename Arena> class basic_allocator {
     std::size_t shift; // Block size == 2^shift
 
   public:
-    explicit basic_allocator(std::size_t size,
-                             std::size_t log2_block_size) noexcept
+    explicit basic_allocator(std::size_t size, std::size_t log2_block_size)
         : arn(size >> log2_block_size), shift(log2_block_size) {
         assert(log2_block_size < 8 * sizeof(std::size_t));
     }
@@ -374,7 +370,7 @@ template <typename Arena> class basic_allocator {
         friend class basic_allocator;
 
         explicit allocation(typename Arena::allocation &&arena_allocation,
-                            std::size_t shift) noexcept
+                            std::size_t shift)
             : alloc(std::move(arena_allocation)), shft(shift) {}
 
       public:
@@ -395,7 +391,7 @@ template <typename Arena> class basic_allocator {
         }
     };
 
-    [[nodiscard]] auto allocate(std::size_t size) noexcept -> allocation {
+    [[nodiscard]] auto allocate(std::size_t size) -> allocation {
         auto count = size == 0 ? 0 : ((size - 1) >> shift) + 1;
         return allocation(arn.allocate(count), shift);
     }

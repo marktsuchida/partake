@@ -23,7 +23,7 @@
 
 namespace partake::common::posix {
 
-auto strerror(int errn) noexcept -> std::string;
+auto strerror(int errn) -> std::string;
 
 // RAII for user-provided fd - close()
 class file_descriptor {
@@ -37,8 +37,8 @@ class file_descriptor {
   public:
     file_descriptor() noexcept = default;
 
-    explicit file_descriptor(
-        int filedes, std::shared_ptr<spdlog::logger> logger = {}) noexcept
+    explicit file_descriptor(int filedes,
+                             std::shared_ptr<spdlog::logger> logger = {})
         : fd(filedes), lgr(logger ? std::move(logger) : null_logger()) {}
 
     ~file_descriptor() { close(); }
@@ -60,7 +60,7 @@ class file_descriptor {
 
     [[nodiscard]] auto get() const noexcept -> int { return fd; }
 
-    auto close() noexcept -> bool;
+    auto close() -> bool;
 };
 
 // RAII to ensure given file(-like) is unlinked
@@ -78,11 +78,11 @@ class unlinkable {
     unlinkable() noexcept = default;
 
     explicit unlinkable(std::string_view name,
-                        std::shared_ptr<spdlog::logger> logger = {}) noexcept;
+                        std::shared_ptr<spdlog::logger> logger = {});
 
     explicit unlinkable(std::string_view name, unlink_func func,
                         std::string_view func_name,
-                        std::shared_ptr<spdlog::logger> logger = {}) noexcept
+                        std::shared_ptr<spdlog::logger> logger = {})
         : nm(name), unlink_fn(func), fn_name(func_name),
           lgr(logger ? std::move(logger) : null_logger()) {
         assert(func != nullptr);
@@ -110,9 +110,9 @@ class unlinkable {
         return not nm.empty();
     }
 
-    [[nodiscard]] auto name() const noexcept -> std::string { return nm; }
+    [[nodiscard]] auto name() const -> std::string { return nm; }
 
-    auto unlink() noexcept -> bool {
+    auto unlink() -> bool {
         if (nm.empty())
             return true;
         bool ret = false;

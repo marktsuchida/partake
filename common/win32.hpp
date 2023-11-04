@@ -23,7 +23,7 @@ using HANDLE = void *;
 
 namespace partake::common::win32 {
 
-auto strerror(unsigned err) noexcept -> std::string;
+auto strerror(unsigned err) -> std::string;
 
 // RAII for user-provided HANDLE - CloseHandle()
 class win32_handle {
@@ -42,7 +42,7 @@ class win32_handle {
     win32_handle() noexcept = default;
 
     explicit win32_handle(HANDLE h,
-                          std::shared_ptr<spdlog::logger> logger = {}) noexcept
+                          std::shared_ptr<spdlog::logger> logger = {})
         : h(h), lgr(logger ? std::move(logger) : null_logger()) {
         assert(lgr);
     }
@@ -66,7 +66,7 @@ class win32_handle {
 
     [[nodiscard]] auto get() const noexcept -> HANDLE { return h; }
 
-    auto close() noexcept -> bool;
+    auto close() -> bool;
 };
 
 class unlinkable {
@@ -83,11 +83,11 @@ class unlinkable {
     unlinkable() noexcept = default;
 
     explicit unlinkable(std::string_view name,
-                        std::shared_ptr<spdlog::logger> logger = {}) noexcept;
+                        std::shared_ptr<spdlog::logger> logger = {});
 
     explicit unlinkable(std::string_view name, unlink_func func,
                         std::string_view func_name,
-                        std::shared_ptr<spdlog::logger> logger = {}) noexcept
+                        std::shared_ptr<spdlog::logger> logger = {})
         : nm(name), unlink_fn(func), fn_name(func_name),
           lgr(logger ? std::move(logger) : null_logger()) {
         assert(func != nullptr);
@@ -116,9 +116,9 @@ class unlinkable {
         return not nm.empty();
     }
 
-    [[nodiscard]] auto name() const noexcept -> std::string { return nm; }
+    [[nodiscard]] auto name() const -> std::string { return nm; }
 
-    auto unlink() noexcept -> bool;
+    auto unlink() -> bool;
 };
 
 } // namespace partake::common::win32

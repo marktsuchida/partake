@@ -44,12 +44,12 @@ class connection_acceptor {
 
   public:
     explicit connection_acceptor(io_context_type &context,
-                                 endpoint_type endpoint) noexcept
+                                 endpoint_type endpoint)
         : asio_context(&context), endpt(std::move(endpoint)),
           acceptor(context), next_sock(context) {}
 
     auto start(std::function<void(socket_type &&)> handle_connection,
-               std::function<void()> handle_close) noexcept -> bool {
+               std::function<void()> handle_close) -> bool {
         boost::system::error_code err;
 
         acceptor.open(endpt.protocol(), err);
@@ -85,7 +85,7 @@ class connection_acceptor {
         return true;
     }
 
-    void close() noexcept {
+    void close() {
         if (closing)
             return;
         closing = true;
@@ -113,9 +113,9 @@ class connection_acceptor {
     }
 
   private:
-    void schedule_accept() noexcept {
+    void schedule_accept() {
         acceptor.async_accept(
-            next_sock, [this](boost::system::error_code const &err) noexcept {
+            next_sock, [this](boost::system::error_code const &err) {
                 if (err) {
                     if (!closing) {
                         spdlog::error("failed to accept connection: {} ({})",

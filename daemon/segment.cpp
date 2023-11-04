@@ -25,11 +25,11 @@ class unsupported_segment final : public internal::segment_impl {
     std::size_t siz;
 
   public:
-    explicit unsupported_segment(std::size_t size) noexcept : siz(size) {}
+    explicit unsupported_segment(std::size_t size) : siz(size) {}
 
     template <typename Cfg>
     explicit unsupported_segment([[maybe_unused]] Cfg const &cfg,
-                                 std::size_t size) noexcept
+                                 std::size_t size)
         : siz(size) {}
 
     [[nodiscard]] auto is_valid() const noexcept -> bool override {
@@ -40,7 +40,7 @@ class unsupported_segment final : public internal::segment_impl {
         return siz;
     }
 
-    [[nodiscard]] auto spec() const noexcept -> segment_spec override {
+    [[nodiscard]] auto spec() const -> segment_spec override {
         assert(false);
         std::terminate();
     }
@@ -53,7 +53,7 @@ class posix_mmap_segment final : public internal::segment_impl {
 
   public:
     explicit posix_mmap_segment(posix_mmap_segment_config const &cfg,
-                                std::size_t size) noexcept
+                                std::size_t size)
         : shm(cfg.name.empty()
                   ? create_posix_mmap_shmem(size)
                   : create_posix_mmap_shmem(cfg.name, size, cfg.force)) {}
@@ -66,7 +66,7 @@ class posix_mmap_segment final : public internal::segment_impl {
         return shm.size();
     }
 
-    [[nodiscard]] auto spec() const noexcept -> segment_spec override {
+    [[nodiscard]] auto spec() const -> segment_spec override {
         return {posix_mmap_segment_spec{shm.name()}, size()};
     }
 };
@@ -76,7 +76,7 @@ class file_mmap_segment final : public internal::segment_impl {
 
   public:
     explicit file_mmap_segment(file_mmap_segment_config const &cfg,
-                               std::size_t size) noexcept
+                               std::size_t size)
         : shm([&]() {
               if (cfg.filename.empty())
                   return create_file_mmap_shmem(size);
@@ -98,7 +98,7 @@ class file_mmap_segment final : public internal::segment_impl {
         return shm.size();
     }
 
-    [[nodiscard]] auto spec() const noexcept -> segment_spec override {
+    [[nodiscard]] auto spec() const -> segment_spec override {
         return {file_mmap_segment_spec{shm.name()}, size()};
     }
 };
@@ -107,8 +107,7 @@ class sysv_segment final : public internal::segment_impl {
     sysv_shmem shm;
 
   public:
-    explicit sysv_segment(sysv_segment_config const &cfg,
-                          std::size_t size) noexcept
+    explicit sysv_segment(sysv_segment_config const &cfg, std::size_t size)
         : shm(cfg.key == 0 ? create_sysv_shmem(size, cfg.use_huge_pages,
                                                cfg.huge_page_size)
                            : create_sysv_shmem(cfg.key, size, cfg.force,
@@ -123,7 +122,7 @@ class sysv_segment final : public internal::segment_impl {
         return shm.size();
     }
 
-    [[nodiscard]] auto spec() const noexcept -> segment_spec override {
+    [[nodiscard]] auto spec() const -> segment_spec override {
         return {sysv_segment_spec{shm.id()}, size()};
     }
 };
@@ -142,8 +141,7 @@ class win32_segment final : public internal::segment_impl {
     bool large_pages;
 
   public:
-    explicit win32_segment(win32_segment_config const &cfg,
-                           std::size_t size) noexcept
+    explicit win32_segment(win32_segment_config const &cfg, std::size_t size)
         : mapping_name(cfg.name.empty() ? generate_win32_file_mapping_name()
                                         : cfg.name),
           shm([&]() {
@@ -171,7 +169,7 @@ class win32_segment final : public internal::segment_impl {
         return shm.size();
     }
 
-    [[nodiscard]] auto spec() const noexcept -> segment_spec override {
+    [[nodiscard]] auto spec() const -> segment_spec override {
         return {win32_segment_spec{mapping_name, large_pages}, size()};
     }
 };
@@ -180,24 +178,22 @@ class win32_segment final : public internal::segment_impl {
 
 } // namespace
 
-segment::segment() noexcept : impl(std::make_unique<unsupported_segment>(0)) {}
+segment::segment() : impl(std::make_unique<unsupported_segment>(0)) {}
 
-segment::segment(segment_config const &config) noexcept
+segment::segment(segment_config const &config)
     : impl(std::visit(
           internal::overloaded{
-              [&config](
-                  posix_mmap_segment_config const &cfg) noexcept -> impl_ptr {
+              [&config](posix_mmap_segment_config const &cfg) -> impl_ptr {
                   return std::make_unique<posix_mmap_segment>(cfg,
                                                               config.size);
               },
-              [&config](
-                  file_mmap_segment_config const &cfg) noexcept -> impl_ptr {
+              [&config](file_mmap_segment_config const &cfg) -> impl_ptr {
                   return std::make_unique<file_mmap_segment>(cfg, config.size);
               },
-              [&config](sysv_segment_config const &cfg) noexcept -> impl_ptr {
+              [&config](sysv_segment_config const &cfg) -> impl_ptr {
                   return std::make_unique<sysv_segment>(cfg, config.size);
               },
-              [&config](win32_segment_config const &cfg) noexcept -> impl_ptr {
+              [&config](win32_segment_config const &cfg) -> impl_ptr {
                   return std::make_unique<win32_segment>(cfg, config.size);
               },
           },

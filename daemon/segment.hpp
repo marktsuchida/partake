@@ -83,7 +83,7 @@ struct segment_impl {
 
     [[nodiscard]] virtual auto is_valid() const noexcept -> bool = 0;
     [[nodiscard]] virtual auto size() const noexcept -> std::size_t = 0;
-    [[nodiscard]] virtual auto spec() const noexcept -> segment_spec = 0;
+    [[nodiscard]] virtual auto spec() const -> segment_spec = 0;
 };
 
 } // namespace internal
@@ -93,9 +93,9 @@ class segment {
     impl_ptr impl;
 
   public:
-    segment() noexcept;
+    segment();
 
-    explicit segment(segment_config const &config) noexcept;
+    explicit segment(segment_config const &config);
 
     [[nodiscard]] auto is_valid() const noexcept -> bool {
         return impl->is_valid();
@@ -105,9 +105,7 @@ class segment {
         return impl->size();
     }
 
-    [[nodiscard]] auto spec() const noexcept -> segment_spec {
-        return impl->spec();
-    }
+    [[nodiscard]] auto spec() const -> segment_spec { return impl->spec(); }
 };
 
 } // namespace partake::daemon

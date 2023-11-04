@@ -8,7 +8,7 @@
 #include "cli.hpp"
 #include "daemon.hpp"
 
-auto main(int argc, char const *const argv[]) noexcept -> int {
+auto main(int argc, char const *const argv[]) -> int {
     using namespace partake::daemon;
     auto const result =
         parse_cli_args(argc, argv)

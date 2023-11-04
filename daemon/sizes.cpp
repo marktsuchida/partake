@@ -12,8 +12,8 @@
 
 namespace partake::daemon {
 
-auto round_up_or_check_size(std::size_t &size,
-                            std::size_t granularity) noexcept -> bool {
+auto round_up_or_check_size(std::size_t &size, std::size_t granularity)
+    -> bool {
     // Do not automatically round up to granularity >= 1 MiB, so as not to
     // accidentally allocate unexpectedly large blocks.
     static constexpr std::size_t threshold = 1u << 20;
@@ -63,7 +63,7 @@ TEST_CASE("round_up_or_check_size") {
     CHECK(size == 1048576);
 }
 
-auto human_readable_size(std::size_t size) noexcept -> std::string {
+auto human_readable_size(std::size_t size) -> std::string {
     // Do not round numbers; only summarize when exact.
     static constexpr std::size_t sub_kilo_mask = (1u << 10) - 1;
     if (size == 0)

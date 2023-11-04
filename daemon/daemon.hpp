@@ -79,9 +79,9 @@ template <typename AsioContext> class partake_daemon {
 
   public:
     explicit partake_daemon(io_context_type &asio_context,
-                            daemon_config config) noexcept
+                            daemon_config config)
         : cfg(std::move(config)),
-          quitr(asio_context, [this]() noexcept { acceptor.close(); }),
+          quitr(asio_context, [this]() { acceptor.close(); }),
           acceptor(asio_context, config.endpoint), seg(config.seg_config),
           allocr(seg.size(), config.log2_granularity != 0u
                                  ? config.log2_granularity
@@ -105,14 +105,12 @@ template <typename AsioContext> class partake_daemon {
     // No move or copy (references to members are taken)
     auto operator=(partake_daemon &&) = delete;
 
-    void start() noexcept {
+    void start() {
         if (exitcode != 0)
             return;
         if (not acceptor.start(
-                [this](socket_type &&sock) noexcept {
-                    start_client(std::move(sock));
-                },
-                [this]() noexcept { quit(); }))
+                [this](socket_type &&sock) { start_client(std::move(sock)); },
+                [this]() { quit(); }))
             exitcode = 1;
         else
             quitr.start();
@@ -121,19 +119,18 @@ template <typename AsioContext> class partake_daemon {
     auto exit_code() const noexcept -> int { return exitcode; }
 
   private:
-    void start_client(socket_type &&socket) noexcept {
+    void start_client(socket_type &&socket) {
         clients
             .emplace(
                 std::move(socket), session_counter++, seg, allocr, repo,
-                cfg.voucher_ttl,
-                [this]() noexcept { repo.perform_housekeeping(); },
-                [this](client_type &c) noexcept {
+                cfg.voucher_ttl, [this]() { repo.perform_housekeeping(); },
+                [this](client_type &c) {
                     clients.erase(clients.get_iterator(&c));
                 })
             ->start();
     }
 
-    void quit() noexcept {
+    void quit() {
         quitr.stop();
 
         // Drop pending requests before closing sessions (and hence

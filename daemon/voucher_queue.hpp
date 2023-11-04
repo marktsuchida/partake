@@ -29,16 +29,16 @@ class steady_clock_traits {
     using timer_type = asio::steady_timer;
     static_assert(std::is_same_v<clock, timer_type::clock_type>);
 
-    explicit steady_clock_traits(asio::io_context &context) noexcept
+    explicit steady_clock_traits(asio::io_context &context)
         : asio_context(&context) {}
 
     static auto now() noexcept -> time_point { return clock::now(); }
 
-    auto make_timer() noexcept -> timer_type {
+    auto make_timer() -> timer_type {
         return asio::steady_timer(*asio_context);
     }
 
-    auto make_timer(time_point tp) noexcept -> timer_type {
+    auto make_timer(time_point tp) -> timer_type {
         return asio::steady_timer(*asio_context, tp);
     }
 };
@@ -85,7 +85,7 @@ class voucher_queue {
   public:
     using handle_type = typename queue_impl_type::handle_type;
 
-    explicit voucher_queue(clock_traits_type &clock_traits) noexcept
+    explicit voucher_queue(clock_traits_type &clock_traits)
         : clk_traits(&clock_traits),
           expiration_timer(clk_traits->make_timer()) {}
 
@@ -94,21 +94,21 @@ class voucher_queue {
 
     [[nodiscard]] auto empty() const noexcept -> bool { return queue.empty(); }
 
-    void enqueue(std::shared_ptr<object_type> const &voucher) noexcept {
+    void enqueue(std::shared_ptr<object_type> const &voucher) {
         auto exp = voucher->as_voucher().expiration();
         handle_type h = queue.push({exp, voucher});
         voucher->as_voucher().set_queued(h);
         schedule_expiration(exp);
     }
 
-    void drop(std::shared_ptr<object_type> const &voucher) noexcept {
+    void drop(std::shared_ptr<object_type> const &voucher) {
         auto h = voucher->as_voucher().clear_queued();
         if (h.has_value())
             queue.erase(h.value());
         // Let expiration timer reschedule (if necessary) when it activates.
     }
 
-    void drop_all() noexcept {
+    void drop_all() {
         expiration_timer.cancel();
         expiration_scheduled_time = time_point::max();
         for (auto const &[e, v] : queue)
@@ -117,7 +117,7 @@ class voucher_queue {
     }
 
   private:
-    void drop_expired(time_point now) noexcept {
+    void drop_expired(time_point now) {
         // In theory we could also drop vouchers that are invalid for reasons
         // other than expiration. However, it would likely be slow to do that
         // here. Also, vouchers with no remaining count will have been removed
@@ -133,7 +133,7 @@ class voucher_queue {
         }
     }
 
-    void schedule_expiration(time_point expiration) noexcept {
+    void schedule_expiration(time_point expiration) {
         if (expiration >= expiration_scheduled_time)
             return; // Already scheduled before given expiration.
 
@@ -141,15 +141,14 @@ class voucher_queue {
 
         expiration_scheduled_time = expiration + expiration_extra_delay;
         expiration_timer = clk_traits->make_timer(expiration_scheduled_time);
-        expiration_timer.async_wait(
-            [this](boost::system::error_code err) noexcept {
-                if (not err) {
-                    expiration_scheduled_time = time_point::max();
-                    drop_expired(clock_traits_type::now());
-                    if (not queue.empty())
-                        schedule_expiration(queue.top().first);
-                }
-            });
+        expiration_timer.async_wait([this](boost::system::error_code err) {
+            if (not err) {
+                expiration_scheduled_time = time_point::max();
+                drop_expired(clock_traits_type::now());
+                if (not queue.empty())
+                    schedule_expiration(queue.top().first);
+            }
+        });
     }
 };
 

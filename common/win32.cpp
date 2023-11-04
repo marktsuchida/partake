@@ -21,7 +21,7 @@
 
 namespace partake::common::win32 {
 
-auto strerror(unsigned err) noexcept -> std::string {
+auto strerror(unsigned err) -> std::string {
     std::string ret;
     char *msg = nullptr;
     // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast)
@@ -45,7 +45,7 @@ TEST_CASE("win32::strerror") {
     CHECK_FALSE(strerror(unsigned(-1)).empty());
 }
 
-auto win32_handle::close() noexcept -> bool {
+auto win32_handle::close() -> bool {
     if (h == invalid_handle())
         return true;
     bool ret = false;
@@ -101,10 +101,10 @@ TEST_CASE("win32_handle") {
 }
 
 unlinkable::unlinkable(std::string_view name,
-                       std::shared_ptr<spdlog::logger> logger) noexcept
+                       std::shared_ptr<spdlog::logger> logger)
     : unlinkable(name, DeleteFileA, "DeleteFile", std::move(logger)) {}
 
-auto unlinkable::unlink() noexcept -> bool {
+auto unlinkable::unlink() -> bool {
     if (nm.empty())
         return true;
     bool ret = false;

@@ -13,7 +13,7 @@
 namespace partake::daemon {
 
 // On error or help/version, prints message and returns exit code.
-[[nodiscard]] auto parse_cli_args(int argc, char const *const *argv) noexcept
+[[nodiscard]] auto parse_cli_args(int argc, char const *const *argv)
     -> tl::expected<daemon_config, int>;
 
 } // namespace partake::daemon

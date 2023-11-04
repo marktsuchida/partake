@@ -26,7 +26,7 @@ struct partake_error_category : std::error_category {
         return "partake";
     }
 
-    [[nodiscard]] auto message(int c) const noexcept -> std::string override {
+    [[nodiscard]] auto message(int c) const -> std::string override {
         switch (static_cast<errc>(c)) {
         case errc::message_too_long:
             return "Protocol message exceeds allowed size";

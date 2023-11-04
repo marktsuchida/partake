@@ -25,9 +25,9 @@ Checks: >-
 
 # Reasons for disabled checks:
 # bugprone-exception-escape
-#   We use noexcept to mark functions that do not attempt to propagate
-#   exceptions, even if technically may throw (e.g., due to allocation
-#   failure).
+#   It seems too hard to suppress this warning where we want to. Since we
+#   generally don't use exceptions to handle recoverable errors, guaranteeing
+#   that a 'noexcept' won't result in std::terminate is not that important.
 # bugprone-macro-parentheses
 #   This check does not report the location of the macro in question, so hard
 #   to fix. (Using --fix did not reveal anything useful.) As of LLVM 16.

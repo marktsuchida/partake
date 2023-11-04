@@ -54,7 +54,7 @@ class proquint64 {
     explicit constexpr proquint64(std::uint64_t i) noexcept : val(i) {}
 
     // Narrow contract: pq must be valid proquint string (see validate())
-    explicit proquint64(std::string_view pq) noexcept
+    explicit proquint64(std::string_view pq)
         : val([pq] {
               assert(pq.size() == length);
               auto [v, ok] =
@@ -65,7 +65,7 @@ class proquint64 {
 
     // TODO: Avoid implicit conversions? We could provide to_string override
     // and/or accessors.
-    [[nodiscard]] operator std::string() const noexcept {
+    [[nodiscard]] operator std::string() const {
         std::string ret;
         ret.resize(size());
         internal::proquint_from_u64(gsl::span<char, length>(ret), val);
@@ -76,8 +76,9 @@ class proquint64 {
         return val;
     }
 
-    [[nodiscard]] static auto validate(std::string_view pq) noexcept
+    [[nodiscard]] static auto validate(std::string_view pq)
         -> std::optional<proquint64> {
+        assert(pq.data() != nullptr);
         if (pq.size() != length)
             return std::nullopt;
         auto [v, ok] =
@@ -87,7 +88,7 @@ class proquint64 {
         return proquint64(v);
     }
 
-    void write_to(gsl::span<char, length> dest) const noexcept {
+    void write_to(gsl::span<char, length> dest) const {
         internal::proquint_from_u64(dest, val);
     }
 

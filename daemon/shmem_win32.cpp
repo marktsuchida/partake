@@ -28,7 +28,7 @@ namespace partake::daemon {
 
 namespace {
 
-auto add_lock_memory_privilege() noexcept -> bool {
+auto add_lock_memory_privilege() -> bool {
     win32::win32_handle const h_token(
         [] {
             HANDLE h = INVALID_HANDLE_VALUE;
@@ -76,8 +76,8 @@ auto add_lock_memory_privilege() noexcept -> bool {
 
 TEST_CASE("add_lock_memory_privilege") { CHECK(add_lock_memory_privilege()); }
 
-auto create_autodeleted_file(std::filesystem::path const &path,
-                             bool force) noexcept -> win32::win32_handle {
+auto create_autodeleted_file(std::filesystem::path const &path, bool force)
+    -> win32::win32_handle {
     auto h_file = win32::win32_handle(
         CreateFileA(path.string().c_str(), GENERIC_READ | GENERIC_WRITE, 0,
                     nullptr, force ? CREATE_ALWAYS : CREATE_NEW,
@@ -135,8 +135,7 @@ TEST_CASE("create_autodeleted_file") {
 
 auto create_file_mapping(win32::win32_handle const &file_handle,
                          std::string const &name, std::size_t size,
-                         bool use_large_pages = false) noexcept
-    -> win32::win32_handle {
+                         bool use_large_pages = false) -> win32::win32_handle {
     if (name.empty() || size == 0)
         return {};
     if (use_large_pages)
@@ -207,7 +206,7 @@ TEST_CASE("create_file_mapping") {
 namespace internal {
 
 win32_map_view::win32_map_view(win32::win32_handle const &h_mapping,
-                               std::size_t size, bool use_large_pages) noexcept
+                               std::size_t size, bool use_large_pages)
     : addr(
           h_mapping.is_valid()
               ? MapViewOfFile(h_mapping.get(),
@@ -226,7 +225,7 @@ win32_map_view::win32_map_view(win32::win32_handle const &h_mapping,
     }
 }
 
-void win32_map_view::unmap() noexcept {
+void win32_map_view::unmap() {
     if (addr != nullptr) {
         if (UnmapViewOfFile(addr) == 0) {
             auto err = GetLastError();
@@ -280,7 +279,7 @@ TEST_CASE("win32_map_view") {
 } // namespace internal
 
 auto create_win32_shmem(std::string const &mapping_name, std::size_t size,
-                        bool use_large_pages) noexcept -> win32_shmem {
+                        bool use_large_pages) -> win32_shmem {
     auto const granularity = use_large_pages ? large_page_minimum()
                                              : system_allocation_granularity();
     if (not round_up_or_check_size(size, granularity))
@@ -300,8 +299,7 @@ TEST_CASE("create_win32_shmem") {
 
 auto create_win32_file_shmem(std::filesystem::path const &path,
                              std::string const &mapping_name, std::size_t size,
-                             bool force, bool use_large_pages) noexcept
-    -> win32_shmem {
+                             bool force, bool use_large_pages) -> win32_shmem {
     auto const granularity = use_large_pages ? large_page_minimum()
                                              : system_allocation_granularity();
     if (not round_up_or_check_size(size, granularity))

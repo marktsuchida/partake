@@ -91,13 +91,13 @@ template <typename Socket, typename Buffer> class async_message_writer {
   public:
     explicit async_message_writer(
         socket_type &socket,
-        std::function<void(std::error_code)> handle_completion) noexcept
+        std::function<void(std::error_code)> handle_completion)
         : sock(&socket), handle_cmpl(std::move(handle_completion)) {}
 
     // No move or copy
     auto operator=(async_message_writer &&) = delete;
 
-    void async_write_message(buffer_type &&buffer) noexcept {
+    void async_write_message(buffer_type &&buffer) {
         if (buffer.size() == 0)
             return asio::defer(sock->get_executor(),
                                [this] { handle_cmpl({}); });
@@ -112,14 +112,14 @@ template <typename Socket, typename Buffer> class async_message_writer {
         return next_index_to_write != 0;
     }
 
-    void start_writing_buffers() noexcept {
+    void start_writing_buffers() {
         assert(not is_write_in_progress());
         using std::swap;
         swap(buffers_being_written, buffers_to_write_next);
         schedule_next_write();
     }
 
-    void schedule_next_write() noexcept {
+    void schedule_next_write() {
         buffer_type buf =
             std::move(buffers_being_written[next_index_to_write]);
         ++next_index_to_write;
@@ -150,7 +150,7 @@ template <typename Socket, typename Buffer> class async_message_writer {
         asio::async_write(
             *sock, buffers,
             [this, b = std::move(buf)](boost::system::error_code err,
-                                       std::size_t written) noexcept {
+                                       std::size_t written) {
                 handle_cmpl(err);
                 if (err) {
                     buffers_being_written.clear();
@@ -198,22 +198,22 @@ template <typename Socket> class async_message_reader {
         socket_type &socket,
         std::function<auto(gsl::span<std::uint8_t const>)->bool>
             handle_message,
-        std::function<void(std::error_code)> handle_end) noexcept
+        std::function<void(std::error_code)> handle_end)
         : sock(&socket), handle_msg(std::move(handle_message)),
           handle_ed(std::move(handle_end)), readbuf(initial_readbuf_size) {}
 
     // No move or copy (resource management)
     auto operator=(async_message_reader &&) = delete;
 
-    void start() noexcept { schedule_read(); }
+    void start() { schedule_read(); }
 
   private:
-    void schedule_read(std::size_t start = 0) noexcept {
+    void schedule_read(std::size_t start = 0) {
         auto new_read = gsl::span(readbuf).subspan(start);
         sock->async_read_some(
             asio::buffer(new_read.data(), new_read.size()),
             [this, start](boost::system::error_code err,
-                          std::size_t bytes_read) noexcept {
+                          std::size_t bytes_read) {
                 if (err && err.value() != asio::error::eof)
                     return handle_ed(err);
 

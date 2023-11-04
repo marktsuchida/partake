@@ -71,8 +71,7 @@ auto large_page_minimum() noexcept -> std::size_t {
 
 namespace {
 
-auto read_default_huge_page_size(std::istream &meminfo) noexcept
-    -> std::size_t {
+auto read_default_huge_page_size(std::istream &meminfo) -> std::size_t {
     if (!meminfo)
         return 0;
     std::string line;
@@ -141,15 +140,14 @@ TEST_CASE("read_default_huge_page_size") {
     }
 }
 
-[[maybe_unused]] auto get_default_huge_page_size() noexcept -> std::size_t {
+[[maybe_unused]] auto get_default_huge_page_size() -> std::size_t {
     std::ifstream meminfo("/proc/meminfo");
     // Factor out parsing for testability.
     return read_default_huge_page_size(meminfo);
 }
 
 // "hugepages-2048kB" -> 2097152
-auto parse_huge_page_filename(std::string const &name) noexcept
-    -> std::size_t {
+auto parse_huge_page_filename(std::string const &name) -> std::size_t {
     static std::string const prefix("hugepages-");
     if (name.rfind(prefix, 0) == std::string::npos)
         return 0;
@@ -176,8 +174,7 @@ TEST_CASE("parse_huge_page_filename") {
     CHECK(parse_huge_page_filename("hugepage-1024kB") == 0);
 }
 
-[[maybe_unused]] auto get_huge_page_sizes() noexcept
-    -> std::vector<std::size_t> {
+[[maybe_unused]] auto get_huge_page_sizes() -> std::vector<std::size_t> {
     std::vector<std::size_t> ret;
     auto const dflt = get_default_huge_page_size();
     if (dflt > 0)
@@ -201,7 +198,7 @@ TEST_CASE("parse_huge_page_filename") {
 
 #ifdef __linux__
 
-auto default_huge_page_size() noexcept -> std::size_t {
+auto default_huge_page_size() -> std::size_t {
     static std::size_t const ret = get_default_huge_page_size();
     return ret;
 }
@@ -214,7 +211,7 @@ TEST_CASE("default_huge_page_size") {
     }
 }
 
-auto huge_page_sizes() noexcept -> std::vector<std::size_t> {
+auto huge_page_sizes() -> std::vector<std::size_t> {
     static std::vector<std::size_t> const ret = get_huge_page_sizes();
     return ret;
 }
@@ -230,7 +227,7 @@ TEST_CASE("huge_page_sizes") {
     }
 }
 
-auto file_page_size(int fd) noexcept -> std::size_t {
+auto file_page_size(int fd) -> std::size_t {
     struct statfs st {};
     if (::fstatfs(fd, &st) != 0)
         return 0;

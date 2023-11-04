@@ -12,6 +12,6 @@
 
 namespace partake::common {
 
-auto random_string(std::size_t len) noexcept -> std::string;
+auto random_string(std::size_t len) -> std::string;
 
 } // namespace partake::common

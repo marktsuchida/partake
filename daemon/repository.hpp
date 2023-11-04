@@ -48,7 +48,7 @@ class repository {
 
   public:
     explicit repository(key_sequence_type &&key_sequence,
-                        voucher_queue_type &voucher_queue) noexcept
+                        voucher_queue_type &voucher_queue)
         : objects(1 << 3),
           tokseq(std::forward<key_sequence_type>(key_sequence)),
           vqueue(&voucher_queue) {}
@@ -57,28 +57,27 @@ class repository {
     auto operator=(repository &&) = delete;
 
     template <typename R>
-    auto create_object(protocol::Policy policy, R &&resource) noexcept
+    auto create_object(protocol::Policy policy, R &&resource)
         -> std::shared_ptr<object_type> {
         auto obj = object_storage.emplace(tokseq.generate(), policy,
                                           std::forward<R>(resource));
         objects.insert(*obj);
 
-        return {&*obj, [this](object_type *o) noexcept {
+        return {&*obj, [this](object_type *o) {
                     objects.erase(objects.iterator_to(*o));
                     object_storage.erase(object_storage.get_iterator(o));
                 }};
     }
 
     // May return a voucher!
-    auto find_object(common::token key) noexcept
-        -> std::shared_ptr<object_type> {
+    auto find_object(common::token key) -> std::shared_ptr<object_type> {
         auto objit = objects.find(key);
         if (objit == objects.end())
             return {};
         return objit->shared_from_this();
     }
 
-    void rekey_object(std::shared_ptr<object_type> const &obj) noexcept {
+    void rekey_object(std::shared_ptr<object_type> const &obj) {
         assert(obj->is_proper_object());
         objects.erase(objects.iterator_to(*obj));
         obj->rekey(tokseq.generate());
@@ -86,7 +85,7 @@ class repository {
     }
 
     auto create_voucher(std::shared_ptr<object_type> target,
-                        time_point expiration, unsigned count) noexcept
+                        time_point expiration, unsigned count)
         -> std::shared_ptr<object_type> {
         assert(target);
         assert(target->is_proper_object());
@@ -95,8 +94,8 @@ class repository {
         auto voucher = object_storage.emplace(
             tokseq.generate(), std::move(target), count, expiration);
         objects.insert(*voucher);
-        auto ptr = std::shared_ptr<object_type>(
-            &*voucher, [this](object_type *vchr) noexcept {
+        auto ptr =
+            std::shared_ptr<object_type>(&*voucher, [this](object_type *vchr) {
                 vchr->as_voucher().target()->as_proper_object().drop_voucher();
                 objects.erase(objects.iterator_to(*vchr));
                 object_storage.erase(object_storage.get_iterator(vchr));
@@ -106,7 +105,7 @@ class repository {
     }
 
     auto claim_voucher(std::shared_ptr<object_type> const &voucher,
-                       time_point now) noexcept -> bool {
+                       time_point now) -> bool {
         assert(voucher);
         assert(voucher->is_voucher());
         auto &v = voucher->as_voucher();
@@ -117,11 +116,9 @@ class repository {
         return true;
     }
 
-    void drop_all_vouchers() noexcept { vqueue->drop_all(); }
+    void drop_all_vouchers() { vqueue->drop_all(); }
 
-    void perform_housekeeping() noexcept {
-        objects.rehash_if_appropriate(true);
-    }
+    void perform_housekeeping() { objects.rehash_if_appropriate(true); }
 };
 
 } // namespace partake::daemon
