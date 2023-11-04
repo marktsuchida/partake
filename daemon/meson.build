@@ -75,7 +75,7 @@ executable('partaked',
         '-DDOCTEST_CONFIG_DISABLE',
         # See https://github.com/doctest/doctest/issues/691
         '-DDOCTEST_CONFIG_ASSERTS_RETURN_VALUES',
-        '-DDOCTEST_CONFIG_EVALUATE_ASSERTS_EVEN_WHEN_DISABLED'
+        '-DDOCTEST_CONFIG_EVALUATE_ASSERTS_EVEN_WHEN_DISABLED',
     ],
     dependencies: daemon_deps,
     gnu_symbol_visibility: 'hidden',
