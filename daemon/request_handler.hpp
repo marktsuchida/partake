@@ -64,7 +64,7 @@ inline auto segment_spec_to_fb(flatbuffers::FlatBufferBuilder &fbb,
 }
 
 template <typename Resource>
-inline auto make_mapping(btoken key, Resource const &rsrc) noexcept
+inline auto make_mapping(token key, Resource const &rsrc) noexcept
     -> protocol::Mapping {
     return protocol::Mapping(key.as_u64(), rsrc.segment_id(), rsrc.offset(),
                              rsrc.size());
@@ -239,7 +239,7 @@ template <typename Session> class request_handler {
                       response_builder &rb) noexcept -> bool {
         sess->alloc(
             req->size(), req->policy(),
-            [seqno, &rb](btoken k, resource_type const &rsrc) noexcept {
+            [seqno, &rb](token k, resource_type const &rsrc) noexcept {
                 auto &fbb = rb.fbbuilder();
                 auto mapping = internal::make_mapping(k, rsrc);
                 auto resp = protocol::CreateAllocResponse(fbb, &mapping);
@@ -254,8 +254,8 @@ template <typename Session> class request_handler {
     auto handle_open(std::uint64_t seqno, protocol::OpenRequest const *req,
                      time_point now, response_builder &rb) noexcept -> bool {
         sess->open(
-            btoken(req->key()), req->policy(), req->wait(), now,
-            [seqno, &rb](btoken k, resource_type const &rsrc) noexcept {
+            token(req->key()), req->policy(), req->wait(), now,
+            [seqno, &rb](token k, resource_type const &rsrc) noexcept {
                 auto &fbb = rb.fbbuilder();
                 auto mapping = internal::make_mapping(k, rsrc);
                 auto resp = protocol::CreateOpenResponse(fbb, &mapping);
@@ -264,7 +264,7 @@ template <typename Session> class request_handler {
             [seqno, &rb](protocol::Status status) noexcept {
                 rb.add_error_response(seqno, status);
             },
-            [seqno, this](btoken k, resource_type const &rsrc) noexcept {
+            [seqno, this](token k, resource_type const &rsrc) noexcept {
                 auto rb2 = response_builder(1);
                 auto &fbb = rb2.fbbuilder();
                 auto mapping = internal::make_mapping(k, rsrc);
@@ -283,7 +283,7 @@ template <typename Session> class request_handler {
     auto handle_close(std::uint64_t seqno, protocol::CloseRequest const *req,
                       response_builder &rb) noexcept -> bool {
         sess->close(
-            btoken(req->key()),
+            token(req->key()),
             [seqno, &rb]() noexcept {
                 auto &fbb = rb.fbbuilder();
                 auto resp = protocol::CreateCloseResponse(fbb);
@@ -298,7 +298,7 @@ template <typename Session> class request_handler {
     auto handle_share(std::uint64_t seqno, protocol::ShareRequest const *req,
                       response_builder &rb) noexcept -> bool {
         sess->share(
-            btoken(req->key()),
+            token(req->key()),
             [seqno, &rb]() noexcept {
                 auto &fbb = rb.fbbuilder();
                 auto resp = protocol::CreateShareResponse(fbb);
@@ -314,8 +314,8 @@ template <typename Session> class request_handler {
                         protocol::UnshareRequest const *req,
                         response_builder &rb) noexcept -> bool {
         sess->unshare(
-            btoken(req->key()), req->wait(),
-            [seqno, &rb](btoken new_key) noexcept {
+            token(req->key()), req->wait(),
+            [seqno, &rb](token new_key) noexcept {
                 auto &fbb = rb.fbbuilder();
                 auto resp =
                     protocol::CreateUnshareResponse(fbb, new_key.as_u64());
@@ -324,7 +324,7 @@ template <typename Session> class request_handler {
             [seqno, &rb](protocol::Status status) noexcept {
                 rb.add_error_response(seqno, status);
             },
-            [seqno, this](btoken new_key) noexcept {
+            [seqno, this](token new_key) noexcept {
                 auto rb2 = response_builder(1);
                 auto &fbb = rb2.fbbuilder();
                 auto resp =
@@ -345,8 +345,8 @@ template <typename Session> class request_handler {
                                time_point now, response_builder &rb) noexcept
         -> bool {
         sess->create_voucher(
-            btoken(req->key()), req->count(), now,
-            [seqno, &rb](btoken voucher_key) noexcept {
+            token(req->key()), req->count(), now,
+            [seqno, &rb](token voucher_key) noexcept {
                 auto &fbb = rb.fbbuilder();
                 auto resp = protocol::CreateCreateVoucherResponse(
                     fbb, voucher_key.as_u64());
@@ -363,8 +363,8 @@ template <typename Session> class request_handler {
                                 time_point now, response_builder &rb) noexcept
         -> bool {
         sess->discard_voucher(
-            btoken(req->key()), now,
-            [seqno, &rb](btoken object_key) noexcept {
+            token(req->key()), now,
+            [seqno, &rb](token object_key) noexcept {
                 auto &fbb = rb.fbbuilder();
                 auto resp = protocol::CreateDiscardVoucherResponse(
                     fbb, object_key.as_u64());

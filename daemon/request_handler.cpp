@@ -37,26 +37,26 @@ struct mock_session {
                void(std::uint32_t, std::function<void(segment_spec)>,
                     std::function<void(protocol::Status)>));
     MAKE_MOCK4(alloc, void(std::uint64_t, protocol::Policy,
-                           std::function<void(btoken, mock_resource const &)>,
+                           std::function<void(token, mock_resource const &)>,
                            std::function<void(protocol::Status)>));
-    MAKE_MOCK8(open, void(btoken, protocol::Policy, bool, time_point,
-                          std::function<void(btoken, mock_resource const &)>,
+    MAKE_MOCK8(open, void(token, protocol::Policy, bool, time_point,
+                          std::function<void(token, mock_resource const &)>,
                           std::function<void(protocol::Status)>,
-                          std::function<void(btoken, mock_resource const &)>,
+                          std::function<void(token, mock_resource const &)>,
                           std::function<void(protocol::Status)>));
-    MAKE_MOCK3(close, void(btoken, std::function<void()>,
+    MAKE_MOCK3(close, void(token, std::function<void()>,
                            std::function<void(protocol::Status)>));
-    MAKE_MOCK3(share, void(btoken, std::function<void()>,
+    MAKE_MOCK3(share, void(token, std::function<void()>,
                            std::function<void(protocol::Status)>));
-    MAKE_MOCK6(unshare, void(btoken, bool, std::function<void(btoken)>,
+    MAKE_MOCK6(unshare, void(token, bool, std::function<void(token)>,
                              std::function<void(protocol::Status)>,
-                             std::function<void(btoken)>,
+                             std::function<void(token)>,
                              std::function<void(protocol::Status)>));
     MAKE_MOCK5(create_voucher,
-               void(btoken, unsigned, time_point, std::function<void(btoken)>,
+               void(token, unsigned, time_point, std::function<void(token)>,
                     std::function<void(protocol::Status)>));
     MAKE_MOCK4(discard_voucher,
-               void(btoken, time_point, std::function<void(btoken)>,
+               void(token, time_point, std::function<void(token)>,
                     std::function<void(protocol::Status)>));
 
     MAKE_MOCK0(perform_housekeeping, void());
@@ -457,7 +457,7 @@ TEST_CASE("request_handler: alloc") {
     SUBCASE("success") {
         auto const rsrc = mock_resource{7, 4096, 1024};
         REQUIRE_CALL(sess, alloc(1000, Policy::DEFAULT, _, _))
-            .SIDE_EFFECT(_3(btoken(12345), rsrc))
+            .SIDE_EFFECT(_3(token(12345), rsrc))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
         REQUIRE_CALL(write, call(_))
@@ -532,8 +532,8 @@ TEST_CASE("request_handler: open") {
     SUBCASE("immediate_success") {
         auto const rsrc = mock_resource{7, 4096, 1024};
         REQUIRE_CALL(sess,
-                     open(btoken(12345), Policy::DEFAULT, true, _, _, _, _, _))
-            .SIDE_EFFECT(_5(btoken(23456), rsrc))
+                     open(token(12345), Policy::DEFAULT, true, _, _, _, _, _))
+            .SIDE_EFFECT(_5(token(23456), rsrc))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
         REQUIRE_CALL(write, call(_))
@@ -562,7 +562,7 @@ TEST_CASE("request_handler: open") {
 
     SUBCASE("immediate_failure") {
         REQUIRE_CALL(sess,
-                     open(btoken(12345), Policy::DEFAULT, true, _, _, _, _, _))
+                     open(token(12345), Policy::DEFAULT, true, _, _, _, _, _))
             .SIDE_EFFECT(_6(Status::NO_SUCH_OBJECT))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
@@ -586,9 +586,9 @@ TEST_CASE("request_handler: open") {
     }
 
     SUBCASE("deferred_success") {
-        std::function<void(btoken, mock_resource const &)> deferred_success_cb;
+        std::function<void(token, mock_resource const &)> deferred_success_cb;
         REQUIRE_CALL(sess,
-                     open(btoken(12345), Policy::DEFAULT, true, _, _, _, _, _))
+                     open(token(12345), Policy::DEFAULT, true, _, _, _, _, _))
             .LR_SIDE_EFFECT(deferred_success_cb = _7)
             .TIMES(1);
         REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
@@ -601,7 +601,7 @@ TEST_CASE("request_handler: open") {
             .TIMES(1);
 
         auto const rsrc = mock_resource{7, 4096, 1024};
-        deferred_success_cb(btoken(23456), rsrc);
+        deferred_success_cb(token(23456), rsrc);
 
         auto verif = flatbuffers::Verifier(resp_buf.data(), resp_buf.size());
         REQUIRE(verif.VerifySizePrefixedBuffer<ResponseMessage>(nullptr));
@@ -623,7 +623,7 @@ TEST_CASE("request_handler: open") {
     SUBCASE("deferred_failure") {
         std::function<void(Status)> deferred_error_cb;
         REQUIRE_CALL(sess,
-                     open(btoken(12345), Policy::DEFAULT, true, _, _, _, _, _))
+                     open(token(12345), Policy::DEFAULT, true, _, _, _, _, _))
             .LR_SIDE_EFFECT(deferred_error_cb = _8)
             .TIMES(1);
         REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
@@ -670,7 +670,7 @@ TEST_CASE("request_handler: close") {
     using trompeloeil::_;
 
     SUBCASE("success") {
-        REQUIRE_CALL(sess, close(btoken(12345), _, _))
+        REQUIRE_CALL(sess, close(token(12345), _, _))
             .SIDE_EFFECT(_2())
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
@@ -694,7 +694,7 @@ TEST_CASE("request_handler: close") {
     }
 
     SUBCASE("immediate_failure") {
-        REQUIRE_CALL(sess, close(btoken(12345), _, _))
+        REQUIRE_CALL(sess, close(token(12345), _, _))
             .SIDE_EFFECT(_3(Status::NO_SUCH_OBJECT))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
@@ -738,7 +738,7 @@ TEST_CASE("request_handler: share") {
     using trompeloeil::_;
 
     SUBCASE("success") {
-        REQUIRE_CALL(sess, share(btoken(12345), _, _))
+        REQUIRE_CALL(sess, share(token(12345), _, _))
             .SIDE_EFFECT(_2())
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
@@ -762,7 +762,7 @@ TEST_CASE("request_handler: share") {
     }
 
     SUBCASE("failure") {
-        REQUIRE_CALL(sess, share(btoken(12345), _, _))
+        REQUIRE_CALL(sess, share(token(12345), _, _))
             .SIDE_EFFECT(_3(Status::NO_SUCH_OBJECT))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
@@ -806,8 +806,8 @@ TEST_CASE("request_handler: unshare") {
     using trompeloeil::_;
 
     SUBCASE("immediate_success") {
-        REQUIRE_CALL(sess, unshare(btoken(12345), true, _, _, _, _))
-            .SIDE_EFFECT(_3(btoken(23456)))
+        REQUIRE_CALL(sess, unshare(token(12345), true, _, _, _, _))
+            .SIDE_EFFECT(_3(token(23456)))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
         REQUIRE_CALL(write, call(_))
@@ -833,7 +833,7 @@ TEST_CASE("request_handler: unshare") {
     }
 
     SUBCASE("immediate_failure") {
-        REQUIRE_CALL(sess, unshare(btoken(12345), true, _, _, _, _))
+        REQUIRE_CALL(sess, unshare(token(12345), true, _, _, _, _))
             .SIDE_EFFECT(_4(Status::NO_SUCH_OBJECT))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
@@ -857,8 +857,8 @@ TEST_CASE("request_handler: unshare") {
     }
 
     SUBCASE("deferred_success") {
-        std::function<void(btoken)> deferred_success_cb;
-        REQUIRE_CALL(sess, unshare(btoken(12345), true, _, _, _, _))
+        std::function<void(token)> deferred_success_cb;
+        REQUIRE_CALL(sess, unshare(token(12345), true, _, _, _, _))
             .LR_SIDE_EFFECT(deferred_success_cb = _5)
             .TIMES(1);
         REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
@@ -870,7 +870,7 @@ TEST_CASE("request_handler: unshare") {
             .LR_SIDE_EFFECT(resp_buf = std::move(_1))
             .TIMES(1);
 
-        deferred_success_cb(btoken(23456));
+        deferred_success_cb(token(23456));
 
         auto verif = flatbuffers::Verifier(resp_buf.data(), resp_buf.size());
         REQUIRE(verif.VerifySizePrefixedBuffer<ResponseMessage>(nullptr));
@@ -889,7 +889,7 @@ TEST_CASE("request_handler: unshare") {
 
     SUBCASE("deferred_failure") {
         std::function<void(Status)> deferred_error_cb;
-        REQUIRE_CALL(sess, unshare(btoken(12345), true, _, _, _, _))
+        REQUIRE_CALL(sess, unshare(token(12345), true, _, _, _, _))
             .LR_SIDE_EFFECT(deferred_error_cb = _6)
             .TIMES(1);
         REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
@@ -936,8 +936,8 @@ TEST_CASE("request_handler: create_voucher") {
     using trompeloeil::_;
 
     SUBCASE("success") {
-        REQUIRE_CALL(sess, create_voucher(btoken(12345), 3u, _, _, _))
-            .SIDE_EFFECT(_4(btoken(23456)))
+        REQUIRE_CALL(sess, create_voucher(token(12345), 3u, _, _, _))
+            .SIDE_EFFECT(_4(token(23456)))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
         REQUIRE_CALL(write, call(_))
@@ -961,7 +961,7 @@ TEST_CASE("request_handler: create_voucher") {
     }
 
     SUBCASE("failure") {
-        REQUIRE_CALL(sess, create_voucher(btoken(12345), 3u, _, _, _))
+        REQUIRE_CALL(sess, create_voucher(token(12345), 3u, _, _, _))
             .SIDE_EFFECT(_5(Status::NO_SUCH_OBJECT))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
@@ -1005,8 +1005,8 @@ TEST_CASE("request_handler: discard_voucher") {
     using trompeloeil::_;
 
     SUBCASE("success") {
-        REQUIRE_CALL(sess, discard_voucher(btoken(12345), _, _, _))
-            .SIDE_EFFECT(_3(btoken(23456)))
+        REQUIRE_CALL(sess, discard_voucher(token(12345), _, _, _))
+            .SIDE_EFFECT(_3(token(23456)))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
         REQUIRE_CALL(write, call(_))
@@ -1030,7 +1030,7 @@ TEST_CASE("request_handler: discard_voucher") {
     }
 
     SUBCASE("failure") {
-        REQUIRE_CALL(sess, discard_voucher(btoken(12345), _, _, _))
+        REQUIRE_CALL(sess, discard_voucher(token(12345), _, _, _))
             .SIDE_EFFECT(_4(Status::NO_SUCH_OBJECT))
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;

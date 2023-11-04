@@ -20,25 +20,22 @@ namespace partake::daemon {
 // unique and never reused; for DEFAULT policy objects, tokens uniquely
 // identify shared object content. (There are enough unique 64-bit numbers
 // that we will never loop around.) The null (zero) token is not used.
-// The name 'btoken' stands for 'binary token' (as opposed to proquint
-// representation). It also avoid clashing with methods and variables named
-// 'token'.
-class btoken {
+class token {
     std::uint64_t t = 0;
 
   public:
-    btoken() noexcept = default;
-    explicit btoken(std::uint64_t value) noexcept : t(value) {}
+    token() noexcept = default;
+    explicit token(std::uint64_t value) noexcept : t(value) {}
 
     [[nodiscard]] auto as_u64() const noexcept -> std::uint64_t { return t; }
 
     [[nodiscard]] auto is_valid() const noexcept -> bool { return t != 0; }
 
-    friend auto operator==(btoken lhs, btoken rhs) noexcept -> bool {
+    friend auto operator==(token lhs, token rhs) noexcept -> bool {
         return lhs.t == rhs.t;
     }
 
-    friend auto operator!=(btoken lhs, btoken rhs) noexcept -> bool {
+    friend auto operator!=(token lhs, token rhs) noexcept -> bool {
         return lhs.t != rhs.t;
     }
 };
@@ -64,7 +61,7 @@ class token_sequence {
         return *this;
     }
 
-    [[nodiscard]] auto generate() noexcept -> btoken {
+    [[nodiscard]] auto generate() noexcept -> token {
         auto t = prev_token;
         assert(t != 0);
 
@@ -74,7 +71,7 @@ class token_sequence {
         t ^= t << 17;
 
         prev_token = t;
-        return btoken(t);
+        return token(t);
     }
 };
 
@@ -90,9 +87,9 @@ TEST_CASE("token_sequence") {
 
 namespace std {
 
-// We use btoken value as its own hash, because it is already randomized.
-template <> struct hash<partake::daemon::btoken> {
-    auto operator()(partake::daemon::btoken tok) const noexcept -> size_t {
+// We use token value as its own hash, because it is already randomized.
+template <> struct hash<partake::daemon::token> {
+    auto operator()(partake::daemon::token tok) const noexcept -> size_t {
         auto const t = tok.as_u64();
         static_assert(sizeof(size_t) == 4 || sizeof(size_t) == 8);
         if constexpr (sizeof(size_t) == 8) {

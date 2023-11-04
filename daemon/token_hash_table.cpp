@@ -14,9 +14,9 @@ namespace {
 
 // Element must inherit hook and have key() method.
 struct elem : token_hash_table<elem>::hook {
-    btoken ky;
-    elem(btoken key) : ky(key) {}
-    [[nodiscard]] auto key() const -> btoken { return ky; }
+    token ky;
+    elem(token key) : ky(key) {}
+    [[nodiscard]] auto key() const -> token { return ky; }
 };
 
 } // namespace
@@ -24,19 +24,19 @@ struct elem : token_hash_table<elem>::hook {
 TEST_CASE("token_hash_table") {
     token_hash_table<elem> t;
     CHECK(t.empty());
-    CHECK(t.find(btoken(42)) == t.end());
-    elem e{btoken(42)};
+    CHECK(t.find(token(42)) == t.end());
+    elem e{token(42)};
     t.insert(e);
-    CHECK(t.find(btoken(42))->ky.as_u64() == 42);
-    CHECK(t.iterator_to(e) == t.find(btoken(42)));
+    CHECK(t.find(token(42))->ky.as_u64() == 42);
+    CHECK(t.iterator_to(e) == t.find(token(42)));
     t.erase(t.iterator_to(e)); // Table must be empty before destruction.
 }
 
 TEST_CASE("token_hash_table: foreach") {
     token_hash_table<elem> t;
-    elem e{btoken(42)};
-    elem f{btoken(43)};
-    elem g{btoken(44)};
+    elem e{token(42)};
+    elem f{token(43)};
+    elem g{token(44)};
     t.insert(e);
     t.insert(f);
     t.insert(g);
@@ -56,7 +56,7 @@ TEST_CASE("token_hash_table: rehash") {
     std::vector<elem> v;
     v.reserve(1000);
     for (std::uint64_t i = 0; i < 1000; ++i)
-        v.emplace_back(btoken(i));
+        v.emplace_back(token(i));
 
     for (elem &e : v) {
         t.insert(e);

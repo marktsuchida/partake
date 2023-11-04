@@ -16,7 +16,7 @@ namespace {
 struct mock_object : token_hash_table<mock_object>::hook,
                      std::enable_shared_from_this<mock_object> {
     bool v;
-    btoken k;
+    token k;
     protocol::Policy p = protocol::Policy::DEFAULT;
     int r = 0;
     std::size_t nv = 0;
@@ -24,18 +24,18 @@ struct mock_object : token_hash_table<mock_object>::hook,
     unsigned c = 0;
     time_point exp;
 
-    explicit mock_object(btoken key, protocol::Policy policy, int resource)
+    explicit mock_object(token key, protocol::Policy policy, int resource)
         : v(false), k(key), p(policy), r(resource) {}
 
-    explicit mock_object(btoken key, std::shared_ptr<mock_object> target,
+    explicit mock_object(token key, std::shared_ptr<mock_object> target,
                          unsigned count, time_point expiration)
         : v(true), k(key), tgt(std::move(target)), c(count), exp(expiration) {}
 
     ~mock_object() { CHECK(nv == 0); }
 
-    void rekey(btoken key) { k = key; }
+    void rekey(token key) { k = key; }
 
-    auto key() const -> btoken { return k; }
+    auto key() const -> token { return k; }
 
     auto is_proper_object() const -> bool { return not v; }
 
@@ -69,7 +69,7 @@ struct mock_object : token_hash_table<mock_object>::hook,
 struct mock_token_sequence { // Generate sequential starting at 1.
     std::uint64_t prev_token;
 
-    auto generate() -> btoken { return btoken(++prev_token); }
+    auto generate() -> token { return token(++prev_token); }
 };
 
 struct mock_voucher_queue {
@@ -89,7 +89,7 @@ TEST_CASE("repository") {
     auto obj = r.create_object(protocol::Policy::DEFAULT, 42);
     CHECK(obj->key().as_u64() == 1);
 
-    auto found = r.find_object(btoken(1));
+    auto found = r.find_object(token(1));
     CHECK(found == obj);
 
     r.rekey_object(obj);
