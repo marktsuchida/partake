@@ -1,6 +1,6 @@
 # This file is part of the partake project
 # Copyright 2020-2023 Board of Regents of the University of Wisconsin System
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: MIT
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -17,10 +17,9 @@ repos:
     rev: v17.0.2
     hooks:
       - id: clang-format
-
-# Disabled for now because the reuse hook doesn't allow overriding args
-#  - repo: https://github.com/fsfe/reuse-tool
-#    rev: TBD
-#    hooks:
-#      - id: reuse
-#        args: ["--include-meson-subprojects", "lint"]
+  - repo: https://github.com/fsfe/reuse-tool
+    rev: v2.1.0
+    hooks:
+      - id: reuse
+        # See: https://github.com/fsfe/reuse-tool/issues/576
+        args: ["--include-meson-subprojects", "lint"]
