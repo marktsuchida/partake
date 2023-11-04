@@ -174,12 +174,12 @@ class session {
             po.exclusive_writer(hnd.get());
         // Segment currently hard-coded to 0.
         auto const &rsrc = po.resource();
-        success_cb(obj->token(), rsrc);
+        success_cb(obj->key(), rsrc);
     }
 
     template <typename ImmediateSuccess, typename ImmediateError,
               typename DeferredSuccess, typename DeferredError>
-    void open(btoken token, protocol::Policy policy, bool wait, time_point now,
+    void open(btoken key, protocol::Policy policy, bool wait, time_point now,
               ImmediateSuccess success_cb, ImmediateError error_cb,
               DeferredSuccess deferred_success_cb,
               DeferredError deferred_error_cb) noexcept {
@@ -187,11 +187,11 @@ class session {
 
         std::shared_ptr<object_type> obj;
         std::shared_ptr<object_type> vchr;
-        auto hnd = find_handle(token);
+        auto hnd = find_handle(key);
         if (hnd)
             obj = hnd->object();
         else
-            std::tie(obj, vchr) = find_target(token, now);
+            std::tie(obj, vchr) = find_target(key, now);
         if (not obj || obj->policy() != policy)
             return error_cb(protocol::Status::NO_SUCH_OBJECT);
 
@@ -223,7 +223,7 @@ class session {
         if (can_open_immediately) {
             hnd->open();
             auto const &rsrc = obj->as_proper_object().resource();
-            return success_cb(obj->token(), rsrc);
+            return success_cb(obj->key(), rsrc);
         }
 
         hnd->add_request_pending_on_share(
@@ -234,7 +234,7 @@ class session {
                 if (po.is_shared()) {
                     handle->open();
                     auto const &rsrc = po.resource();
-                    deferred_success_cb(o->token(), rsrc);
+                    deferred_success_cb(o->key(), rsrc);
                 } else {
                     deferred_error_cb(protocol::Status::NO_SUCH_OBJECT);
                 }
@@ -242,9 +242,9 @@ class session {
     }
 
     template <typename Success, typename Error>
-    void close(btoken token, Success success_cb, Error error_cb) noexcept {
+    void close(btoken key, Success success_cb, Error error_cb) noexcept {
         assert(valid);
-        auto hnd = find_handle(token);
+        auto hnd = find_handle(key);
         if (not hnd || not hnd->is_open())
             return error_cb(protocol::Status::NO_SUCH_OBJECT);
         hnd->close();
@@ -252,9 +252,9 @@ class session {
     }
 
     template <typename Success, typename Error>
-    void share(btoken token, Success success_cb, Error error_cb) noexcept {
+    void share(btoken key, Success success_cb, Error error_cb) noexcept {
         assert(valid);
-        auto hnd = find_handle(token);
+        auto hnd = find_handle(key);
         if (not hnd ||
             hnd->object()->as_proper_object().exclusive_writer() != hnd.get())
             return error_cb(protocol::Status::NO_SUCH_OBJECT);
@@ -264,12 +264,12 @@ class session {
 
     template <typename ImmediateSuccess, typename ImmediateError,
               typename DeferredSuccess, typename DeferredError>
-    void unshare(btoken tok, bool wait, ImmediateSuccess success_cb,
+    void unshare(btoken key, bool wait, ImmediateSuccess success_cb,
                  ImmediateError error_cb, DeferredSuccess deferred_success_cb,
                  DeferredError deferred_error_cb) noexcept {
         assert(valid);
 
-        auto hnd = find_handle(tok);
+        auto hnd = find_handle(key);
         if (not hnd || not hnd->is_open())
             return error_cb(protocol::Status::NO_SUCH_OBJECT);
         auto obj = hnd->object();
@@ -316,21 +316,21 @@ class session {
         auto expiration = now + voucher_ttl;
         auto voucher = repo->create_voucher(real_target, expiration, count);
 
-        success_cb(voucher->token());
+        success_cb(voucher->key());
     }
 
     template <typename Success, typename Error>
-    void discard_voucher(btoken token, time_point now, Success success_cb,
+    void discard_voucher(btoken key, time_point now, Success success_cb,
                          Error error_cb) noexcept {
         assert(valid);
 
-        auto obj = repo->find_object(token);
+        auto obj = repo->find_object(key);
         if (not obj)
             return error_cb(protocol::Status::NO_SUCH_OBJECT);
         if (obj->is_proper_object())
-            return success_cb(token);
+            return success_cb(key);
 
-        auto target = obj->as_voucher().target()->token();
+        auto target = obj->as_voucher().target()->key();
         if (repo->claim_voucher(obj, now))
             return success_cb(target);
         return error_cb(protocol::Status::NO_SUCH_OBJECT);
@@ -383,16 +383,16 @@ class session {
                 }};
     }
 
-    auto find_handle(btoken token) noexcept -> std::shared_ptr<handle_type> {
-        auto hnd = handles.find(token);
+    auto find_handle(btoken key) noexcept -> std::shared_ptr<handle_type> {
+        auto hnd = handles.find(key);
         if (hnd == handles.end())
             return {};
         return hnd->shared_from_this();
     }
 
     // Returns pair of shared_ptr<object>s: {target, voucher}.
-    auto find_target(btoken token, time_point now) noexcept {
-        auto obj = repo->find_object(token);
+    auto find_target(btoken key, time_point now) noexcept {
+        auto obj = repo->find_object(key);
         std::shared_ptr<object_type> vchr;
         if (obj && obj->is_voucher()) {
             auto &v = obj->as_voucher();
@@ -408,13 +408,13 @@ class session {
         -> btoken {
         auto obj = hnd->object();
 
-        // Temporarily remove from handle table while token changes.
+        // Temporarily remove from handle table while key changes.
         handles.erase(handles.iterator_to(*hnd));
         obj->as_proper_object().unshare(hnd.get());
-        repo->reassign_object_token(obj);
+        repo->rekey_object(obj);
         handles.insert(*hnd);
 
-        return obj->token();
+        return obj->key();
     }
 };
 

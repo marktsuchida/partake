@@ -35,30 +35,30 @@ class object : public token_hash_table<object<Resource>>::hook,
     using voucher_type = voucher<object<resource_type>>;
 
   private:
-    btoken tok;
+    btoken ky;
     object_policy pol;
     std::variant<proper_object_type, voucher_type> body;
 
   public:
-    explicit object(btoken token, object_policy policy,
+    explicit object(btoken key, object_policy policy,
                     resource_type &&mem) noexcept
-        : tok(token), pol(policy), body(std::in_place_type<proper_object_type>,
-                                        std::forward<resource_type>(mem)) {}
+        : ky(key), pol(policy), body(std::in_place_type<proper_object_type>,
+                                     std::forward<resource_type>(mem)) {}
 
-    explicit object(btoken token, std::shared_ptr<object> target,
-                    unsigned count, time_point expiration) noexcept
-        : tok(token), pol(target->policy()),
+    explicit object(btoken key, std::shared_ptr<object> target, unsigned count,
+                    time_point expiration) noexcept
+        : ky(key), pol(target->policy()),
           body(std::in_place_type<voucher_type>, std::move(target), count,
                expiration) {}
 
     // No move or copy (used with intrusive data structures and shared_ptr)
     auto operator=(object &&) = delete;
 
-    [[nodiscard]] auto token() const noexcept -> btoken { return tok; }
+    [[nodiscard]] auto key() const noexcept -> btoken { return ky; }
 
     // Must not be called when the object is in an repository or has a handle
     // in a session.
-    void reassign_token(daemon::btoken token) noexcept { tok = token; }
+    void rekey(daemon::btoken key) noexcept { ky = key; }
 
     [[nodiscard]] auto policy() const noexcept -> object_policy { return pol; }
 

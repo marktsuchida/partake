@@ -31,7 +31,7 @@ template <typename E> class token_hash_table {
     struct key_getter {
         using type = btoken;
         auto operator()(element_type const &h) const -> type {
-            return h.token();
+            return h.key();
         }
     };
 

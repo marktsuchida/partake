@@ -12,11 +12,11 @@ namespace partake::daemon {
 
 namespace {
 
-// Element must inherit hook and have token() method.
+// Element must inherit hook and have key() method.
 struct elem : token_hash_table<elem>::hook {
-    btoken tok;
-    elem(btoken token) : tok(token) {}
-    [[nodiscard]] auto token() const -> btoken { return tok; }
+    btoken ky;
+    elem(btoken key) : ky(key) {}
+    [[nodiscard]] auto key() const -> btoken { return ky; }
 };
 
 } // namespace
@@ -27,7 +27,7 @@ TEST_CASE("token_hash_table") {
     CHECK(t.find(btoken(42)) == t.end());
     elem e{btoken(42)};
     t.insert(e);
-    CHECK(t.find(btoken(42))->tok.as_u64() == 42);
+    CHECK(t.find(btoken(42))->ky.as_u64() == 42);
     CHECK(t.iterator_to(e) == t.find(btoken(42)));
     t.erase(t.iterator_to(e)); // Table must be empty before destruction.
 }

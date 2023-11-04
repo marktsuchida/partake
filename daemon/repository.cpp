@@ -16,7 +16,7 @@ namespace {
 struct mock_object : token_hash_table<mock_object>::hook,
                      std::enable_shared_from_this<mock_object> {
     bool v;
-    btoken t;
+    btoken k;
     protocol::Policy p = protocol::Policy::DEFAULT;
     int r = 0;
     std::size_t nv = 0;
@@ -24,18 +24,18 @@ struct mock_object : token_hash_table<mock_object>::hook,
     unsigned c = 0;
     time_point exp;
 
-    explicit mock_object(btoken tok, protocol::Policy policy, int resource)
-        : v(false), t(tok), p(policy), r(resource) {}
+    explicit mock_object(btoken key, protocol::Policy policy, int resource)
+        : v(false), k(key), p(policy), r(resource) {}
 
-    explicit mock_object(btoken tok, std::shared_ptr<mock_object> target,
+    explicit mock_object(btoken key, std::shared_ptr<mock_object> target,
                          unsigned count, time_point expiration)
-        : v(true), t(tok), tgt(std::move(target)), c(count), exp(expiration) {}
+        : v(true), k(key), tgt(std::move(target)), c(count), exp(expiration) {}
 
     ~mock_object() { CHECK(nv == 0); }
 
-    void reassign_token(btoken tok) { t = tok; }
+    void rekey(btoken key) { k = key; }
 
-    auto token() const -> btoken { return t; }
+    auto key() const -> btoken { return k; }
 
     auto is_proper_object() const -> bool { return not v; }
 
@@ -87,16 +87,16 @@ TEST_CASE("repository") {
         mock_token_sequence(), vq);
 
     auto obj = r.create_object(protocol::Policy::DEFAULT, 42);
-    CHECK(obj->token().as_u64() == 1);
+    CHECK(obj->key().as_u64() == 1);
 
     auto found = r.find_object(btoken(1));
     CHECK(found == obj);
 
-    r.reassign_object_token(obj);
-    CHECK(obj->token().as_u64() == 2);
+    r.rekey_object(obj);
+    CHECK(obj->key().as_u64() == 2);
 
     using trompeloeil::_;
-    REQUIRE_CALL(vq, enqueue(_)).WITH(_1->token().as_u64() == 3).TIMES(1);
+    REQUIRE_CALL(vq, enqueue(_)).WITH(_1->key().as_u64() == 3).TIMES(1);
     auto v = r.create_voucher(obj, time_point(std::chrono::seconds(100)), 1);
 
     REQUIRE_CALL(vq, drop(_)).WITH(_1 == v).TIMES(1);

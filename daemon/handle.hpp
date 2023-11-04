@@ -62,8 +62,8 @@ class handle : public token_hash_table<handle<Object>>::hook,
     // No move or copy (used with intrusive data structures and shared_ptr)
     auto operator=(handle &&) = delete;
 
-    [[nodiscard]] auto token() const noexcept -> daemon::btoken {
-        return obj->token();
+    [[nodiscard]] auto key() const noexcept -> daemon::btoken {
+        return obj->key();
     }
 
     auto object() noexcept -> std::shared_ptr<object_type> { return obj; }

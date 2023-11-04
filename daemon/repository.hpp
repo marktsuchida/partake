@@ -70,18 +70,17 @@ class repository {
     }
 
     // May return a voucher!
-    auto find_object(btoken token) noexcept -> std::shared_ptr<object_type> {
-        auto objit = objects.find(token);
+    auto find_object(btoken key) noexcept -> std::shared_ptr<object_type> {
+        auto objit = objects.find(key);
         if (objit == objects.end())
             return {};
         return objit->shared_from_this();
     }
 
-    void
-    reassign_object_token(std::shared_ptr<object_type> const &obj) noexcept {
+    void rekey_object(std::shared_ptr<object_type> const &obj) noexcept {
         assert(obj->is_proper_object());
         objects.erase(objects.iterator_to(*obj));
-        obj->reassign_token(tokseq.generate());
+        obj->rekey(tokseq.generate());
         objects.insert(*obj);
     }
 
