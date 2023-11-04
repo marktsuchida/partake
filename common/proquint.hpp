@@ -95,16 +95,16 @@ class proquint64 {
     [[nodiscard]] static constexpr auto size() noexcept -> std::size_t {
         return length;
     }
+
+    [[nodiscard]] friend auto operator==(proquint64 lhs,
+                                         proquint64 rhs) noexcept -> bool {
+        return lhs.val == rhs.val;
+    }
+
+    [[nodiscard]] friend auto operator!=(proquint64 lhs,
+                                         proquint64 rhs) noexcept -> bool {
+        return not(lhs == rhs);
+    }
 };
-
-[[nodiscard]] inline auto operator==(proquint64 lhs, proquint64 rhs) noexcept
-    -> bool {
-    return std::uint64_t(lhs) == std::uint64_t(rhs);
-}
-
-[[nodiscard]] inline auto operator!=(proquint64 lhs, proquint64 rhs) noexcept
-    -> bool {
-    return not(lhs == rhs);
-}
 
 } // namespace partake::common

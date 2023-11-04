@@ -24,12 +24,14 @@ class token {
 
     [[nodiscard]] auto is_valid() const noexcept -> bool { return t != 0; }
 
-    friend auto operator==(token lhs, token rhs) noexcept -> bool {
+    [[nodiscard]] friend auto operator==(token lhs, token rhs) noexcept
+        -> bool {
         return lhs.t == rhs.t;
     }
 
-    friend auto operator!=(token lhs, token rhs) noexcept -> bool {
-        return lhs.t != rhs.t;
+    [[nodiscard]] friend auto operator!=(token lhs, token rhs) noexcept
+        -> bool {
+        return not(lhs == rhs);
     }
 };
 
