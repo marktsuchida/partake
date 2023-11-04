@@ -24,11 +24,11 @@
 
 namespace partake::daemon {
 
-template <typename Object, typename TokenSequence, typename VoucherQueue>
+template <typename Object, typename KeySequence, typename VoucherQueue>
 class repository {
   public:
     using object_type = Object;
-    using token_sequence_type = TokenSequence;
+    using key_sequence_type = KeySequence;
     using voucher_queue_type = VoucherQueue;
     static_assert(
         std::is_same_v<object_type, typename voucher_queue_type::object_type>);
@@ -43,14 +43,14 @@ class repository {
 
     hive<object_type> object_storage;
     token_hash_table<object_type> objects;
-    token_sequence_type tokseq;
+    key_sequence_type tokseq;
     gsl::not_null<voucher_queue_type *> vqueue;
 
   public:
-    explicit repository(token_sequence_type &&token_sequence,
+    explicit repository(key_sequence_type &&key_sequence,
                         voucher_queue_type &voucher_queue) noexcept
         : objects(1 << 3),
-          tokseq(std::forward<token_sequence_type>(token_sequence)),
+          tokseq(std::forward<key_sequence_type>(key_sequence)),
           vqueue(&voucher_queue) {}
 
     // No move or copy (empty state not defined)

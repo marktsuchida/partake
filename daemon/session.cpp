@@ -46,13 +46,13 @@ struct mock_voucher_queue {
 TEST_CASE("session: global ops") {
     using session_type =
         session<mock_allocator,
-                repository<object<int>, token_sequence, mock_voucher_queue>,
+                repository<object<int>, key_sequence, mock_voucher_queue>,
                 handle<object<int>>, mock_segment>;
     mock_allocator alloc;
     mock_segment const seg;
     mock_voucher_queue vq;
-    repository<object<int>, token_sequence, mock_voucher_queue> repo(
-        token_sequence(), vq);
+    repository<object<int>, key_sequence, mock_voucher_queue> repo(
+        key_sequence(), vq);
 
     using protocol::Status;
     using namespace std::chrono_literals;
@@ -96,13 +96,13 @@ TEST_CASE("session: object ops") {
 
     using session_type =
         session<mock_allocator,
-                repository<object<int>, token_sequence, mock_voucher_queue>,
+                repository<object<int>, key_sequence, mock_voucher_queue>,
                 handle<object<int>>, mock_segment>;
     mock_allocator alloc;
     mock_segment const seg;
     mock_voucher_queue vq;
-    repository<object<int>, token_sequence, mock_voucher_queue> repo(
-        token_sequence(), vq);
+    repository<object<int>, key_sequence, mock_voucher_queue> repo(
+        key_sequence(), vq);
 
     using protocol::Policy;
     using protocol::Status;

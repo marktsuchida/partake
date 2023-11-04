@@ -49,7 +49,7 @@ template <typename AsioContext> class partake_daemon {
     using object_type = object<arena_allocator::allocation>;
     using voucher_queue_type = voucher_queue<object_type>;
     using repository_type =
-        repository<object_type, token_sequence, voucher_queue_type>;
+        repository<object_type, key_sequence, voucher_queue_type>;
     using handle_type = handle<object_type>;
     using session_type =
         session<arena_allocator, repository_type, handle_type, segment>;
@@ -85,8 +85,7 @@ template <typename AsioContext> class partake_daemon {
           allocr(seg.size(), config.log2_granularity != 0u
                                  ? config.log2_granularity
                                  : log2_size(page_size())),
-          clk_traits(asio_context), vq(clk_traits),
-          repo(token_sequence(), vq) {
+          clk_traits(asio_context), vq(clk_traits), repo(key_sequence(), vq) {
         if (not seg.is_valid()) {
             spdlog::error("failed to create shared memory segment");
             exitcode = 1;

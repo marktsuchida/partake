@@ -15,11 +15,8 @@
 
 namespace partake::daemon {
 
-// A token is a key used by partaked to locate an object. To clients it is an
-// opaque byte string. Within the lifetime of a partaked instance, tokens are
-// unique and never reused; for DEFAULT policy objects, tokens uniquely
-// identify shared object content. (There are enough unique 64-bit numbers
-// that we will never loop around.) The null (zero) token is not used.
+// Data type used for object and voucher keys. To clients it is an opaque byte
+// string.
 class token {
     std::uint64_t t = 0;
 
@@ -40,29 +37,34 @@ class token {
     }
 };
 
-// Tokens are generated using a pseudorandom sequence that will emit 2^64 - 1
-// _distinct_ non-zero values before looping around. (Sequential numbers would
+// Within the lifetime of a partaked instance, tokens are unique and never
+// reused; for DEFAULT policy objects, tokens uniquely identify shared object
+// content. (There are enough unique 64-bit numbers that we will never loop
+// around.) The null (zero) token is not used.
+//
+// Keys are generated using a pseudorandom sequence that will emit 2^64 - 1
+// _distinct_ non-zero tokens before looping around. Sequential numbers would
 // also work, but we don't want to tempt users to make assumptions about token
 // values (unless they are determined to). The pseudorandom tokens also serve
-// as good hash table keys.)
-class token_sequence {
-    std::uint64_t prev_token = 0xffff'ffff'ffff'ffffuLL;
+// as good hash table keys.
+class key_sequence {
+    std::uint64_t prev = 0xffff'ffff'ffff'ffffuLL;
 
   public:
-    token_sequence() noexcept = default;
+    key_sequence() noexcept = default;
 
     // Copying suggests a bug, so allow move only. Moved-from object is not
     // usable.
-    token_sequence(token_sequence &&other) noexcept
-        : prev_token(std::exchange(other.prev_token, 0uLL)) {}
+    key_sequence(key_sequence &&other) noexcept
+        : prev(std::exchange(other.prev, 0uLL)) {}
 
-    auto operator=(token_sequence &&rhs) noexcept -> token_sequence & {
-        prev_token = std::exchange(rhs.prev_token, 0uLL);
+    auto operator=(key_sequence &&rhs) noexcept -> key_sequence & {
+        prev = std::exchange(rhs.prev, 0uLL);
         return *this;
     }
 
     [[nodiscard]] auto generate() noexcept -> token {
-        auto t = prev_token;
+        auto t = prev;
         assert(t != 0);
 
         // See https://en.wikipedia.org/wiki/Xorshift
@@ -70,14 +72,14 @@ class token_sequence {
         t ^= t >> 7;
         t ^= t << 17;
 
-        prev_token = t;
+        prev = t;
         return token(t);
     }
 };
 
-TEST_CASE("token_sequence") {
+TEST_CASE("key_sequence") {
     // Smoke test only.
-    token_sequence seq;
+    key_sequence seq;
     CHECK(~seq.generate().as_u64() != 0);
     CHECK(seq.generate().is_valid());
     CHECK(seq.generate() != seq.generate());

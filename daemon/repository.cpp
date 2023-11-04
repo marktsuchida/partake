@@ -66,10 +66,10 @@ struct mock_object : token_hash_table<mock_object>::hook,
     auto target() -> std::shared_ptr<mock_object> { return tgt; }
 };
 
-struct mock_token_sequence { // Generate sequential starting at 1.
-    std::uint64_t prev_token;
+struct mock_key_sequence { // Generate sequential starting at 1.
+    std::uint64_t prev;
 
-    auto generate() -> token { return token(++prev_token); }
+    auto generate() -> token { return token(++prev); }
 };
 
 struct mock_voucher_queue {
@@ -83,8 +83,8 @@ struct mock_voucher_queue {
 
 TEST_CASE("repository") {
     mock_voucher_queue vq;
-    repository<mock_object, mock_token_sequence, mock_voucher_queue> r(
-        mock_token_sequence(), vq);
+    repository<mock_object, mock_key_sequence, mock_voucher_queue> r(
+        mock_key_sequence(), vq);
 
     auto obj = r.create_object(protocol::Policy::DEFAULT, 42);
     CHECK(obj->key().as_u64() == 1);
