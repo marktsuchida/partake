@@ -92,8 +92,7 @@ class proquint64 {
         internal::proquint_from_u64(dest, val);
     }
 
-    // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-    [[nodiscard]] constexpr auto size() const noexcept -> std::size_t {
+    [[nodiscard]] static constexpr auto size() noexcept -> std::size_t {
         return length;
     }
 };
