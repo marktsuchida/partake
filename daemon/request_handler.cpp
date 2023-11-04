@@ -478,7 +478,7 @@ TEST_CASE("request_handler: alloc") {
         CHECK(resp->status() == Status::OK);
         CHECK(resp->response_type() == AnyResponse::AllocResponse);
         auto const *alloc_resp = resp->response_as_AllocResponse();
-        CHECK(alloc_resp->object()->token() == 12345);
+        CHECK(alloc_resp->object()->key() == 12345);
         CHECK(alloc_resp->object()->segment() == 7);
         CHECK(alloc_resp->object()->offset() == 4096);
         CHECK(alloc_resp->object()->size() == 1024);
@@ -554,7 +554,7 @@ TEST_CASE("request_handler: open") {
         CHECK(resp->status() == Status::OK);
         CHECK(resp->response_type() == AnyResponse::OpenResponse);
         auto const *open_resp = resp->response_as_OpenResponse();
-        CHECK(open_resp->object()->token() == 23456);
+        CHECK(open_resp->object()->key() == 23456);
         CHECK(open_resp->object()->segment() == 7);
         CHECK(open_resp->object()->offset() == 4096);
         CHECK(open_resp->object()->size() == 1024);
@@ -614,7 +614,7 @@ TEST_CASE("request_handler: open") {
         CHECK(resp->status() == Status::OK);
         CHECK(resp->response_type() == AnyResponse::OpenResponse);
         auto const *open_resp = resp->response_as_OpenResponse();
-        CHECK(open_resp->object()->token() == 23456);
+        CHECK(open_resp->object()->key() == 23456);
         CHECK(open_resp->object()->segment() == 7);
         CHECK(open_resp->object()->offset() == 4096);
         CHECK(open_resp->object()->size() == 1024);
@@ -828,7 +828,7 @@ TEST_CASE("request_handler: unshare") {
         CHECK(resp->status() == Status::OK);
         CHECK(resp->response_type() == AnyResponse::UnshareResponse);
         auto const *unshare_resp = resp->response_as_UnshareResponse();
-        CHECK(unshare_resp->token() == 23456);
+        CHECK(unshare_resp->key() == 23456);
         CHECK_FALSE(unshare_resp->zeroed()); // Fixed for now
     }
 
@@ -883,7 +883,7 @@ TEST_CASE("request_handler: unshare") {
         CHECK(resp->status() == Status::OK);
         CHECK(resp->response_type() == AnyResponse::UnshareResponse);
         auto const *unshare_resp = resp->response_as_UnshareResponse();
-        CHECK(unshare_resp->token() == 23456);
+        CHECK(unshare_resp->key() == 23456);
         CHECK_FALSE(unshare_resp->zeroed());
     }
 
@@ -957,7 +957,7 @@ TEST_CASE("request_handler: create_voucher") {
         CHECK(resp->seqno() == 42);
         CHECK(resp->status() == Status::OK);
         CHECK(resp->response_type() == AnyResponse::CreateVoucherResponse);
-        CHECK(resp->response_as_CreateVoucherResponse()->token() == 23456);
+        CHECK(resp->response_as_CreateVoucherResponse()->key() == 23456);
     }
 
     SUBCASE("failure") {
@@ -1026,7 +1026,7 @@ TEST_CASE("request_handler: discard_voucher") {
         CHECK(resp->seqno() == 42);
         CHECK(resp->status() == Status::OK);
         CHECK(resp->response_type() == AnyResponse::DiscardVoucherResponse);
-        CHECK(resp->response_as_DiscardVoucherResponse()->token() == 23456);
+        CHECK(resp->response_as_DiscardVoucherResponse()->key() == 23456);
     }
 
     SUBCASE("failure") {

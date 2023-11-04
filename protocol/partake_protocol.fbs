@@ -39,7 +39,7 @@ enum Status : int32 {
     INVALID_REQUEST, // Malformed
     OUT_OF_SHMEM,
     NO_SUCH_SEGMENT,
-    NO_SUCH_OBJECT, // Token does not exist (in the correct state)
+    NO_SUCH_OBJECT, // Key does not exist (in the correct state)
     OBJECT_BUSY, // Cannot open unshared; cannot unshare opened by others
     OBJECT_RESERVED, // Unshare request already pending
 }
@@ -85,7 +85,7 @@ table SegmentSpec {
 
 
 struct Mapping {
-    token: uint64; // Always an object token (not a voucher)
+    key: uint64; // Always an object key (not a voucher)
     segment: uint32;
     offset: uint64;
     size: uint64;
@@ -200,27 +200,26 @@ table AllocResponse {
 
 
 table OpenRequest {
-    token: uint64;
+    key: uint64;
     policy: Policy = DEFAULT;
     wait: bool = true;
 
     /*
-     * The token must exist and its type must match 'policy', or else status is
-     * NO_SUCH_OBJECT. The token may be a voucher.
+     * The key must exist and its type must match 'policy', or else status is
+     * NO_SUCH_OBJECT. The key may be of a voucher.
      *
-     * If 'policy' is DEFAULT and the token refers to a shared object, the
-     * object is opened for read-only access. If the token refers to an
-     * unshared object, behavior depends on the 'wait' flag. If 'wait' is
-     * false, status is OBJECT_BUSY. If 'wait' is true, partaked waits for the
-     * object to be shared and opens it for read-only access before
-     * responding. If the object is closed by its writer before ever being
-     * shared, the wait is canceled and a status of NO_SUCH_OBJECT is
-     * returned.
+     * If 'policy' is DEFAULT and the key refers to a shared object, the object
+     * is opened for read-only access. If the key refers to an unshared object,
+     * behavior depends on the 'wait' flag. If 'wait' is false, status is
+     * OBJECT_BUSY. If 'wait' is true, partaked waits for the object to be
+     * shared and opens it for read-only access before responding. If the
+     * object is closed by its writer before ever being shared, the wait is
+     * canceled and a status of NO_SUCH_OBJECT is returned.
      *
      * If 'policy' is PRIMITIVE, the object is opened for read and write
      * access.
      *
-     * If the token is a voucher, the object it refers to is opened as above.
+     * If the key is of a voucher, the object it refers to is opened as above.
      * If 'wait' is true, opening succeeds even if the voucher expires before
      * the object can be opened.
      *
@@ -235,10 +234,10 @@ table OpenResponse {
 
 
 table CloseRequest {
-    token: uint64;
+    key: uint64;
 
     /*
-     * The token must not be a voucher and must exist and be opened by this
+     * The key must not be a voucher and must exist and be opened by this
      * connection, whether by Alloc or by Open, or else status is
      * NO_SUCH_OBJECT.
      *
@@ -260,10 +259,10 @@ table CloseResponse {
 
 
 table ShareRequest {
-    token: uint64;
+    key: uint64;
 
     /*
-     * The token must not be a voucher and must refer to a DEFAULT,
+     * The key must not be of a voucher and must refer to a DEFAULT,
      * unshared object that is opened for writing by this client, or else
      * status is NO_SUCH_OBJECT.
      *
@@ -279,18 +278,18 @@ table ShareResponse {
 
 
 table UnshareRequest {
-    token: uint64;
+    key: uint64;
     wait: bool = true;
 
     /*
-     * The token must not be a voucher and must refer to a DEFAULT, shared
+     * The key must not be of a voucher and must refer to a DEFAULT, shared
      * object that is opened by this client (for reading), or else status is
      * NO_SUCH_OBJECT.
      *
      * If the object is exclusively opened by this connection (i.e., opened
      * exactly once by this connection, not opened by any other connections,
      * and no vouchers outstanding), the object is removed from circulation,
-     * marked unshared, given a new token, and reopened by this connection
+     * marked unshared, assigned a new key, and reopened by this connection
      * with read and write access. Otherwise, behavior depends on the 'wait'
      * flag. If 'wait' is false, status is OBJECT_BUSY. If 'wait' is true, the
      * request is suspended until this connection becomes the exclusive holder
@@ -307,13 +306,13 @@ table UnshareRequest {
      * A pending Unshare request does not, however, prevent this or another
      * client from opening the object or creating vouchers for the object.
      *
-     * Upon successful completion of an Unshare, the old token of the object
+     * Upon successful completion of an Unshare, the old key of the object
      * is completely removed from partaked and no client can ever open it
      * again. This allows the client performing the Unshare to reuse the
      * buffer by writing new content to it and sharing it again. The fact
      * that an Unshare (rather than a Close followed by a fresh Alloc) is
      * taking place is not visible to any other clients. Note that for
-     * DEFAULT objects, a given token is guaranteed to only ever refer to the
+     * DEFAULT objects, a given key is guaranteed to only ever refer to the
      * same content.
      *
      * Unsharing is intended for two types of advanced and
@@ -330,28 +329,29 @@ table UnshareRequest {
 
 
 table UnshareResponse {
-    token: uint64; // The new token; null or zero if status is not OK
+    key: uint64; // The new key; null or zero if status is not OK
     zeroed: bool = false; // Object happens to be zero-filled
 }
 
 
 table CreateVoucherRequest {
-    token: uint64;
+    key: uint64;
     count: uint32 = 1;
 
     /*
-     * The token must refer to an existing object, or else status is
-     * NO_SUCH_OBJECT. The token may be a voucher.
+     * The key must refer to an existing object, or else status is
+     * NO_SUCH_OBJECT. The key may be of a voucher.
      *
-     * A voucher token that refers to the given object is issued and returned.
+     * A voucher that refers to the given object is issued and its key is
+     * returned.
      *
-     * A voucher is an alternative token that can be generated for an object
-     * and passed between partake clients. When one or more valid vouchers
-     * exist for an object, the object is kept alive even if it is not kept
-     * open by any client. This is advantageous in certain applications where
-     * an object is handed off from one client to another, and the first client
-     * does not want to wait for an acknowledgment from the second client
-     * before it can close the object.
+     * A voucher is an alternative key that can be generated for an object and
+     * passed between partake clients. When one or more valid vouchers exist
+     * for an object, the object is kept alive even if it is not kept open by
+     * any client. This is advantageous in certain applications where an object
+     * is handed off from one client to another, and the first client does not
+     * want to wait for an acknowledgment from the second client before it can
+     * close the object.
      *
      * The only possible operations on a voucher are Open and DiscardVoucher.
      *
@@ -371,40 +371,39 @@ table CreateVoucherRequest {
      * normal operation, except in the (unavoidable) case of using a voucher to
      * share an object with an unknown number of receivers.
      *
-     * Voucher tokens live in the same namespace as ordinary tokens. Thus they
-     * are guaranteed to be unique during the lifetime of the partaked
-     * instance.
+     * Voucher keys live in the same namespace as ordinary keys. Thus they are
+     * guaranteed to be unique during the lifetime of the partaked instance.
      */
 }
 
 
 table CreateVoucherResponse {
-    token: uint64; // The voucher token; null or zero if status is not OK
+    key: uint64; // The voucher key; null or zero if status is not OK
 }
 
 
 table DiscardVoucherRequest {
-    token: uint64;
+    key: uint64;
 
     /*
-     * The token must exist, or else status is NO_SUCH_OBJECT.
+     * The key must exist, or else status is NO_SUCH_OBJECT.
      *
-     * If the token is a voucher, it is caused to immediately expire. If the
+     * If the key is of a voucher, it is caused to immediately expire. If the
      * voucher is the only remaining reference to an object, the object is
      * accordingly deallocated without waiting for the voucher to time out.
      *
-     * If the token is not a voucher but an ordinary object token, this is a
-     * no-op. (This allows clients to be agnostic about whether tokens it
+     * If the key is not of a voucher but an ordinary object key, this is a
+     * no-op. (This allows clients to be agnostic about whether keys it
      * receives from elsewhere are vouchers or not.)
      */
 }
 
 
 table DiscardVoucherResponse {
-    token: uint64; // The object token; null or zero if status is not OK
+    key: uint64; // The object key; null or zero if status is not OK
 
     /*
-     * The object token is returned for debugging and logging purposes only.
+     * The object key is returned for debugging and logging purposes only.
      */
 }
 
