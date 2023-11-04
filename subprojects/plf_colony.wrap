@@ -6,7 +6,7 @@
 directory = plf_colony-git
 
 url = https://github.com/mattreecebentley/plf_colony.git
-revision = 28abaa9acb683d064033fe32d58ec7d1267224d2
+revision = 117ef1e464aa5bb781fd9c3bef9a36a1c025ef4e
 depth = 1
 
 patch_directory = plf_colony
