@@ -25,8 +25,6 @@
 
 namespace partake::daemon {
 
-namespace intru = boost::intrusive;
-
 namespace internal {
 
 template <typename T>
@@ -129,11 +127,11 @@ TEST_CASE("free_list_index_for_size") {
 class arena {
     struct adjacency_tag;
     using adjacency_base_hook =
-        intru::list_base_hook<intru::tag<adjacency_tag>>;
+        boost::intrusive::list_base_hook<boost::intrusive::tag<adjacency_tag>>;
 
     struct free_list_tag;
     using free_list_base_hook =
-        intru::list_base_hook<intru::tag<free_list_tag>>;
+        boost::intrusive::list_base_hook<boost::intrusive::tag<free_list_tag>>;
 
     struct chunk : adjacency_base_hook, free_list_base_hook {
         std::size_t strt;
@@ -162,10 +160,12 @@ class arena {
 
     hive<chunk> chunk_storage;
 
-    intru::list<chunk, intru::base_hook<adjacency_base_hook>> chunks;
+    boost::intrusive::list<chunk,
+                           boost::intrusive::base_hook<adjacency_base_hook>>
+        chunks;
 
-    using free_list =
-        intru::list<chunk, intru::base_hook<free_list_base_hook>>;
+    using free_list = boost::intrusive::list<
+        chunk, boost::intrusive::base_hook<free_list_base_hook>>;
     std::vector<free_list> free_lists;
 
   public:

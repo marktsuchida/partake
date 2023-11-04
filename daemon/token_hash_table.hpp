@@ -17,12 +17,10 @@
 
 namespace partake::daemon {
 
-namespace intru = boost::intrusive;
-
 // Wrapper around intrusive unordered set to hide some implementation details.
 template <typename E> class token_hash_table {
   public:
-    using hook = intru::unordered_set_base_hook<>;
+    using hook = boost::intrusive::unordered_set_base_hook<>;
     using element_type = E;
     // Element must inherit from hook, but we cannot test here because it will
     // be an incomplete type.
@@ -35,11 +33,11 @@ template <typename E> class token_hash_table {
         }
     };
 
-    using table_impl_type =
-        intru::unordered_set<element_type, intru::base_hook<hook>,
-                             intru::hash<std::hash<common::token>>,
-                             intru::key_of_value<key_getter>,
-                             intru::power_2_buckets<true>>;
+    using table_impl_type = boost::intrusive::unordered_set<
+        element_type, boost::intrusive::base_hook<hook>,
+        boost::intrusive::hash<std::hash<common::token>>,
+        boost::intrusive::key_of_value<key_getter>,
+        boost::intrusive::power_2_buckets<true>>;
 
     std::vector<typename table_impl_type::bucket_type> buckets;
     table_impl_type table;

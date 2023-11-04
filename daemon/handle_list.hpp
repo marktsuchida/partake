@@ -10,17 +10,17 @@
 
 namespace partake::daemon {
 
-namespace intru = boost::intrusive;
-
 template <typename Handle> class handle_list {
     struct list_tag;
 
   public:
     using handle_type = Handle;
-    using hook = typename intru::list_base_hook<intru::tag<list_tag>>;
+    using hook = typename boost::intrusive::list_base_hook<
+        boost::intrusive::tag<list_tag>>;
 
   private:
-    using list_impl_type = intru::list<handle_type, intru::base_hook<hook>>;
+    using list_impl_type =
+        boost::intrusive::list<handle_type, boost::intrusive::base_hook<hook>>;
 
     list_impl_type list;
 
