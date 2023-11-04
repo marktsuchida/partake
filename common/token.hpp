@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <functional>
 
-namespace partake::daemon {
+namespace partake::common {
 
 // Data type used for object and voucher keys. To clients it is an opaque byte
 // string.
@@ -33,13 +33,13 @@ class token {
     }
 };
 
-} // namespace partake::daemon
+} // namespace partake::common
 
 namespace std {
 
 // We use the token value as its own hash, because it is already randomized.
-template <> struct hash<partake::daemon::token> {
-    auto operator()(partake::daemon::token tok) const noexcept -> size_t {
+template <> struct hash<partake::common::token> {
+    auto operator()(partake::common::token tok) const noexcept -> size_t {
         auto const t = tok.as_u64();
         static_assert(sizeof(size_t) == 4 || sizeof(size_t) == 8);
         if constexpr (sizeof(size_t) == 8) {

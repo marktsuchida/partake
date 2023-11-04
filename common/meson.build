@@ -13,6 +13,7 @@ common_sources = files([
     'proquint.cpp',
     'random.cpp',
     'testing.cpp',
+    'token.cpp',
     'win32.cpp',
 ])
 

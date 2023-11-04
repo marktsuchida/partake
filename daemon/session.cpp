@@ -105,6 +105,7 @@ TEST_CASE("session: object ops") {
     repository<object<int>, key_sequence, mock_voucher_queue> repo(
         key_sequence(), vq);
 
+    using common::token;
     using protocol::Policy;
     using protocol::Status;
     using trompeloeil::_;

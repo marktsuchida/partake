@@ -42,7 +42,7 @@ class key_sequence {
         return *this;
     }
 
-    [[nodiscard]] auto generate() noexcept -> token {
+    [[nodiscard]] auto generate() noexcept -> common::token {
         auto t = prev;
         assert(t != 0);
 
@@ -52,7 +52,7 @@ class key_sequence {
         t ^= t << 17;
 
         prev = t;
-        return token(t);
+        return common::token(t);
     }
 };
 

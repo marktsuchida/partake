@@ -70,7 +70,8 @@ class repository {
     }
 
     // May return a voucher!
-    auto find_object(token key) noexcept -> std::shared_ptr<object_type> {
+    auto find_object(common::token key) noexcept
+        -> std::shared_ptr<object_type> {
         auto objit = objects.find(key);
         if (objit == objects.end())
             return {};

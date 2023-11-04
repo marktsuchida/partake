@@ -179,9 +179,9 @@ class session {
 
     template <typename ImmediateSuccess, typename ImmediateError,
               typename DeferredSuccess, typename DeferredError>
-    void open(token key, protocol::Policy policy, bool wait, time_point now,
-              ImmediateSuccess success_cb, ImmediateError error_cb,
-              DeferredSuccess deferred_success_cb,
+    void open(common::token key, protocol::Policy policy, bool wait,
+              time_point now, ImmediateSuccess success_cb,
+              ImmediateError error_cb, DeferredSuccess deferred_success_cb,
               DeferredError deferred_error_cb) noexcept {
         assert(valid);
 
@@ -242,7 +242,8 @@ class session {
     }
 
     template <typename Success, typename Error>
-    void close(token key, Success success_cb, Error error_cb) noexcept {
+    void close(common::token key, Success success_cb,
+               Error error_cb) noexcept {
         assert(valid);
         auto hnd = find_handle(key);
         if (not hnd || not hnd->is_open())
@@ -252,7 +253,8 @@ class session {
     }
 
     template <typename Success, typename Error>
-    void share(token key, Success success_cb, Error error_cb) noexcept {
+    void share(common::token key, Success success_cb,
+               Error error_cb) noexcept {
         assert(valid);
         auto hnd = find_handle(key);
         if (not hnd ||
@@ -264,7 +266,7 @@ class session {
 
     template <typename ImmediateSuccess, typename ImmediateError,
               typename DeferredSuccess, typename DeferredError>
-    void unshare(token key, bool wait, ImmediateSuccess success_cb,
+    void unshare(common::token key, bool wait, ImmediateSuccess success_cb,
                  ImmediateError error_cb, DeferredSuccess deferred_success_cb,
                  DeferredError deferred_error_cb) noexcept {
         assert(valid);
@@ -295,7 +297,7 @@ class session {
     }
 
     template <typename Success, typename Error>
-    void create_voucher(token target, unsigned count, time_point now,
+    void create_voucher(common::token target, unsigned count, time_point now,
                         Success success_cb, Error error_cb) noexcept {
         assert(valid);
 
@@ -320,7 +322,7 @@ class session {
     }
 
     template <typename Success, typename Error>
-    void discard_voucher(token key, time_point now, Success success_cb,
+    void discard_voucher(common::token key, time_point now, Success success_cb,
                          Error error_cb) noexcept {
         assert(valid);
 
@@ -383,7 +385,8 @@ class session {
                 }};
     }
 
-    auto find_handle(token key) noexcept -> std::shared_ptr<handle_type> {
+    auto find_handle(common::token key) noexcept
+        -> std::shared_ptr<handle_type> {
         auto hnd = handles.find(key);
         if (hnd == handles.end())
             return {};
@@ -391,7 +394,7 @@ class session {
     }
 
     // Returns pair of shared_ptr<object>s: {target, voucher}.
-    auto find_target(token key, time_point now) noexcept {
+    auto find_target(common::token key, time_point now) noexcept {
         auto obj = repo->find_object(key);
         std::shared_ptr<object_type> vchr;
         if (obj && obj->is_voucher()) {
@@ -405,7 +408,7 @@ class session {
     }
 
     auto do_unshare(std::shared_ptr<handle_type> const &hnd) noexcept
-        -> token {
+        -> common::token {
         auto obj = hnd->object();
 
         // Temporarily remove from handle table while key changes.

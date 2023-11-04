@@ -27,7 +27,6 @@ daemon_sources = [
     'shmem_win32.cpp',
     'sizes.cpp',
     'time_point.cpp',
-    'token.cpp',
     'token_hash_table.cpp',
     'voucher.cpp',
     'voucher_queue.cpp',

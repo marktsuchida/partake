@@ -14,14 +14,15 @@ namespace {
 
 // Element must inherit hook and have key() method.
 struct elem : token_hash_table<elem>::hook {
-    token ky;
-    elem(token key) : ky(key) {}
-    [[nodiscard]] auto key() const -> token { return ky; }
+    common::token ky;
+    elem(common::token key) : ky(key) {}
+    [[nodiscard]] auto key() const -> common::token { return ky; }
 };
 
 } // namespace
 
 TEST_CASE("token_hash_table") {
+    using common::token;
     token_hash_table<elem> t;
     CHECK(t.empty());
     CHECK(t.find(token(42)) == t.end());
@@ -33,6 +34,7 @@ TEST_CASE("token_hash_table") {
 }
 
 TEST_CASE("token_hash_table: foreach") {
+    using common::token;
     token_hash_table<elem> t;
     elem e{token(42)};
     elem f{token(43)};
@@ -56,7 +58,7 @@ TEST_CASE("token_hash_table: rehash") {
     std::vector<elem> v;
     v.reserve(1000);
     for (std::uint64_t i = 0; i < 1000; ++i)
-        v.emplace_back(token(i));
+        v.emplace_back(common::token(i));
 
     for (elem &e : v) {
         t.insert(e);
