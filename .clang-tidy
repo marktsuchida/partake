@@ -15,8 +15,6 @@ Checks: >-
     readability-*,
     -bugprone-exception-escape,
     -bugprone-macro-parentheses,
-    -clang-analyzer-cplusplus.NewDelete,
-    -clang-analyzer-cplusplus.NewDeleteLeaks,
     -cppcoreguidelines-avoid-magic-numbers,
     -readability-container-contains,
     -readability-identifier-length,
@@ -30,10 +28,6 @@ Checks: >-
 # bugprone-macro-parentheses
 #   This check does not report the location of the macro in question, so hard
 #   to fix. (Using --fix did not reveal anything useful.) As of LLVM 16.
-# clang-analyzer-cplusplus.NewDelete
-#   TODO
-# clang-analyzer-cplusplus.NewDeleteLeaks
-#   TODO
 # cppcoreguidelines-avoid-magic-numbers
 #   See readability-magic-numbers.
 # readability-container-contains
