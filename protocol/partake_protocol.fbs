@@ -426,7 +426,7 @@ union AnyRequest {
 union AnyResponse {
     PingResponse,
     HelloResponse,
-    QuitResponse, // Never actually sent!
+    QuitResponse,
     GetSegmentResponse,
     AllocResponse,
     OpenResponse,
