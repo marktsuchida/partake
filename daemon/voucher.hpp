@@ -34,7 +34,9 @@ template <typename Object> class voucher {
 
     ~voucher() { assert(not handle_in_queue.has_value()); }
 
-    // No move or copy (empty state not defined)
+    voucher(voucher const &) = delete;
+    auto operator=(voucher const &) = delete;
+    voucher(voucher &&) = delete;
     auto operator=(voucher &&) = delete;
 
     [[nodiscard]] auto target() const noexcept

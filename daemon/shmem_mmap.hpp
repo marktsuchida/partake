@@ -33,6 +33,9 @@ class mmap_mapping {
 
     ~mmap_mapping() { unmap(); }
 
+    mmap_mapping(mmap_mapping const &) = delete;
+    auto operator=(mmap_mapping const &) = delete;
+
     mmap_mapping(mmap_mapping &&other) noexcept
         : siz(other.siz), addr(other.addr) {
         other = {};

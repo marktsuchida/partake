@@ -60,6 +60,9 @@ class handle : public token_hash_table<handle<Object>>::hook,
     }
 
     // No move or copy (used with intrusive data structures and shared_ptr)
+    handle(handle const &) = delete;
+    auto operator=(handle const &) = delete;
+    handle(handle &&) = delete;
     auto operator=(handle &&) = delete;
 
     [[nodiscard]] auto key() const noexcept -> common::token {

@@ -53,7 +53,10 @@ class repository {
           tokseq(std::forward<key_sequence_type>(key_sequence)),
           vqueue(&voucher_queue) {}
 
-    // No move or copy (empty state not defined)
+    ~repository() = default;
+    repository(repository const &) = delete;
+    auto operator=(repository const &) = delete;
+    repository(repository &&) = delete;
     auto operator=(repository &&) = delete;
 
     template <typename R>

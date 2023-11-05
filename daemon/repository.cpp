@@ -35,6 +35,11 @@ struct mock_object : token_hash_table<mock_object>::hook,
 
     ~mock_object() { CHECK(nv == 0); }
 
+    mock_object(mock_object const &) = delete;
+    auto operator=(mock_object const &) = delete;
+    mock_object(mock_object &&) = delete;
+    auto operator=(mock_object &&) = delete;
+
     void rekey(common::token key) { k = key; }
 
     auto key() const -> common::token { return k; }

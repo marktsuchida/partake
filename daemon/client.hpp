@@ -83,6 +83,10 @@ class client {
           close_self(std::move(close_client)) {}
 
     // No move or copy (member references taken)
+    ~client() = default;
+    client(client const &) = delete;
+    auto operator=(client const &) = delete;
+    client(client &&) = delete;
     auto operator=(client &&) = delete;
 
     void start() {

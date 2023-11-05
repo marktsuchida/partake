@@ -44,7 +44,9 @@ template <typename Resource, typename Handle> class proper_object {
         assert(handle_awaiting_unique_ownership == nullptr);
     }
 
-    // No move or copy (empty state not defined)
+    proper_object(proper_object const &) = delete;
+    auto operator=(proper_object const &) = delete;
+    proper_object(proper_object &&) = delete;
     auto operator=(proper_object &&) = delete;
 
     [[nodiscard]] auto resource() const noexcept -> resource_type const & {

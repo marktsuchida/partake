@@ -43,6 +43,9 @@ class file_descriptor {
 
     ~file_descriptor() { close(); }
 
+    file_descriptor(file_descriptor const &) = delete;
+    auto operator=(file_descriptor const &) = delete;
+
     file_descriptor(file_descriptor &&other) noexcept
         : fd(std::exchange(other.fd, invalid_fd)),
           lgr(std::exchange(other.lgr, {})) {}
@@ -90,6 +93,9 @@ class unlinkable {
     }
 
     ~unlinkable() { unlink(); }
+
+    unlinkable(unlinkable const &) = delete;
+    auto operator=(unlinkable const &) = delete;
 
     unlinkable(unlinkable &&other) noexcept
         : nm(std::exchange(other.nm, {})),

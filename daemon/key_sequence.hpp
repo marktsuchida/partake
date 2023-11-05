@@ -32,8 +32,12 @@ class key_sequence {
   public:
     key_sequence() noexcept = default;
 
-    // Copying suggests a bug, so allow move only. Moved-from object is not
-    // usable.
+    ~key_sequence() = default;
+
+    // Copying suggests a bug, so allow move only.
+    key_sequence(key_sequence const &) = delete;
+    auto operator=(key_sequence const &) = delete;
+
     key_sequence(key_sequence &&other) noexcept
         : prev(std::exchange(other.prev, 0uLL)) {}
 

@@ -52,6 +52,10 @@ class object : public token_hash_table<object<Resource>>::hook,
                expiration) {}
 
     // No move or copy (used with intrusive data structures and shared_ptr)
+    ~object() = default;
+    object(object const &) = delete;
+    auto operator=(object const &) = delete;
+    object(object &&) = delete;
     auto operator=(object &&) = delete;
 
     [[nodiscard]] auto key() const noexcept -> common::token { return ky; }

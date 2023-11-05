@@ -98,6 +98,10 @@ template <typename Session> class request_handler {
           handle_err(std::move(handle_error)) {}
 
     // No move or copy (reference taken by handlers)
+    ~request_handler() = default;
+    request_handler(request_handler const &) = delete;
+    auto operator=(request_handler const &) = delete;
+    request_handler(request_handler &&) = delete;
     auto operator=(request_handler &&) = delete;
 
     // Deserialize and handle one FlatBuffers message.

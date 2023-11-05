@@ -18,7 +18,6 @@ Checks: >-
     -clang-analyzer-cplusplus.NewDelete,
     -clang-analyzer-cplusplus.NewDeleteLeaks,
     -cppcoreguidelines-avoid-magic-numbers,
-    -cppcoreguidelines-special-member-functions,
     -readability-container-contains,
     -readability-identifier-length,
     -readability-magic-numbers,
@@ -37,8 +36,6 @@ Checks: >-
 #   TODO
 # cppcoreguidelines-avoid-magic-numbers
 #   See readability-magic-numbers.
-# cppcoreguidelines-special-member-functions
-#   We use DesDeMovA style.
 # readability-container-contains
 #   This check is for C++20+.
 # readability-identifier-length

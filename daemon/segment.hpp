@@ -77,8 +77,13 @@ struct segment_config {
 namespace internal {
 
 struct segment_impl {
+    segment_impl() = default;
     virtual ~segment_impl() = default;
+
     // No move or copy (used with unique_ptr)
+    segment_impl(segment_impl const &) = delete;
+    auto operator=(segment_impl const &) = delete;
+    segment_impl(segment_impl &&) = delete;
     auto operator=(segment_impl &&) = delete;
 
     [[nodiscard]] virtual auto is_valid() const noexcept -> bool = 0;

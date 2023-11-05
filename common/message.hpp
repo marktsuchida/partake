@@ -94,7 +94,10 @@ template <typename Socket, typename Buffer> class async_message_writer {
         std::function<void(std::error_code)> handle_completion)
         : sock(&socket), handle_cmpl(std::move(handle_completion)) {}
 
-    // No move or copy
+    ~async_message_writer() = default;
+    async_message_writer(async_message_writer const &) = delete;
+    auto operator=(async_message_writer const &) = delete;
+    async_message_writer(async_message_writer &&) = delete;
     auto operator=(async_message_writer &&) = delete;
 
     void async_write_message(buffer_type &&buffer) {
@@ -202,7 +205,10 @@ template <typename Socket> class async_message_reader {
         : sock(&socket), handle_msg(std::move(handle_message)),
           handle_ed(std::move(handle_end)), readbuf(initial_readbuf_size) {}
 
-    // No move or copy (resource management)
+    ~async_message_reader() = default;
+    async_message_reader(async_message_reader const &) = delete;
+    auto operator=(async_message_reader const &) = delete;
+    async_message_reader(async_message_reader &&) = delete;
     auto operator=(async_message_reader &&) = delete;
 
     void start() { schedule_read(); }

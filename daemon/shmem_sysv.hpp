@@ -28,6 +28,9 @@ class sysv_shmem_id {
 
     ~sysv_shmem_id() { remove(); }
 
+    sysv_shmem_id(sysv_shmem_id const &) = delete;
+    auto operator=(sysv_shmem_id const &) = delete;
+
     sysv_shmem_id(sysv_shmem_id &&other) noexcept
         : shmid(std::exchange(other.shmid, -1)),
           siz(std::exchange(other.siz, 0)) {}
@@ -59,6 +62,9 @@ class sysv_shmem_attachment {
     explicit sysv_shmem_attachment(int id);
 
     ~sysv_shmem_attachment() { detach(); }
+
+    sysv_shmem_attachment(sysv_shmem_attachment const &) = delete;
+    auto operator=(sysv_shmem_attachment const &) = delete;
 
     sysv_shmem_attachment(sysv_shmem_attachment &&other) noexcept
         : addr(std::exchange(other.addr, nullptr)) {}

@@ -73,7 +73,8 @@ class session {
 
     ~session() { close_session(); }
 
-    // Noncopyable
+    session(session const &) = delete;
+    auto operator=(session const &) = delete;
 
     session(session &&other) noexcept
         : seg(std::exchange(other.seg, nullptr)),

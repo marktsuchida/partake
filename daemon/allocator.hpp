@@ -143,6 +143,10 @@ class arena {
             : strt(start), cnt(count), in_use(is_in_use) {}
 
         // No move or copy (used with intrusive data structures).
+        ~chunk() = default;
+        chunk(chunk const &) = delete;
+        auto operator=(chunk const &) = delete;
+        chunk(chunk &&) = delete;
         auto operator=(chunk &&) = delete;
     };
 
@@ -192,6 +196,10 @@ class arena {
     }
 
     // No move or copy (address taken by allocation instances)
+    ~arena() = default;
+    arena(arena const &) = delete;
+    auto operator=(arena const &) = delete;
+    arena(arena &&) = delete;
     auto operator=(arena &&) = delete;
 
     [[nodiscard]] auto size() const noexcept -> std::size_t { return siz; }
@@ -218,7 +226,8 @@ class arena {
                 arn->deallocate(chk);
         }
 
-        // Noncopyable
+        allocation(allocation const &) = delete;
+        auto operator=(allocation const &) = delete;
 
         allocation(allocation &&other) noexcept
             : arn(std::exchange(other.arn, nullptr)),

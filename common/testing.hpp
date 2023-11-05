@@ -44,9 +44,6 @@ class tempdir {
         std::filesystem::create_directories(p);
     }
 
-    // No move or copy (resource management).
-    auto operator=(tempdir &&) = delete;
-
     ~tempdir() {
         std::error_code ec;
         std::filesystem::remove(p, ec);
@@ -56,6 +53,11 @@ class tempdir {
             std::terminate();
         }
     }
+
+    tempdir(tempdir const &) = delete;
+    auto operator=(tempdir const &) = delete;
+    tempdir(tempdir &&) = delete;
+    auto operator=(tempdir &&) = delete;
 
     [[nodiscard]] auto path() const -> std::filesystem::path { return p; }
 };
@@ -81,9 +83,6 @@ class auto_delete_file {
     explicit auto_delete_file(std::filesystem::path path)
         : p(std::move(path)) {}
 
-    // No move or delete (resource management).
-    auto operator=(auto_delete_file &&) = delete;
-
     ~auto_delete_file() {
         if (p.empty())
             return;
@@ -95,6 +94,11 @@ class auto_delete_file {
             std::terminate();
         }
     }
+
+    auto_delete_file(auto_delete_file const &) = delete;
+    auto operator=(auto_delete_file const &) = delete;
+    auto_delete_file(auto_delete_file &&) = delete;
+    auto operator=(auto_delete_file &&) = delete;
 };
 
 class unique_file_with_data {

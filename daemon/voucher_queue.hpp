@@ -89,7 +89,10 @@ class voucher_queue {
         : clk_traits(&clock_traits),
           expiration_timer(clk_traits->make_timer()) {}
 
-    // No move or copy (empty state not defined)
+    ~voucher_queue() = default;
+    voucher_queue(voucher_queue const &) = delete;
+    auto operator=(voucher_queue const &) = delete;
+    voucher_queue(voucher_queue &&) = delete;
     auto operator=(voucher_queue &&) = delete;
 
     [[nodiscard]] auto empty() const noexcept -> bool { return queue.empty(); }

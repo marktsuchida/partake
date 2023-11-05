@@ -103,6 +103,10 @@ template <typename AsioContext> class partake_daemon {
     }
 
     // No move or copy (references to members are taken)
+    ~partake_daemon() = default;
+    partake_daemon(partake_daemon const &) = delete;
+    auto operator=(partake_daemon const &) = delete;
+    partake_daemon(partake_daemon &&) = delete;
     auto operator=(partake_daemon &&) = delete;
 
     void start() {
