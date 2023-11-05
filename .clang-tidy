@@ -16,7 +16,6 @@ Checks: >-
     -bugprone-exception-escape,
     -bugprone-macro-parentheses,
     -cppcoreguidelines-avoid-magic-numbers,
-    -readability-container-contains,
     -readability-identifier-length,
     -readability-magic-numbers,
 
@@ -30,8 +29,6 @@ Checks: >-
 #   to fix. (Using --fix did not reveal anything useful.) As of LLVM 16.
 # cppcoreguidelines-avoid-magic-numbers
 #   See readability-magic-numbers.
-# readability-container-contains
-#   This check is for C++20+.
 # readability-identifier-length
 #   Short variable names are not always evil.
 # readability-magic-numbers
