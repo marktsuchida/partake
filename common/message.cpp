@@ -64,6 +64,8 @@ TEST_CASE("Unix domain socket stream finishes with asio::error::eof") {
     asio::io_context ctx;
     bool test_finished = false;
 
+    // NOLINTBEGIN(readability-magic-numbers)
+
     // Server accepts 1 connection, reads, and closes.
     asio::local::stream_protocol::acceptor server(ctx);
     boost::system::error_code ec;
@@ -112,6 +114,8 @@ TEST_CASE("Unix domain socket stream finishes with asio::error::eof") {
 
     ctx.run();
     CHECK(test_finished);
+
+    // NOLINTEND(readability-magic-numbers)
 }
 
 namespace {
@@ -126,8 +130,10 @@ writable_asio_stream_for_file(asio::io_context &ctx,
                                  asio::stream_file::create |
                                  asio::stream_file::exclusive);
 #else
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-    auto fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0600);
+    // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
+    auto fd =
+        ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+    // NOLINTEND(cppcoreguidelines-pro-type-vararg)
     return asio::posix::stream_descriptor(ctx, fd);
 #endif
 }
@@ -183,6 +189,8 @@ TEST_CASE("async_message_writer") {
         CHECK(data.empty());
     }
 
+    // NOLINTBEGIN(readability-magic-numbers)
+
     SUBCASE("unaligned-7") {
         std::vector<std::uint8_t> v{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
         v.resize(7); // Chop off 'h'
@@ -230,6 +238,8 @@ TEST_CASE("async_message_writer") {
         CHECK(data == std::vector<std::uint8_t>{'a', 'b', 'c', 'd', 'e', 'f',
                                                 'g', 'h'});
     }
+
+    // NOLINTEND(readability-magic-numbers)
 }
 
 TEST_CASE("async_message_reader: empty stream") {
@@ -283,6 +293,7 @@ TEST_CASE("async_message_reader: single empty message") {
 }
 
 TEST_CASE("async_message_reader: large message") {
+    // NOLINTBEGIN(readability-magic-numbers)
     std::vector<std::uint8_t> v{0xfc, 0x7f, 0, 0}; // 32764 in little-endian
     v.resize(32768);
     v[32767] = 42;
@@ -307,6 +318,7 @@ TEST_CASE("async_message_reader: large message") {
     r.start();
     ctx.run();
     CHECK(received);
+    // NOLINTEND(readability-magic-numbers)
 }
 
 TEST_CASE("async_message_reader: quit by handler") {
@@ -337,6 +349,7 @@ TEST_CASE("async_message_reader: message too long") {
     // Max message frame is 32k (including size prefix and padding).
     // When (size prefix) > (32768 - 4), the limit is exceeded.
     // 32765 = 0x7ffd.
+    // NOLINTNEXTLINE(readability-magic-numbers)
     std::vector<std::uint8_t> v{0xfd, 0x7f, 0, 0}; // Little-endian
 
     testing::tempdir const td;
@@ -367,6 +380,7 @@ TEST_CASE("async_message_reader: eof in message") {
     // Use size prefix 32764 (one less than that which triggers
     // message-too-long) so that we also confirm that the maximum size works.
     // 32764 = 0x7ffc.
+    // NOLINTNEXTLINE(readability-magic-numbers)
     std::vector<std::uint8_t> v{0xfc, 0x7f, 0, 0}; // Little-endian
 
     testing::tempdir const td;

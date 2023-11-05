@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "config.hpp"
 #include "hive.hpp"
 #include "partake_protocol_generated.h"
 #include "time_point.hpp"
@@ -53,7 +54,8 @@ class session {
     std::uint32_t client_pid = 0;
     std::uint32_t id = 0;
 
-    std::chrono::milliseconds voucher_ttl = std::chrono::seconds(10);
+    std::chrono::milliseconds voucher_ttl =
+        std::chrono::seconds(default_voucher_ttl_seconds);
 
   public:
     // Construct in empty state, on which the only valid operations are
@@ -135,8 +137,8 @@ class session {
         if (has_said_hello) {
             error_cb(protocol::Status::INVALID_REQUEST);
         } else {
-            // Enforce 1023-byte limit on client name (TODO Make error?)
-            client_name = name.substr(0, 1023);
+            // TODO Make error if name too long?
+            client_name = name.substr(0, max_client_name_length);
             client_pid = pid;
             has_said_hello = true;
             success_cb(id);

@@ -36,9 +36,16 @@ namespace partake::common {
 
 namespace internal {
 
-void proquint_from_u64(gsl::span<char, 23> dest, std::uint64_t i) noexcept;
+constexpr std::size_t proquint64_words = 4;
+constexpr std::size_t proquint_word_len = 5;
+constexpr std::size_t proquint64_length =
+    proquint_word_len * proquint64_words + (proquint64_words - 1);
 
-[[nodiscard]] auto proquint_to_u64(gsl::span<char const, 23> pq) noexcept
+void proquint_from_u64(gsl::span<char, proquint64_length> dest,
+                       std::uint64_t i) noexcept;
+
+[[nodiscard]] auto
+proquint_to_u64(gsl::span<char const, proquint64_length> pq) noexcept
     -> std::pair<std::uint64_t, bool>;
 
 } // namespace internal
@@ -47,7 +54,7 @@ class proquint64 {
     std::uint64_t val;
 
   public:
-    static constexpr std::size_t length = 5 * 4 + 3;
+    static constexpr std::size_t length = internal::proquint64_length;
 
     constexpr proquint64() noexcept : val(0) {}
 

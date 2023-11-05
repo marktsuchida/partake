@@ -58,7 +58,7 @@ auto create_posix_shmem(std::string const &name, bool force)
     // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
     auto fd = common::posix::file_descriptor(
         ::shm_open(name.c_str(), O_RDWR | O_CREAT | (force ? 0 : O_EXCL),
-                   0666),
+                   S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH),
         spdlog::default_logger());
     // NOLINTEND(cppcoreguidelines-pro-type-vararg)
     if (not fd.is_valid()) {
@@ -133,7 +133,8 @@ auto create_regular_file(std::string const &path, bool force)
     // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
     auto fd = common::posix::file_descriptor(
         ::open(path.c_str(),
-               O_RDWR | O_CREAT | (force ? 0 : O_EXCL) | O_CLOEXEC, 0666),
+               O_RDWR | O_CREAT | (force ? 0 : O_EXCL) | O_CLOEXEC,
+               S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH),
         spdlog::default_logger());
     // NOLINTEND(cppcoreguidelines-pro-type-vararg)
     if (not fd.is_valid()) {
@@ -360,6 +361,7 @@ auto create_posix_mmap_shmem(std::size_t size) -> mmap_shmem {
 }
 
 TEST_CASE("create_posix_mmap_shmem") {
+    // NOLINTNEXTLINE(readability-magic-numbers)
     auto shm = create_posix_mmap_shmem(100);
     CHECK(shm.is_valid());
     CHECK_FALSE(shm.name().empty());
@@ -388,6 +390,7 @@ auto create_file_mmap_shmem(std::size_t size) -> mmap_shmem {
 }
 
 TEST_CASE("create_posix_file_shmem") {
+    // NOLINTNEXTLINE(readability-magic-numbers)
     auto shm = create_file_mmap_shmem(100);
     CHECK(shm.is_valid());
     CHECK_FALSE(shm.name().empty());

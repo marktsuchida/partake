@@ -65,29 +65,30 @@ TEST_CASE("round_up_or_check_size") {
 
 auto human_readable_size(std::size_t size) -> std::string {
     // Do not round numbers; only summarize when exact.
-    static constexpr std::size_t sub_kilo_mask = (1u << 10) - 1;
+    static constexpr auto kibishift = 10;
+    static constexpr std::size_t sub_kibi_mask = (1u << kibishift) - 1;
     if (size == 0)
         return "0 bytes";
     if (size == 1)
         return "1 byte";
-    if ((size & sub_kilo_mask) != 0u)
+    if ((size & sub_kibi_mask) != 0u)
         return fmt::format("{} bytes", size);
-    size >>= 10;
-    if ((size & sub_kilo_mask) != 0u)
+    size >>= kibishift;
+    if ((size & sub_kibi_mask) != 0u)
         return fmt::format("{} KiB", size);
-    size >>= 10;
-    if ((size & sub_kilo_mask) != 0u)
+    size >>= kibishift;
+    if ((size & sub_kibi_mask) != 0u)
         return fmt::format("{} MiB", size);
-    size >>= 10;
-    if ((size & sub_kilo_mask) != 0u)
+    size >>= kibishift;
+    if ((size & sub_kibi_mask) != 0u)
         return fmt::format("{} GiB", size);
-    size >>= 10;
-    if ((size & sub_kilo_mask) != 0u)
+    size >>= kibishift;
+    if ((size & sub_kibi_mask) != 0u)
         return fmt::format("{} TiB", size);
-    size >>= 10;
-    if ((size & sub_kilo_mask) != 0u)
+    size >>= kibishift;
+    if ((size & sub_kibi_mask) != 0u)
         return fmt::format("{} PiB", size);
-    size >>= 10;
+    size >>= kibishift;
     return fmt::format("{} EiB", size);
 }
 

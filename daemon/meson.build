@@ -6,6 +6,7 @@ daemon_sources = [
     'allocator.cpp',
     'cli.cpp',
     'client.cpp',
+    'config.cpp',
     'connection_acceptor.cpp',
     'daemon.cpp',
     'handle.cpp',

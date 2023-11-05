@@ -35,6 +35,8 @@ TEST_CASE("response_builder: empty response") {
     CHECK(root->responses()->size() == 0);
 }
 
+// NOLINTBEGIN(readability-magic-numbers)
+
 TEST_CASE("response_builder: successful response") {
     response_builder rb;
     auto &fbb = rb.fbbuilder();
@@ -72,5 +74,7 @@ TEST_CASE("response_builder: error response") {
     CHECK(resp0->status() == protocol::Status::INVALID_REQUEST);
     CHECK(resp0->response_type() == protocol::AnyResponse::NONE);
 }
+
+// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::daemon

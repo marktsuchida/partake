@@ -27,6 +27,8 @@ namespace partake::daemon {
 // values (unless they are determined to). The pseudorandom tokens also serve
 // as good hash table keys.
 class key_sequence {
+    // The initial value could be any non-zero value; use the simplest one.
+    // NOLINTNEXTLINE(readability-magic-numbers)
     std::uint64_t prev = 0xffff'ffff'ffff'ffffuLL;
 
   public:
@@ -50,10 +52,12 @@ class key_sequence {
         auto t = prev;
         assert(t != 0);
 
+        // NOLINTBEGIN(readability-magic-numbers)
         // See https://en.wikipedia.org/wiki/Xorshift
         t ^= t << 13;
         t ^= t >> 7;
         t ^= t << 17;
+        // NOLINTEND(readability-magic-numbers)
 
         prev = t;
         return common::token(t);

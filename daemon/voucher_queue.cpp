@@ -79,6 +79,8 @@ struct mock_voucher {
 
 } // namespace
 
+// NOLINTBEGIN(readability-magic-numbers)
+
 TEST_CASE("voucher_queue") {
     using namespace std::chrono_literals;
 
@@ -171,5 +173,7 @@ TEST_CASE("voucher_queue") {
         CHECK(v1->h.has_value());
     }
 }
+
+// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::daemon

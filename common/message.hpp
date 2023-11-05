@@ -60,6 +60,7 @@ read_message_frame_size(gsl::span<std::uint8_t const> bytes) noexcept
 }
 
 TEST_CASE("read_message_frame_size") {
+    // NOLINTBEGIN(readability-magic-numbers)
     std::array<std::uint8_t, 5> bytes{};
     auto s = gsl::make_span(bytes);
     CHECK(read_message_frame_size(s) == 8); // Prefix size + alignment padding
@@ -68,6 +69,7 @@ TEST_CASE("read_message_frame_size") {
     CHECK(read_message_frame_size(s.subspan(0, 0)) == 0);
     bytes[1] = 1; // Prefix set to 256 (FlatBuffers is little endian)
     CHECK(read_message_frame_size(s) == 264); // Add prefix and padding
+    // NOLINTEND(readability-magic-numbers)
 }
 
 } // namespace internal

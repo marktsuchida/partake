@@ -89,6 +89,8 @@ struct mock_voucher_queue {
 } // namespace
 
 TEST_CASE("repository") {
+    // NOLINTBEGIN(readability-magic-numbers)
+
     mock_voucher_queue vq;
     repository<mock_object, mock_key_sequence, mock_voucher_queue> r(
         mock_key_sequence(), vq);
@@ -109,6 +111,8 @@ TEST_CASE("repository") {
     REQUIRE_CALL(vq, drop(_)).WITH(_1 == v).TIMES(1);
     CHECK(r.claim_voucher(v, time_point(std::chrono::seconds(50))));
     CHECK_FALSE(r.claim_voucher(v, time_point(std::chrono::seconds(50))));
+
+    // NOLINTEND(readability-magic-numbers)
 }
 
 } // namespace partake::daemon

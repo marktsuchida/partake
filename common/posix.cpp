@@ -140,7 +140,7 @@ namespace {
 ::mode_t const the_umask = []() {
     // Store the umask at static initialization time so that we don't have any
     // chance of a data race.
-    auto ret = ::umask(0077);
+    auto ret = ::umask(S_IRWXG | S_IRWXO);
     (void)::umask(ret); // Restore
     return ret;
 }();

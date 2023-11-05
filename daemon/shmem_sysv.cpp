@@ -162,6 +162,8 @@ auto sysv_shmem_id::remove() -> bool {
 }
 
 TEST_CASE("sysv_shmem_id") {
+    // NOLINTBEGIN(readability-magic-numbers)
+
     SUBCASE("default instance") {
         sysv_shmem_id shmid;
         CHECK_FALSE(shmid.is_valid());
@@ -253,6 +255,8 @@ TEST_CASE("sysv_shmem_id") {
             CHECK(shmid.remove()); // Idempotent
         }
     }
+
+    // NOLINTEND(readability-magic-numbers)
 }
 
 sysv_shmem_attachment::sysv_shmem_attachment(int id) {
@@ -358,6 +362,7 @@ auto create_sysv_shmem(int key, std::size_t size, bool force,
 }
 
 TEST_CASE("create_sysv_shmem") {
+    // NOLINTNEXTLINE(readability-magic-numbers)
     auto shm = create_sysv_shmem(100);
     CHECK(shm.is_valid());
     CHECK(shm.id() >= 0);

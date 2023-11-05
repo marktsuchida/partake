@@ -77,6 +77,8 @@ struct mock_error_handler {
 
 } // namespace
 
+// NOLINTBEGIN(readability-magic-numbers)
+
 TEST_CASE("request_handler: invalid request message") {
     mock_session sess;
     mock_writer write;
@@ -1057,5 +1059,7 @@ TEST_CASE("request_handler: discard_voucher") {
         CHECK(resp->response_type() == AnyResponse::NONE);
     }
 }
+
+// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::daemon

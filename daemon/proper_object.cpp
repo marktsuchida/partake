@@ -23,9 +23,10 @@ struct mock_handle : handle_list<mock_handle>::hook {
 } // namespace
 
 TEST_CASE("proper_object") {
+    // NOLINTBEGIN(readability-magic-numbers)
     proper_object<int, mock_handle> po(42);
-
     CHECK(po.resource() == 42);
+    // NOLINTEND(readability-magic-numbers)
     CHECK_FALSE(po.is_opened_by_unique_handle());
     CHECK_FALSE(po.is_shared());
     CHECK(po.exclusive_writer() == nullptr);

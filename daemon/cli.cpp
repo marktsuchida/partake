@@ -6,6 +6,7 @@
 
 #include "cli.hpp"
 
+#include "config.hpp"
 #include "sizes.hpp"
 
 #include <CLI/CLI.hpp>
@@ -37,7 +38,7 @@ struct cli_args {
     std::size_t huge_page_size = 0;
     bool large_pages = false;
     bool force = false;
-    double voucher_ttl = 10.0;
+    double voucher_ttl = default_voucher_ttl_seconds;
 };
 
 constexpr auto partake_version =
@@ -121,11 +122,11 @@ auto parse_size_suffix(std::string const &s) -> std::string {
     if (suffix.empty() || suffix == "B" || suffix == "b")
         ;
     else if (suffix == "K" || suffix == "k")
-        multiplier = 1 << 10;
+        multiplier = 1024uLL;
     else if (suffix == "M" || suffix == "m")
-        multiplier = 1 << 20;
+        multiplier = 1024uLL * 1024uLL;
     else if (suffix == "G" || suffix == "g")
-        multiplier = 1 << 30;
+        multiplier = 1024uLL * 1024uLL * 1024uLL;
     else
         throw CLI::ValidationError("Invalid size suffix: " + suffix);
 
@@ -199,7 +200,7 @@ auto parse_cli_args_unvalidated(int argc, char const *const *argv)
 
     // Make the help text fit in 79 columns. May require adjustment if option
     // description strings change.
-    app.get_formatter()->column_width(26);
+    app.get_formatter()->column_width(26); // NOLINT(readability-magic-numbers)
 
     app.add_option("-m,--memory", ret.memory,
                    "Size of shared memory (suffixes K/M/G allowed)")
