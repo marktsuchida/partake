@@ -136,8 +136,6 @@ class unlinkable {
     }
 };
 
-auto get_umask() noexcept -> int;
-
 } // namespace partake::common::posix
 
 #endif // _WIN32

@@ -21,6 +21,7 @@
 #include <type_traits>
 
 #include <sys/shm.h>
+#include <sys/stat.h>
 
 // SHM_HUGE_SHIFT is defined in linux/shm.h but that header appears to conflict
 // with sys/shm.h. It is safe to hard-code this value because it is part of the
@@ -40,9 +41,17 @@ static_assert(IPC_PRIVATE == 0);
 
 namespace internal {
 
-#ifdef __linux__
 namespace {
 
+::mode_t const the_umask = []() {
+    // Store the umask at static initialization time so that we don't have any
+    // chance of a data race.
+    auto ret = ::umask(S_IRWXG | S_IRWXO);
+    (void)::umask(ret); // Restore
+    return ret;
+}();
+
+#ifdef __linux__
 // Returns 0 if invalid size requested.
 auto linux_page_size(bool use_huge_pages, std::size_t huge_page_size)
     -> std::size_t {
@@ -57,9 +66,9 @@ auto linux_page_size(bool use_huge_pages, std::size_t huge_page_size)
     }
     return page_size();
 }
+#endif
 
 } // namespace
-#endif
 
 auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
                           bool use_huge_pages = false,
@@ -129,7 +138,7 @@ auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
     // shmget() does not use the umask, but we apply it ourselves to match the
     // behavior of files and POSIX shared memory. The executable bits do
     // nothing, so leave cleared.
-    auto const perms = 0666 & ~common::posix::get_umask();
+    auto const perms = 0666 & ~the_umask;
     int id = ::shmget(key, size,
                       IPC_CREAT | (force ? 0 : IPC_EXCL) | huge_pages_flags |
                           perms);
