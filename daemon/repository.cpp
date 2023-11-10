@@ -69,8 +69,9 @@ struct mock_object : token_hash_table<mock_object>::hook,
 
     auto is_valid(time_point now) const -> bool { return c > 0 && now <= exp; }
 
-    // NOLINTNEXTLINE(readability-make-member-function-const)
-    auto target() -> std::shared_ptr<mock_object> { return tgt; }
+    auto target() const noexcept -> std::shared_ptr<mock_object> {
+        return tgt;
+    }
 };
 
 struct mock_key_sequence { // Generate sequential starting at 1.

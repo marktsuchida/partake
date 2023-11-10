@@ -86,8 +86,7 @@ TEST_CASE("connection_acceptor: connect") {
         client.connect(uds::endpoint(path.string()));
 
         std::unique_lock lk(m);
-        while (not finished) // NOLINT(bugprone-infinite-loop)
-            cv.wait(lk);
+        cv.wait(lk, [&] { return finished; });
     });
 
     CHECK_FALSE(connection_detected);
