@@ -75,9 +75,7 @@ TEST_CASE("read_message_frame_size") {
 } // namespace internal
 
 // Buffer can be flatbuffers::DetachedBuffer or anything with size() and data()
-// that owns its storage and can be move-constructed without invalidating
-// data().
-// CompletionFunc takes error_code (std or boost) and returns void.
+// that owns its storage and is movable.
 template <typename Socket, typename Buffer> class async_message_writer {
   public:
     using socket_type = Socket;
@@ -86,9 +84,10 @@ template <typename Socket, typename Buffer> class async_message_writer {
   private:
     gsl::not_null<socket_type *> sock;
     std::function<void(std::error_code)> handle_cmpl;
-    std::vector<buffer_type> buffers_being_written;
-    std::size_t next_index_to_write = 0; // 0 indicates no write in flight.
     std::vector<buffer_type> buffers_to_write_next;
+    std::vector<buffer_type> buffers_being_written;
+    std::vector<asio::const_buffer> asio_buffers;
+    std::vector<std::size_t> end_offsets;
 
   public:
     explicit async_message_writer(
@@ -107,74 +106,80 @@ template <typename Socket, typename Buffer> class async_message_writer {
             return asio::defer(sock->get_executor(),
                                [this] { handle_cmpl({}); });
 
-        buffers_to_write_next.emplace_back(std::move(buffer));
+        buffers_to_write_next.push_back(std::move(buffer));
         if (not is_write_in_progress())
-            start_writing_buffers();
+            start_writing();
     }
 
   private:
     [[nodiscard]] auto is_write_in_progress() const noexcept -> bool {
-        return next_index_to_write != 0;
+        return not buffers_being_written.empty();
     }
 
-    void start_writing_buffers() {
+    void start_writing() {
         assert(not is_write_in_progress());
+        assert(asio_buffers.empty());
+        assert(end_offsets.empty());
+
         using std::swap;
         swap(buffers_being_written, buffers_to_write_next);
-        schedule_next_write();
-    }
+        assert(is_write_in_progress());
 
-    void schedule_next_write() {
-        buffer_type buf =
-            std::move(buffers_being_written[next_index_to_write]);
-        ++next_index_to_write;
+        // Fill asio_buffers with references to memory owned by
+        // buffers_being_written (and the static 'zeros').
+        std::size_t end_offset = 0;
+        for (buffer_type &buf : buffers_being_written) {
+            asio_buffers.emplace_back(buf.data(), buf.size());
 
-        // The FlatBuffers docs do not specify how the _end_ of a constructed
-        // buffer is aligned. Because we send buffers one after another, it is
-        // important that each buffer have a size that is a multiple of the
-        // required alignment (8). So we add the necessary zero bytes if
-        // necessary. We do not adjust the size prefix, as we round up the size
-        // on the receiving end.
-        auto aligned_size = internal::round_size_up_to_alignment(buf.size());
-        auto pad_size = aligned_size - buf.size();
+            // The FlatBuffers docs do not specify how the _end_ of a
+            // constructed buffer is aligned. Because we send buffers one after
+            // another, it is important that each buffer have a size that is a
+            // multiple of the required alignment (8). So we add the necessary
+            // zero bytes if necessary. We do not adjust the size prefix, as we
+            // round up the size on the receiving end.
+            static constexpr std::array<std::uint8_t, message_frame_alignment>
+                zeros{};
+            auto aligned_size =
+                internal::round_size_up_to_alignment(buf.size());
+            auto pad_size = aligned_size - buf.size();
+            if (pad_size > 0)
+                asio_buffers.emplace_back(zeros.data(), pad_size);
 
-        static constexpr std::array<std::uint8_t, message_frame_alignment>
-            zeros{};
-        auto pad_bytes = gsl::span(zeros).first(pad_size);
-        assert(pad_bytes.size() == pad_size);
-
-        auto buffers = std::array{
-            asio::const_buffer(buf.data(), buf.size()),
-            asio::const_buffer(pad_bytes.data(), pad_bytes.size()),
-        };
-
-        // 'buffers' points to data in 'buf' and 'zeros'. We keep 'buf'
-        // available until the write finishes by moving it into the lambda
-        // below.
+            end_offset += aligned_size;
+            end_offsets.push_back(end_offset);
+        }
 
         asio::async_write(
-            *sock, buffers,
-            [this, b = std::move(buf)](boost::system::error_code err,
-                                       std::size_t written) {
-                handle_cmpl(err);
-                if (err) {
-                    buffers_being_written.clear();
-                    next_index_to_write = 0;
-                    buffers_to_write_next.clear();
-                    return;
-                }
+            *sock, asio_buffers,
+            [this](boost::system::error_code err, std::size_t written) {
+                static const boost::system::error_code canceled =
+                    asio::error::operation_aborted;
 
-                assert(written ==
-                       internal::round_size_up_to_alignment(b.size()));
+                asio_buffers.clear();
+                buffers_being_written.clear();
 
-                if (buffers_being_written.size() > next_index_to_write) {
-                    schedule_next_write();
-                } else { // Finished current buffers_being_written.
-                    buffers_being_written.clear();
-                    next_index_to_write = 0;
-                    if (not buffers_to_write_next.empty()) {
-                        start_writing_buffers();
+                bool had_error = false;
+                for (auto off : end_offsets) {
+                    if (written >= off) {
+                        handle_cmpl({});
+                    } else {
+                        if (not had_error) {
+                            assert(err);
+                            handle_cmpl(err);
+                            had_error = true;
+                        } else {
+                            handle_cmpl(canceled);
+                        }
                     }
+                }
+                end_offsets.clear();
+
+                if (err) {
+                    for ([[maybe_unused]] auto &b : buffers_to_write_next)
+                        handle_cmpl(canceled);
+                    buffers_to_write_next.clear();
+                } else if (not buffers_to_write_next.empty()) {
+                    start_writing();
                 }
             });
     }
