@@ -9,6 +9,7 @@
 #include "allocator.hpp"
 #include "asio.hpp"
 #include "client.hpp"
+#include "config.hpp"
 #include "connection_acceptor.hpp"
 #include "handle.hpp"
 #include "hive.hpp"
@@ -37,7 +38,8 @@ struct daemon_config {
     asio::local::stream_protocol::endpoint endpoint;
     segment_config seg_config;
     std::size_t log2_granularity = 0;
-    std::chrono::milliseconds voucher_ttl;
+    std::chrono::milliseconds voucher_ttl =
+        std::chrono::seconds(default_voucher_ttl_seconds);
 };
 
 template <typename AsioContext> class partake_daemon {
@@ -92,7 +94,7 @@ template <typename AsioContext> class partake_daemon {
             exitcode = 1;
             return;
         }
-        std::size_t gran = std::size_t(1) << allocr.log2_granularity();
+        std::size_t const gran = std::size_t(1) << allocr.log2_granularity();
         spdlog::info("allocation granularity set to {}",
                      human_readable_size(gran));
         if (seg.size() % gran != 0) {

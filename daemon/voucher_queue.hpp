@@ -99,7 +99,7 @@ class voucher_queue {
 
     void enqueue(std::shared_ptr<object_type> const &voucher) {
         auto exp = voucher->as_voucher().expiration();
-        handle_type h = queue.push({exp, voucher});
+        handle_type const h = queue.push({exp, voucher});
         voucher->as_voucher().set_queued(h);
         schedule_expiration(exp);
     }

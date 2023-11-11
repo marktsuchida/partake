@@ -232,7 +232,7 @@ template <typename Socket> class async_message_reader {
                     frame_size = internal::read_message_frame_size(remaining);
                     if (frame_size == 0 || frame_size > remaining.size())
                         break; // Complete frame not yet available
-                    bool done = handle_msg(remaining.first(frame_size));
+                    bool const done = handle_msg(remaining.first(frame_size));
                     if (done)
                         return handle_ed({});
                     remaining = remaining.subspan(frame_size);

@@ -142,7 +142,7 @@ template <typename Resource, typename Handle> class proper_object {
         handle_awaiting_unique_ownership = hnd;
     }
 
-    auto has_handle_awaiting_unique_ownership() const noexcept {
+    [[nodiscard]] auto has_handle_awaiting_unique_ownership() const noexcept {
         return handle_awaiting_unique_ownership != nullptr;
     }
 
