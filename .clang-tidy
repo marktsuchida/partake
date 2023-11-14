@@ -2,6 +2,9 @@
 # Copyright 2020-2023 Board of Regents of the University of Wisconsin System
 # SPDX-License-Identifier: MIT
 ---
+HeaderFilterRegex: >-
+    \.\./(common|daemon)/[^/]*\.hpp$
+
 Checks: >-
     -*,
     bugprone-*,
@@ -16,6 +19,7 @@ Checks: >-
     -bugprone-exception-escape,
     -bugprone-macro-parentheses,
     -cppcoreguidelines-avoid-magic-numbers,
+    -misc-no-recursion,
     -readability-identifier-length,
 
 # Reasons for disabled checks:
@@ -28,6 +32,8 @@ Checks: >-
 #   to fix. (Using --fix did not reveal anything useful.) As of LLVM 16.
 # cppcoreguidelines-avoid-magic-numbers
 #   Duplicate of readability-magic-numbers.
+# misc-no-recursion
+#   Hard to suppress false positives.
 # readability-identifier-length
 #   Short variable names are not always evil.
 
