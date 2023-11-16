@@ -8,4 +8,8 @@
 
 #include <boost/asio.hpp>
 
+namespace partake {
+
 namespace asio = boost::asio; // NOLINT(misc-unused-alias-decls)
+
+}

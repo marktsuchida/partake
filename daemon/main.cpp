@@ -13,7 +13,7 @@ auto main(int argc, char const *const argv[]) -> int {
     auto const result =
         parse_cli_args(argc, argv)
             .and_then([](daemon_config const &cfg) -> tl::expected<void, int> {
-                asio::io_context ioctx(1);
+                partake::asio::io_context ioctx(1);
                 auto daemon = partake_daemon(ioctx, cfg);
                 daemon.start();
                 ioctx.run();
