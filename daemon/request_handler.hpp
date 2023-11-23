@@ -28,7 +28,7 @@ namespace internal {
 inline auto segment_spec_to_fb(flatbuffers::FlatBufferBuilder &fbb,
                                segment_spec const &spec) {
     auto [seg_type, seg_mapping_spec] = std::visit(
-        internal::overloaded{
+        common::overloaded{
             [&fbb](posix_mmap_segment_spec const &s) {
                 return std::make_pair(
                     protocol::SegmentMappingSpec::PosixMmapSpec,

@@ -6,7 +6,7 @@
 
 #pragma once
 
-namespace partake::daemon::internal {
+namespace partake::common {
 
 template <typename... Ts> struct overloaded : Ts... {
     using Ts::operator()...;
@@ -14,4 +14,4 @@ template <typename... Ts> struct overloaded : Ts... {
 
 template <typename... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
-} // namespace partake::daemon::internal
+} // namespace partake::common

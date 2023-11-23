@@ -182,7 +182,7 @@ segment::segment() : impl(std::make_unique<unsupported_segment>(0)) {}
 
 segment::segment(segment_config const &config)
     : impl(std::visit(
-          internal::overloaded{
+          common::overloaded{
               [&config](posix_mmap_segment_config const &cfg) -> impl_ptr {
                   return std::make_unique<posix_mmap_segment>(cfg,
                                                               config.size);

@@ -9,6 +9,7 @@ common_sources = files([
     'errors.cpp',
     'logging.cpp',
     'message.cpp',
+    'overloaded.cpp',
     'posix.cpp',
     'proquint.cpp',
     'random.cpp',
