@@ -58,6 +58,9 @@ daemon_test = executable(
         common_incdir,
     ],
     dependencies: daemon_deps,
+    cpp_args: [
+        '-DBOOST_ASIO_ENABLE_HANDLER_TRACKING',
+    ],
 )
 test('daemon test', daemon_test)
 

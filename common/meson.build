@@ -35,5 +35,8 @@ common_test = executable(
         gsl_dep,
         spdlog_dep,
     ],
+    cpp_args: [
+        '-DBOOST_ASIO_ENABLE_HANDLER_TRACKING',
+    ],
 )
 test('common test', common_test)
