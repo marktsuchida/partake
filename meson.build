@@ -55,7 +55,7 @@ expected_dep = dependency(
 
 fmt_dep = dependency('fmt', fallback: 'fmt', include_type: 'system')
 
-cli11_dep = dependency('cli11', fallback: 'cli11', include_type: 'system')
+cli11_dep = dependency('CLI11', fallback: 'cli11', include_type: 'system')
 
 spdlog_dep = dependency('spdlog', fallback: 'spdlog', include_type: 'system')
 
