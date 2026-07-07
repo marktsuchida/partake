@@ -2,6 +2,7 @@
 # Copyright 2020-2023 Board of Regents of the University of Wisconsin System
 # SPDX-License-Identifier: MIT
 
+.wraplock
 /packagecache/
 
 # Subprojects with version numbers, downloaded via wrap
