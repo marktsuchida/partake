@@ -21,6 +21,18 @@ enum class errc {
     invalid_request_type,
 };
 
+// Mirror protocol::Status so that it can be handled as a std::error_code
+// together with other types of errors on the client side.
+enum class protocol_errc {
+    unknown_protocol_error = -1,
+    invalid_request = 1,
+    out_of_shmem,
+    no_such_segment,
+    no_such_object,
+    object_busy,
+    object_reserved,
+};
+
 struct partake_error_category : std::error_category {
     [[nodiscard]] auto name() const noexcept -> char const * override {
         return "partake";
@@ -43,10 +55,43 @@ struct partake_error_category : std::error_category {
     }
 };
 
+struct protocol_error_category : std::error_category {
+    [[nodiscard]] auto name() const noexcept -> char const * override {
+        return "partake_protocol";
+    }
+
+    [[nodiscard]] auto message(int c) const -> std::string override {
+        switch (static_cast<protocol_errc>(c)) {
+        case protocol_errc::unknown_protocol_error:
+            break;
+        case protocol_errc::invalid_request:
+            return "Invalid request";
+        case protocol_errc::out_of_shmem:
+            return "Out of shared memory";
+        case protocol_errc::no_such_segment:
+            return "No such segment";
+        case protocol_errc::no_such_object:
+            return "No object or voucher with given key and expected type";
+        case protocol_errc::object_busy:
+            return "Object is not ready for this operation";
+        case protocol_errc::object_reserved:
+            return "Object already has pending unshare request";
+        }
+        if (c == 0)
+            return "Success";
+        return "Unknown error (partake protocol)";
+    }
+};
+
 inline partake_error_category const the_partake_error_category;
+inline protocol_error_category const the_protocol_error_category;
 
 inline auto make_error_code(errc c) noexcept -> std::error_code {
     return {static_cast<int>(c), the_partake_error_category};
+}
+
+inline auto make_error_code(protocol_errc c) noexcept -> std::error_code {
+    return {static_cast<int>(c), the_protocol_error_category};
 }
 
 } // namespace partake::common
@@ -54,5 +99,8 @@ inline auto make_error_code(errc c) noexcept -> std::error_code {
 namespace std {
 
 template <> struct is_error_code_enum<partake::common::errc> : true_type {};
+
+template <>
+struct is_error_code_enum<partake::common::protocol_errc> : true_type {};
 
 } // namespace std
