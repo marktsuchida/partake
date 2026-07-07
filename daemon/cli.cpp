@@ -465,10 +465,9 @@ auto validate_segment_config(cli_args const &args)
         return segment_config{
             win32_segment_config{args.filename, args.name, args.force, false},
             args.memory};
-    default:
-        assert(false);
-        std::terminate();
     }
+    assert(false);
+    std::terminate();
 }
 
 auto validate_cli_args(cli_args const &args)

@@ -36,11 +36,10 @@ struct partake_error_category : std::error_category {
             return "End-of-file encountered before end of message";
         case errc::invalid_request_type:
             return "Invalid or incompatible request type";
-        default:
-            if (c == 0)
-                return "Success";
-            return "Unknown error";
         }
+        if (c == 0)
+            return "Success";
+        return "Unknown error (partake)";
     }
 };
 
