@@ -121,7 +121,8 @@ template <typename Session> class request_handler {
         for (auto const *req : *requests) {
             auto type = req->request_type();
             if (type >= protocol::AnyRequest::MIN &&
-                type <= protocol::AnyRequest::MAX) {
+                type <= protocol::AnyRequest::MAX &&
+                type != protocol::AnyRequest::NONE) {
                 done = handle_request(req, now, rb);
             } else {
                 // From here on, we can meaningfully report errors to the
@@ -157,6 +158,8 @@ template <typename Session> class request_handler {
         auto type = req->request_type();
         switch (type) {
             using r = protocol::AnyRequest;
+        case r::NONE:
+            break;
         case r::PingRequest:
             return handle_ping(seqno, req->request_as_PingRequest(), rb);
         case r::HelloRequest:
@@ -182,10 +185,9 @@ template <typename Session> class request_handler {
         case r::DiscardVoucherRequest:
             return handle_discard_voucher(
                 seqno, req->request_as_DiscardVoucherRequest(), now, rb);
-        default:
-            assert(false); // Forgot to implement
-            std::terminate();
         }
+        assert(false);
+        std::terminate();
     }
 
     auto handle_ping(std::uint64_t seqno, protocol::PingRequest const *req,

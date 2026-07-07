@@ -445,6 +445,8 @@ table Request {
     /*
      * 'seqno' is copied to the corresponding response by partaked. The client
      * can assign whatever it prefers.
+     *
+     * It is an error (INVALID_REQUEST) if 'request' has type 'NONE'.
      */
 }
 
@@ -453,6 +455,10 @@ table Response {
     seqno: uint64;
     status: Status = OK;
     response: AnyResponse;
+
+    /*
+     * When 'status' is not 'OK', 'response' is type 'NONE' (i.e., empty).
+     */
 }
 
 
