@@ -241,7 +241,7 @@ template <typename Socket> class async_message_reader {
             asio::buffer(new_read.data(), new_read.size()),
             [this, start](boost::system::error_code err,
                           std::size_t bytes_read) {
-                if (err && err.value() != asio::error::eof)
+                if (err && err != asio::error::eof)
                     return handle_ed(err);
 
                 auto remaining = gsl::span(std::as_const(readbuf))
