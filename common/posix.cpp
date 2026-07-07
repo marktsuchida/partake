@@ -19,6 +19,7 @@
 #include <cstring> // strerror_r
 #include <filesystem>
 
+#include <fcntl.h> // open
 #include <unistd.h>
 
 namespace partake::common::posix {
