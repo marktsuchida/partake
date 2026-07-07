@@ -42,7 +42,7 @@ endif
 boost_dep = dependency('boost', include_type: 'system')
 
 gsl_dep = dependency(
-    'gsl',
+    'microsoft-gsl',
     fallback: ['microsoft-gsl', 'microsoft_gsl_dep'],
     include_type: 'system',
 )
