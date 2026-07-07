@@ -117,6 +117,36 @@ TEST_CASE("request_handler: empty request message") {
     CHECK_FALSE(rh.handle_message(req_span));
 }
 
+TEST_CASE("request_handler: padded frame") {
+    mock_session sess;
+    mock_writer write;
+    mock_error_handler handle_error;
+    auto rh = request_handler<mock_session>(
+        sess, std::reference_wrapper(write), [] {},
+        std::reference_wrapper(handle_error));
+
+    flatbuffers::FlatBufferBuilder b;
+    using namespace protocol;
+    b.FinishSizePrefixed(CreateRequestMessage(
+        b, b.CreateVector(std::vector<flatbuffers::Offset<Request>>{})));
+    REQUIRE(b.GetSize() % 8 == 4); // Message requiring padding on the wire.
+
+    // Construct the frame the way common::async_message_writer does: append
+    // zero padding and round the size prefix up to cover it.
+    std::vector<std::uint8_t> frame(b.GetBufferPointer(),
+                                    b.GetBufferPointer() + b.GetSize());
+    frame.resize(frame.size() + 4);
+    flatbuffers::WriteScalar(
+        frame.data(), static_cast<flatbuffers::uoffset_t>(
+                          frame.size() - sizeof(flatbuffers::uoffset_t)));
+
+    using trompeloeil::_;
+    REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
+    // No calls to 'write' or 'handle_error'.
+
+    CHECK_FALSE(rh.handle_message(frame));
+}
+
 TEST_CASE("request_handler: ping") {
     mock_session sess;
     mock_writer write;

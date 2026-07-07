@@ -17,6 +17,7 @@ namespace partake::common {
 enum class errc {
     message_too_long = 1,
     invalid_message,
+    misaligned_message,
     eof_in_message,
     invalid_request_type,
 };
@@ -44,6 +45,8 @@ struct partake_error_category : std::error_category {
             return "Protocol message exceeds allowed size";
         case errc::invalid_message:
             return "Malformed or incompatible protocol message";
+        case errc::misaligned_message:
+            return "Protocol message frame length is not a multiple of 8";
         case errc::eof_in_message:
             return "End-of-file encountered before end of message";
         case errc::invalid_request_type:

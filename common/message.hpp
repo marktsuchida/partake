@@ -29,6 +29,12 @@
 
 namespace partake::common {
 
+// Framing convention: each wire message is a standard size-prefixed
+// FlatBuffer whose total length (4-byte prefix + payload) is a multiple of 8.
+// Senders append zero padding and round the size prefix up to cover it; the
+// padding is unreachable via FlatBuffers offsets, so accessors and the
+// verifier never touch it. This keeps successive frames 8-byte aligned in the
+// receive buffer for in-place parsing.
 constexpr std::size_t message_frame_alignment = 8;
 constexpr std::size_t max_message_frame_len = 32768;
 
@@ -54,28 +60,28 @@ read_message_frame_size(gsl::span<std::uint8_t const> bytes) noexcept
     if (bytes.size() < sizeof(flatbuffers::uoffset_t))
         return 0;
     auto const fblen = flatbuffers::GetPrefixedSize(bytes.data());
-    auto const msglen = fblen + sizeof(flatbuffers::uoffset_t);
-    auto const framelen = round_size_up_to_alignment(msglen);
-    return framelen;
+    return fblen + sizeof(flatbuffers::uoffset_t);
 }
 
 TEST_CASE("read_message_frame_size") {
     // NOLINTBEGIN(readability-magic-numbers)
     std::array<std::uint8_t, 5> bytes{};
     auto s = gsl::make_span(bytes);
-    CHECK(read_message_frame_size(s) == 8); // Prefix size + alignment padding
-    CHECK(read_message_frame_size(s.subspan(0, 4)) == 8);
+    CHECK(read_message_frame_size(s) == 4); // Prefix size only
+    CHECK(read_message_frame_size(s.subspan(0, 4)) == 4);
     CHECK(read_message_frame_size(s.subspan(0, 3)) == 0);
     CHECK(read_message_frame_size(s.subspan(0, 0)) == 0);
     bytes[1] = 1; // Prefix set to 256 (FlatBuffers is little endian)
-    CHECK(read_message_frame_size(s) == 264); // Add prefix and padding
+    CHECK(read_message_frame_size(s) == 260);
     // NOLINTEND(readability-magic-numbers)
 }
 
 } // namespace internal
 
-// Buffer can be flatbuffers::DetachedBuffer or anything with size() and data()
-// that owns its storage and is movable.
+// Buffer can be flatbuffers::DetachedBuffer or anything with size() and
+// mutable data() that owns its storage and is movable. Each buffer must
+// contain a size-prefixed FlatBuffer message (its prefix may be patched to
+// account for padding).
 template <typename Socket, typename Buffer> class async_message_writer {
   public:
     using socket_type = Socket;
@@ -133,17 +139,25 @@ template <typename Socket, typename Buffer> class async_message_writer {
 
             // The FlatBuffers docs do not specify how the _end_ of a
             // constructed buffer is aligned. Because we send buffers one after
-            // another, it is important that each buffer have a size that is a
-            // multiple of the required alignment (8). So we add the necessary
-            // zero bytes if necessary. We do not adjust the size prefix, as we
-            // round up the size on the receiving end.
+            // another, it is important that each frame have a size that is a
+            // multiple of the required alignment (8). So we add zero bytes if
+            // necessary, and round the size prefix up to cover the padding
+            // (see the framing convention above).
             static constexpr std::array<std::uint8_t, message_frame_alignment>
                 zeros{};
             auto aligned_size =
                 internal::round_size_up_to_alignment(buf.size());
             auto pad_size = aligned_size - buf.size();
-            if (pad_size > 0)
+            if (pad_size > 0) {
+                assert(buf.size() >= sizeof(flatbuffers::uoffset_t));
+                assert(flatbuffers::GetPrefixedSize(buf.data()) ==
+                       buf.size() - sizeof(flatbuffers::uoffset_t));
+                flatbuffers::WriteScalar(
+                    buf.data(),
+                    static_cast<flatbuffers::uoffset_t>(
+                        aligned_size - sizeof(flatbuffers::uoffset_t)));
                 asio_buffers.emplace_back(zeros.data(), pad_size);
+            }
 
             end_offset += aligned_size;
             end_offsets.push_back(end_offset);
@@ -235,7 +249,15 @@ template <typename Socket> class async_message_reader {
                 std::size_t frame_size = 0;
                 for (;;) {
                     frame_size = internal::read_message_frame_size(remaining);
-                    if (frame_size == 0 || frame_size > remaining.size())
+                    if (frame_size == 0)
+                        break; // Prefix not yet available
+                    if (frame_size % message_frame_alignment != 0)
+                        return handle_ed(
+                            std::error_code(errc::misaligned_message));
+                    if (frame_size > max_message_frame_len)
+                        return handle_ed(
+                            std::error_code(errc::message_too_long));
+                    if (frame_size > remaining.size())
                         break; // Complete frame not yet available
                     bool const done = handle_msg(remaining.first(frame_size));
                     if (done)
@@ -247,9 +269,6 @@ template <typename Socket> class async_message_reader {
 
                 // Ensure the rest of any partial frame will fit in the buffer
                 // on next read.
-                if (frame_size > max_message_frame_len)
-                    return handle_ed(std::error_code(errc::message_too_long));
-
                 if (frame_size > readbuf.size()) {
                     // Grow to fit the next message frame, but to at least 1.5x
                     // of current size to keep resizing infrequent.

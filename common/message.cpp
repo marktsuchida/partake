@@ -192,8 +192,8 @@ TEST_CASE("async_message_writer") {
     // NOLINTBEGIN(readability-magic-numbers)
 
     SUBCASE("unaligned-7") {
-        std::vector<std::uint8_t> v{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
-        v.resize(7); // Chop off 'h'
+        // Prefix 3; the writer pads to 8 and patches the prefix to 4.
+        std::vector<std::uint8_t> v{3, 0, 0, 0, 'e', 'f', 'g'};
         writer.async_write_message(std::move(v));
         ctx.run();
         CHECK(done);
@@ -206,12 +206,14 @@ TEST_CASE("async_message_writer") {
         while (data.size() > 8)
             data.pop_back();
 #endif
-        CHECK(data == std::vector<std::uint8_t>{'a', 'b', 'c', 'd', 'e', 'f',
-                                                'g', '\0'});
+        CHECK(data ==
+              std::vector<std::uint8_t>{4, 0, 0, 0, 'e', 'f', 'g', '\0'});
     }
 
-    SUBCASE("unaligned-9") {
-        std::vector<std::uint8_t> v(9, 'a');
+    SUBCASE("unaligned-12") {
+        // Prefix 8; the writer pads to 16 and patches the prefix to 12.
+        std::vector<std::uint8_t> v{8,   0,   0,   0,   'a', 'b',
+                                    'c', 'd', 'e', 'f', 'g', 'h'};
         writer.async_write_message(std::move(v));
         ctx.run();
         CHECK(done);
@@ -223,20 +225,20 @@ TEST_CASE("async_message_writer") {
         while (data.size() > 16)
             data.pop_back();
 #endif
-        std::vector<std::uint8_t> expected(9, 'a');
-        std::vector<std::uint8_t> const zeroes(7, '\0');
-        std::copy(zeroes.begin(), zeroes.end(), std::back_inserter(expected));
-        CHECK(data == expected);
+        CHECK(data == std::vector<std::uint8_t>{12, 0, 0, 0, 'a', 'b', 'c',
+                                                'd', 'e', 'f', 'g', 'h', '\0',
+                                                '\0', '\0', '\0'});
     }
 
     SUBCASE("aligned") {
-        std::vector<std::uint8_t> v{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
+        // Prefix 4; written verbatim with the prefix untouched.
+        std::vector<std::uint8_t> v{4, 0, 0, 0, 'e', 'f', 'g', 'h'};
         writer.async_write_message(std::move(v));
         ctx.run();
         CHECK(done);
         auto data = get_file_contents(path);
-        CHECK(data == std::vector<std::uint8_t>{'a', 'b', 'c', 'd', 'e', 'f',
-                                                'g', 'h'});
+        CHECK(data ==
+              std::vector<std::uint8_t>{4, 0, 0, 0, 'e', 'f', 'g', 'h'});
     }
 
     // NOLINTEND(readability-magic-numbers)
@@ -267,8 +269,8 @@ TEST_CASE("async_message_reader: empty stream") {
 }
 
 TEST_CASE("async_message_reader: single empty message") {
-    // Single message with size header 0, padded to 8 bytes
-    std::vector<std::uint8_t> v(8, 0);
+    // Single 8-byte frame: size prefix 4 followed by 4 payload bytes
+    std::vector<std::uint8_t> v{4, 0, 0, 0, 0, 0, 0, 0};
 
     testing::tempdir const td;
     auto f = testing::unique_file_with_data(
@@ -281,7 +283,7 @@ TEST_CASE("async_message_reader: single empty message") {
         s,
         [&](gsl::span<std::uint8_t const> msg) -> bool {
             CHECK(msg.size() == 8);
-            CHECK(msg[0] == 0);
+            CHECK(msg[0] == 4);
             CHECK(msg[7] == 0);
             received = true;
             return false;
@@ -322,8 +324,9 @@ TEST_CASE("async_message_reader: large message") {
 }
 
 TEST_CASE("async_message_reader: quit by handler") {
-    // Two messages with size header 0, padded to 8 bytes each
-    std::vector<std::uint8_t> v(16, 0);
+    // Two 8-byte frames, each with size prefix 4
+    std::vector<std::uint8_t> v{4, 0, 0, 0, 0, 0, 0, 0,
+                                4, 0, 0, 0, 0, 0, 0, 0};
 
     testing::tempdir const td;
     auto f = testing::unique_file_with_data(
@@ -347,8 +350,38 @@ TEST_CASE("async_message_reader: quit by handler") {
 
 TEST_CASE("async_message_reader: message too long") {
     // Max message frame is 32k (including size prefix and padding).
-    // When (size prefix) > (32768 - 4), the limit is exceeded.
-    // 32765 = 0x7ffd.
+    // Use size prefix 32772 (0x8004) so the frame (32776) is a multiple of 8
+    // but exceeds the limit.
+    // NOLINTNEXTLINE(readability-magic-numbers)
+    std::vector<std::uint8_t> v{0x04, 0x80, 0, 0}; // Little-endian
+
+    testing::tempdir const td;
+    auto f = testing::unique_file_with_data(
+        td.path(), testing::make_test_filename(__FILE__, __LINE__), v);
+    asio::io_context ctx;
+    auto s = readable_asio_stream_for_file(ctx, f.path());
+
+    bool ended = false;
+    async_message_reader r(
+        s,
+        [&](gsl::span<std::uint8_t const> msg) -> bool {
+            CHECK(false);
+            (void)msg;
+            return false;
+        },
+        [&](std::error_code ec) {
+            CHECK(ec);
+            CHECK(ec == std::error_code(errc::message_too_long));
+            ended = true;
+        });
+    r.start();
+    ctx.run();
+    CHECK(ended);
+}
+
+TEST_CASE("async_message_reader: misaligned frame") {
+    // Size prefix 32765 makes the frame 32769, not a multiple of 8; a
+    // conforming sender never produces this.
     // NOLINTNEXTLINE(readability-magic-numbers)
     std::vector<std::uint8_t> v{0xfd, 0x7f, 0, 0}; // Little-endian
 
@@ -368,7 +401,7 @@ TEST_CASE("async_message_reader: message too long") {
         },
         [&](std::error_code ec) {
             CHECK(ec);
-            CHECK(ec == std::error_code(errc::message_too_long));
+            CHECK(ec == std::error_code(errc::misaligned_message));
             ended = true;
         });
     r.start();
@@ -405,6 +438,79 @@ TEST_CASE("async_message_reader: eof in message") {
     r.start();
     ctx.run();
     CHECK(ended);
+}
+
+TEST_CASE("writer-reader round trip of FlatBuffer needing padding") {
+    // Regression test: a real FlatBuffer whose size-prefixed length is
+    // 4 (mod 8) must arrive as a frame that satisfies the property required
+    // by flatbuffers::Verifier::VerifySizePrefixedBuffer: the size prefix
+    // must equal the frame length minus 4 exactly.
+
+    // NOLINTBEGIN(readability-magic-numbers)
+
+    // A table containing an empty vector of offsets (no schema needed);
+    // finishes at 28 bytes.
+    flatbuffers::FlatBufferBuilder b;
+    auto vec =
+        b.CreateVector(std::vector<flatbuffers::Offset<flatbuffers::Table>>{});
+    auto table_start = b.StartTable();
+    b.AddOffset(4, vec);
+    auto table_end = b.EndTable(table_start);
+    b.FinishSizePrefixed(flatbuffers::Offset<flatbuffers::Table>(table_end));
+    REQUIRE(b.GetSize() % 8 == 4); // The case being tested.
+
+    testing::tempdir const td;
+    auto path = testing::unique_path(
+        td.path(), testing::make_test_filename(__FILE__, __LINE__));
+
+    {
+        asio::io_context ctx;
+        auto s = writable_asio_stream_for_file(ctx, path);
+        bool written = false;
+        async_message_writer<decltype(s), std::vector<std::uint8_t>> writer(
+            s, [&](std::error_code e) {
+                CHECK_FALSE(e);
+                written = true;
+                s.close();
+            });
+        writer.async_write_message(std::vector<std::uint8_t>(
+            b.GetBufferPointer(), b.GetBufferPointer() + b.GetSize()));
+        ctx.run();
+        CHECK(written);
+    }
+    auto wire = [&] {
+        testing::auto_delete_file const adf(path);
+        auto data = get_file_contents(path);
+#ifdef _WIN32
+        // See the writer tests above regarding extra bytes added by Windows
+        // asio::stream_file.
+        auto const frame_len = internal::round_size_up_to_alignment(28);
+        while (data.size() > frame_len)
+            data.pop_back();
+#endif
+        return data;
+    }();
+
+    auto f = testing::unique_file_with_data(
+        td.path(), testing::make_test_filename(__FILE__, __LINE__), wire);
+    asio::io_context ctx;
+    auto s = readable_asio_stream_for_file(ctx, f.path());
+    bool received = false;
+    async_message_reader r(
+        s,
+        [&](gsl::span<std::uint8_t const> msg) -> bool {
+            CHECK(msg.size() % message_frame_alignment == 0);
+            CHECK(flatbuffers::GetPrefixedSize(msg.data()) ==
+                  msg.size() - sizeof(flatbuffers::uoffset_t));
+            received = true;
+            return false;
+        },
+        [&](std::error_code ec) { CHECK_FALSE(ec); });
+    r.start();
+    ctx.run();
+    CHECK(received);
+
+    // NOLINTEND(readability-magic-numbers)
 }
 
 } // namespace partake::common
