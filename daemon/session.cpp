@@ -24,10 +24,24 @@ namespace partake::daemon {
 
 namespace {
 
+// Resource type modeling the real allocation's validity contract: a
+// default-constructed instance is invalid, signaling allocation failure.
+struct fake_resource {
+    int id = 0; // 0 = invalid (allocation failed)
+    fake_resource() noexcept = default;
+    explicit fake_resource(int i) noexcept : id(i) {}
+    explicit operator bool() const noexcept { return id != 0; }
+    // maybe_unused for when doctest assertions are disabled:
+    [[maybe_unused]] friend auto operator==(fake_resource lhs,
+                                            fake_resource rhs) noexcept
+        -> bool {
+        return lhs.id == rhs.id;
+    }
+};
+
 struct mock_allocator {
-    // Use 'int' as resource type.
     // NOLINTNEXTLINE(modernize-use-trailing-return-type)
-    MAKE_MOCK1(allocate, auto(std::size_t)->int);
+    MAKE_MOCK1(allocate, auto(std::size_t)->fake_resource);
 };
 
 struct mock_segment {
@@ -37,7 +51,7 @@ struct mock_segment {
 };
 
 struct mock_voucher_queue {
-    using object_type = object<int>;
+    using object_type = object<fake_resource>;
     MAKE_MOCK1(enqueue, void(std::shared_ptr<object_type>));
     MAKE_MOCK1(drop, void(std::shared_ptr<object_type>));
 };
@@ -47,14 +61,14 @@ struct mock_voucher_queue {
 // NOLINTBEGIN(readability-magic-numbers)
 
 TEST_CASE("session: global ops") {
-    using session_type =
-        session<mock_allocator,
-                repository<object<int>, key_sequence, mock_voucher_queue>,
-                handle<object<int>>, mock_segment>;
+    using session_type = session<
+        mock_allocator,
+        repository<object<fake_resource>, key_sequence, mock_voucher_queue>,
+        handle<object<fake_resource>>, mock_segment>;
     mock_allocator alloc;
     mock_segment const seg;
     mock_voucher_queue vq;
-    repository<object<int>, key_sequence, mock_voucher_queue> repo(
+    repository<object<fake_resource>, key_sequence, mock_voucher_queue> repo(
         key_sequence(), vq);
 
     using protocol::Status;
@@ -97,14 +111,14 @@ TEST_CASE("session: object ops") {
     // Test operations on keys in various state. The overall plan is to test
     // each operation on a key in each state.
 
-    using session_type =
-        session<mock_allocator,
-                repository<object<int>, key_sequence, mock_voucher_queue>,
-                handle<object<int>>, mock_segment>;
+    using session_type = session<
+        mock_allocator,
+        repository<object<fake_resource>, key_sequence, mock_voucher_queue>,
+        handle<object<fake_resource>>, mock_segment>;
     mock_allocator alloc;
     mock_segment const seg;
     mock_voucher_queue vq;
-    repository<object<int>, key_sequence, mock_voucher_queue> repo(
+    repository<object<fake_resource>, key_sequence, mock_voucher_queue> repo(
         key_sequence(), vq);
 
     using common::token;
@@ -133,10 +147,14 @@ TEST_CASE("session: object ops") {
                         sess1.open(
                             key, policy, wait, clock::now(),
                             []([[maybe_unused]] token k,
-                               [[maybe_unused]] int r) { CHECK(false); },
+                               [[maybe_unused]] fake_resource const &r) {
+                                CHECK(false);
+                            },
                             [&](Status e) { err = e; },
                             []([[maybe_unused]] token k,
-                               [[maybe_unused]] int r) { CHECK(false); },
+                               [[maybe_unused]] fake_resource const &r) {
+                                CHECK(false);
+                            },
                             []([[maybe_unused]] Status e) { CHECK(false); });
                         CHECK(err == Status::NO_SUCH_OBJECT);
                     }
@@ -193,13 +211,33 @@ TEST_CASE("session: object ops") {
         }
     }
 
+    GIVEN("exhausted allocator") {
+        std::vector const policies{Policy::DEFAULT, Policy::PRIMITIVE};
+        for (Policy const policy : policies) {
+            CAPTURE(policy);
+
+            SUBCASE("alloc -> out of shmem") {
+                REQUIRE_CALL(alloc, allocate(1024)).RETURN(fake_resource());
+                auto err = Status::OK;
+                sess1.alloc(
+                    1024, policy,
+                    []([[maybe_unused]] token k,
+                       [[maybe_unused]] fake_resource const &r) {
+                        CHECK(false);
+                    },
+                    [&](Status e) { err = e; });
+                CHECK(err == Status::OUT_OF_SHMEM);
+            }
+        }
+    }
+
     GIVEN("default policy, unshared, opened by sess1") {
         token key;
-        REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
+        REQUIRE_CALL(alloc, allocate(1024)).RETURN(fake_resource(532));
         sess1.alloc(
             1024, Policy::DEFAULT,
-            [&](token k, int r) {
-                CHECK(r == 532);
+            [&](token k, fake_resource const &r) {
+                CHECK(r == fake_resource(532));
                 key = k;
             },
             []([[maybe_unused]] Status e) { CHECK(false); });
@@ -233,13 +271,11 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess1.open(
                 key, Policy::DEFAULT, false, clock::now(),
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 [&](Status e) { err = e; },
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(err == Status::OBJECT_BUSY);
         }
@@ -248,13 +284,11 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess2.open(
                 key, Policy::DEFAULT, false, clock::now(),
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 [&](Status e) { err = e; },
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(err == Status::OBJECT_BUSY);
         }
@@ -264,11 +298,12 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess1.open(
                 key, Policy::DEFAULT, true, clock::now(),
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                [&](token k, [[maybe_unused]] int r) { opened_key = k; },
+                [&](token k, [[maybe_unused]] fake_resource const &r) {
+                    opened_key = k;
+                },
                 [&](Status e) { err = e; });
             CHECK_FALSE(opened_key.is_valid());
             CHECK(err == Status::OK);
@@ -297,11 +332,12 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess2.open(
                 key, Policy::DEFAULT, true, clock::now(),
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                [&](token k, [[maybe_unused]] int r) { opened_key = k; },
+                [&](token k, [[maybe_unused]] fake_resource const &r) {
+                    opened_key = k;
+                },
                 [&](Status e) { err = e; });
             CHECK_FALSE(opened_key.is_valid());
             CHECK(err == Status::OK);
@@ -407,11 +443,11 @@ TEST_CASE("session: object ops") {
 
     GIVEN("default policy, shared, opened by sess1") {
         token key;
-        REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
+        REQUIRE_CALL(alloc, allocate(1024)).RETURN(fake_resource(532));
         sess1.alloc(
             1024, Policy::DEFAULT,
-            [&](token k, int r) {
-                CHECK(r == 532);
+            [&](token k, fake_resource const &r) {
+                CHECK(r == fake_resource(532));
                 sess1.share(
                     k, [&] { key = k; },
                     []([[maybe_unused]] Status e) { CHECK(false); });
@@ -438,13 +474,11 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess1.open(
                 key, Policy::PRIMITIVE, true, clock::now(),
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 [&](Status e) { err = e; },
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
@@ -453,14 +487,13 @@ TEST_CASE("session: object ops") {
             token opened;
             sess1.open(
                 key, Policy::DEFAULT, true, clock::now(),
-                [&](token k, int r) {
+                [&](token k, fake_resource const &r) {
                     opened = k;
-                    CHECK(r == 532);
+                    CHECK(r == fake_resource(532));
                 },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(opened == key);
         }
@@ -469,14 +502,13 @@ TEST_CASE("session: object ops") {
             token opened;
             sess2.open(
                 key, Policy::DEFAULT, true, clock::now(),
-                [&](token k, int r) {
+                [&](token k, fake_resource const &r) {
                     opened = k;
-                    CHECK(r == 532);
+                    CHECK(r == fake_resource(532));
                 },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(opened == key);
         }
@@ -509,11 +541,13 @@ TEST_CASE("session: object ops") {
                 auto err = Status::OK;
                 sess1.open(
                     key, Policy::DEFAULT, true, clock::now(),
-                    []([[maybe_unused]] token k, [[maybe_unused]] int r) {
+                    []([[maybe_unused]] token k,
+                       [[maybe_unused]] fake_resource const &r) {
                         CHECK(false);
                     },
                     [&](Status e) { err = e; },
-                    []([[maybe_unused]] token k, [[maybe_unused]] int r) {
+                    []([[maybe_unused]] token k,
+                       [[maybe_unused]] fake_resource const &r) {
                         CHECK(false);
                     },
                     []([[maybe_unused]] Status e) { CHECK(false); });
@@ -578,22 +612,25 @@ TEST_CASE("session: object ops") {
 
     GIVEN("default policy, shared, opened by sess1 and sess2") {
         token key;
-        REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
+        REQUIRE_CALL(alloc, allocate(1024)).RETURN(fake_resource(532));
         sess1.alloc(
             1024, Policy::DEFAULT,
-            [&](token k, int r) {
-                CHECK(r == 532);
+            [&](token k, fake_resource const &r) {
+                CHECK(r == fake_resource(532));
                 sess1.share(
                     k,
                     [&] {
                         sess2.open(
                             k, Policy::DEFAULT, false, clock::now(),
-                            [&](token k2, [[maybe_unused]] int r2) {
+                            [&](token k2,
+                                [[maybe_unused]] fake_resource const &r2) {
                                 key = k2;
                             },
                             []([[maybe_unused]] Status e) { CHECK(false); },
                             []([[maybe_unused]] token k2,
-                               [[maybe_unused]] int r2) { CHECK(false); },
+                               [[maybe_unused]] fake_resource const &r2) {
+                                CHECK(false);
+                            },
                             []([[maybe_unused]] Status e) { CHECK(false); });
                     },
                     []([[maybe_unused]] Status e) { CHECK(false); });
@@ -613,14 +650,13 @@ TEST_CASE("session: object ops") {
             token opened;
             sess1.open(
                 key, Policy::DEFAULT, true, clock::now(),
-                [&](token k, int r) {
+                [&](token k, fake_resource const &r) {
                     opened = k;
-                    CHECK(r == 532);
+                    CHECK(r == fake_resource(532));
                 },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(opened == key);
         }
@@ -689,12 +725,13 @@ TEST_CASE("session: object ops") {
                 token opened;
                 sess1.open(
                     key, Policy::DEFAULT, true, clock::now(),
-                    [&](token k, int r) {
+                    [&](token k, fake_resource const &r) {
                         opened = k;
-                        CHECK(r == 532);
+                        CHECK(r == fake_resource(532));
                     },
                     []([[maybe_unused]] Status e) { CHECK(false); },
-                    []([[maybe_unused]] token k, [[maybe_unused]] int r) {
+                    []([[maybe_unused]] token k,
+                       [[maybe_unused]] fake_resource const &r) {
                         CHECK(false);
                     },
                     []([[maybe_unused]] Status e) { CHECK(false); });
@@ -707,12 +744,13 @@ TEST_CASE("session: object ops") {
                 token opened;
                 sess2.open(
                     key, Policy::DEFAULT, true, clock::now(),
-                    [&](token k, int r) {
+                    [&](token k, fake_resource const &r) {
                         opened = k;
-                        CHECK(r == 532);
+                        CHECK(r == fake_resource(532));
                     },
                     []([[maybe_unused]] Status e) { CHECK(false); },
-                    []([[maybe_unused]] token k, [[maybe_unused]] int r) {
+                    []([[maybe_unused]] token k,
+                       [[maybe_unused]] fake_resource const &r) {
                         CHECK(false);
                     },
                     []([[maybe_unused]] Status e) { CHECK(false); });
@@ -725,22 +763,25 @@ TEST_CASE("session: object ops") {
 
     GIVEN("default policy, shared, opened by sess1 twice") {
         token key;
-        REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
+        REQUIRE_CALL(alloc, allocate(1024)).RETURN(fake_resource(532));
         sess1.alloc(
             1024, Policy::DEFAULT,
-            [&](token k, int r) {
-                CHECK(r == 532);
+            [&](token k, fake_resource const &r) {
+                CHECK(r == fake_resource(532));
                 sess1.share(
                     k,
                     [&] {
                         sess1.open(
                             k, Policy::DEFAULT, false, clock::now(),
-                            [&](token k2, [[maybe_unused]] int r2) {
+                            [&](token k2,
+                                [[maybe_unused]] fake_resource const &r2) {
                                 key = k2;
                             },
                             []([[maybe_unused]] Status e) { CHECK(false); },
                             []([[maybe_unused]] token k2,
-                               [[maybe_unused]] int r2) { CHECK(false); },
+                               [[maybe_unused]] fake_resource const &r2) {
+                                CHECK(false);
+                            },
                             []([[maybe_unused]] Status e) { CHECK(false); });
                     },
                     []([[maybe_unused]] Status e) { CHECK(false); });
@@ -784,14 +825,13 @@ TEST_CASE("session: object ops") {
             token opened;
             sess2.open(
                 key, Policy::DEFAULT, true, clock::now(),
-                [&](token k, int r) {
+                [&](token k, fake_resource const &r) {
                     opened = k;
-                    CHECK(r == 532);
+                    CHECK(r == fake_resource(532));
                 },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(opened == key);
 
@@ -833,14 +873,14 @@ TEST_CASE("session: object ops") {
         token key;
         token vkey;
         // Keep voucher alive despite voucher queue being mocked:
-        std::shared_ptr<object<int>> vptr;
-        REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
+        std::shared_ptr<object<fake_resource>> vptr;
+        REQUIRE_CALL(alloc, allocate(1024)).RETURN(fake_resource(532));
         REQUIRE_CALL(vq, enqueue(_)).LR_SIDE_EFFECT(vptr = _1).TIMES(1);
         sess1.alloc(
             1024, Policy::DEFAULT,
-            [&](token k, int r) {
+            [&](token k, fake_resource const &r) {
                 key = k;
-                CHECK(r == 532);
+                CHECK(r == fake_resource(532));
                 sess1.create_voucher(
                     key, 1, clock::now(), [&](token k2) { vkey = k2; },
                     []([[maybe_unused]] Status e) { CHECK(false); });
@@ -864,11 +904,13 @@ TEST_CASE("session: object ops") {
                     .TIMES(1);
                 sess2.open(
                     vkey, Policy::DEFAULT, true, clock::now(),
-                    []([[maybe_unused]] token k, [[maybe_unused]] int r) {
+                    []([[maybe_unused]] token k,
+                       [[maybe_unused]] fake_resource const &r) {
                         CHECK(false);
                     },
                     [&](Status e) { err = e; },
-                    []([[maybe_unused]] token k, [[maybe_unused]] int r) {
+                    []([[maybe_unused]] token k,
+                       [[maybe_unused]] fake_resource const &r) {
                         CHECK(false);
                     },
                     []([[maybe_unused]] Status e) { CHECK(false); });
@@ -882,13 +924,12 @@ TEST_CASE("session: object ops") {
             REQUIRE_CALL(vq, drop(_)).LR_SIDE_EFFECT(vptr.reset()).TIMES(1);
             sess2.open(
                 vkey, Policy::DEFAULT, true, clock::now(),
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                [&](token k, int r) {
+                [&](token k, fake_resource const &r) {
                     opened = k;
-                    CHECK(r == 532);
+                    CHECK(r == fake_resource(532));
                 },
                 [&](Status e) { err = e; });
             CHECK_FALSE(opened.is_valid());
@@ -898,11 +939,13 @@ TEST_CASE("session: object ops") {
                 auto err2 = Status::OK;
                 sess2.open(
                     vkey, Policy::DEFAULT, true, clock::now(),
-                    []([[maybe_unused]] token k, [[maybe_unused]] int r) {
+                    []([[maybe_unused]] token k,
+                       [[maybe_unused]] fake_resource const &r) {
                         CHECK(false);
                     },
                     [&](Status e) { err2 = e; },
-                    []([[maybe_unused]] token k, [[maybe_unused]] int r) {
+                    []([[maybe_unused]] token k,
+                       [[maybe_unused]] fake_resource const &r) {
                         CHECK(false);
                     },
                     []([[maybe_unused]] Status e) { CHECK(false); });
@@ -978,14 +1021,14 @@ TEST_CASE("session: object ops") {
         token key;
         token vkey;
         // Keep voucher alive despite voucher queue being mocked:
-        std::shared_ptr<object<int>> vptr;
-        REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
+        std::shared_ptr<object<fake_resource>> vptr;
+        REQUIRE_CALL(alloc, allocate(1024)).RETURN(fake_resource(532));
         REQUIRE_CALL(vq, enqueue(_)).LR_SIDE_EFFECT(vptr = _1).TIMES(1);
         sess1.alloc(
             1024, Policy::DEFAULT,
-            [&](token k, int r) {
+            [&](token k, fake_resource const &r) {
                 key = k;
-                CHECK(r == 532);
+                CHECK(r == fake_resource(532));
                 sess1.share(
                     key,
                     [&] {
@@ -1014,12 +1057,13 @@ TEST_CASE("session: object ops") {
                     .TIMES(1);
                 sess2.open(
                     vkey, Policy::DEFAULT, true, clock::now(),
-                    [&](token k, int r) {
+                    [&](token k, fake_resource const &r) {
                         opened = k;
-                        CHECK(r == 532);
+                        CHECK(r == fake_resource(532));
                     },
                     []([[maybe_unused]] Status e) { CHECK(false); },
-                    []([[maybe_unused]] token k, [[maybe_unused]] int r) {
+                    []([[maybe_unused]] token k,
+                       [[maybe_unused]] fake_resource const &r) {
                         CHECK(false);
                     },
                     []([[maybe_unused]] Status e) { CHECK(false); });
@@ -1032,14 +1076,13 @@ TEST_CASE("session: object ops") {
             REQUIRE_CALL(vq, drop(_)).LR_SIDE_EFFECT(vptr.reset()).TIMES(1);
             sess2.open(
                 vkey, Policy::DEFAULT, true, clock::now(),
-                [&](token k, int r) {
+                [&](token k, fake_resource const &r) {
                     opened = k;
-                    CHECK(r == 532);
+                    CHECK(r == fake_resource(532));
                 },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(opened == key);
         }
@@ -1085,11 +1128,11 @@ TEST_CASE("session: object ops") {
 
     GIVEN("primitive policy, opened by sess1") {
         token key;
-        REQUIRE_CALL(alloc, allocate(1024)).RETURN(532);
+        REQUIRE_CALL(alloc, allocate(1024)).RETURN(fake_resource(532));
         sess1.alloc(
             1024, Policy::PRIMITIVE,
-            [&](token k, int r) {
-                CHECK(r == 532);
+            [&](token k, fake_resource const &r) {
+                CHECK(r == fake_resource(532));
                 key = k;
             },
             []([[maybe_unused]] Status e) { CHECK(false); });
@@ -1114,13 +1157,11 @@ TEST_CASE("session: object ops") {
             auto err = Status::OK;
             sess1.open(
                 key, Policy::DEFAULT, true, clock::now(),
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 [&](Status e) { err = e; },
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
@@ -1129,14 +1170,13 @@ TEST_CASE("session: object ops") {
             token opened;
             sess1.open(
                 key, Policy::PRIMITIVE, false, clock::now(),
-                [&](token k, int r) {
+                [&](token k, fake_resource const &r) {
                     opened = k;
-                    CHECK(r == 532);
+                    CHECK(r == fake_resource(532));
                 },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(opened == key);
         }
@@ -1145,14 +1185,13 @@ TEST_CASE("session: object ops") {
             token opened;
             sess2.open(
                 key, Policy::PRIMITIVE, false, clock::now(),
-                [&](token k, int r) {
+                [&](token k, fake_resource const &r) {
                     opened = k;
-                    CHECK(r == 532);
+                    CHECK(r == fake_resource(532));
                 },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(opened == key);
         }
@@ -1161,14 +1200,13 @@ TEST_CASE("session: object ops") {
             token opened;
             sess1.open(
                 key, Policy::PRIMITIVE, true, clock::now(),
-                [&](token k, int r) {
+                [&](token k, fake_resource const &r) {
                     opened = k;
-                    CHECK(r == 532);
+                    CHECK(r == fake_resource(532));
                 },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(opened == key);
         }
@@ -1177,14 +1215,13 @@ TEST_CASE("session: object ops") {
             token opened;
             sess2.open(
                 key, Policy::PRIMITIVE, true, clock::now(),
-                [&](token k, int r) {
+                [&](token k, fake_resource const &r) {
                     opened = k;
-                    CHECK(r == 532);
+                    CHECK(r == fake_resource(532));
                 },
                 []([[maybe_unused]] Status e) { CHECK(false); },
-                []([[maybe_unused]] token k, [[maybe_unused]] int r) {
-                    CHECK(false);
-                },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(opened == key);
         }

@@ -166,9 +166,10 @@ class session {
         if (size > std::numeric_limits<std::size_t>::max()) // 32-bit Systems
             return error_cb(protocol::Status::OUT_OF_SHMEM);
         auto s = static_cast<std::size_t>(size);
-        auto obj = repo->create_object(policy, allocr->allocate(s));
-        if (not obj)
+        auto rsrc = allocr->allocate(s);
+        if (not rsrc)
             return error_cb(protocol::Status::OUT_OF_SHMEM);
+        auto obj = repo->create_object(policy, std::move(rsrc));
 
         auto hnd = create_handle(obj);
         hnd->open();
@@ -176,8 +177,7 @@ class session {
         if (policy == protocol::Policy::DEFAULT)
             po.exclusive_writer(hnd.get());
         // Segment currently hard-coded to 0.
-        auto const &rsrc = po.resource();
-        success_cb(obj->key(), rsrc);
+        success_cb(obj->key(), po.resource());
     }
 
     template <typename ImmediateSuccess, typename ImmediateError,
