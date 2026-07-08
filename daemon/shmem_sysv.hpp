@@ -51,6 +51,10 @@ class sysv_shmem_id {
     auto remove() -> bool;
 };
 
+auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
+                          bool use_huge_pages = false,
+                          std::size_t huge_page_size = 0) -> sysv_shmem_id;
+
 // RAII for shmat() - shmdt()
 class sysv_shmem_attachment {
     void *addr = nullptr;

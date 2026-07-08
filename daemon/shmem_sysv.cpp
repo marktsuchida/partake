@@ -70,9 +70,9 @@ auto linux_page_size(bool use_huge_pages, std::size_t huge_page_size)
 
 } // namespace
 
-auto create_sysv_shmem_id(int key, std::size_t size, bool force = false,
-                          bool use_huge_pages = false,
-                          std::size_t huge_page_size = 0) -> sysv_shmem_id {
+auto create_sysv_shmem_id(int key, std::size_t size, bool force,
+                          bool use_huge_pages, std::size_t huge_page_size)
+    -> sysv_shmem_id {
     if (size == 0)
         return {};
 

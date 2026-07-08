@@ -21,6 +21,15 @@ namespace partake::daemon {
 
 namespace internal {
 
+auto add_lock_memory_privilege() -> bool;
+
+auto create_autodeleted_file(std::filesystem::path const &path, bool force)
+    -> win32::win32_handle;
+
+auto create_file_mapping(win32::win32_handle const &file_handle,
+                         std::string const &name, std::size_t size,
+                         bool use_large_pages = false) -> win32::win32_handle;
+
 // RAII for MapViewOfFile() - UnmapViewOfFile()
 class win32_map_view {
     void *addr = nullptr;

@@ -69,7 +69,7 @@ auto large_page_minimum() noexcept -> std::size_t {
 
 #endif
 
-namespace {
+namespace internal {
 
 auto read_default_huge_page_size(std::istream &meminfo) -> std::size_t {
     if (!meminfo)
@@ -140,13 +140,6 @@ TEST_CASE("read_default_huge_page_size") {
     }
 }
 
-[[maybe_unused]] auto get_default_huge_page_size() -> std::size_t {
-    std::ifstream meminfo("/proc/meminfo");
-    // Factor out parsing for testability.
-    return read_default_huge_page_size(meminfo);
-}
-
-// "hugepages-2048kB" -> 2097152
 auto parse_huge_page_filename(std::string const &name) -> std::size_t {
     static std::string const prefix("hugepages-");
     if (name.rfind(prefix, 0) == std::string::npos)
@@ -174,6 +167,16 @@ TEST_CASE("parse_huge_page_filename") {
     CHECK(parse_huge_page_filename("hugepage-1024kB") == 0);
 }
 
+} // namespace internal
+
+namespace {
+
+[[maybe_unused]] auto get_default_huge_page_size() -> std::size_t {
+    std::ifstream meminfo("/proc/meminfo");
+    // Factor out parsing for testability.
+    return internal::read_default_huge_page_size(meminfo);
+}
+
 [[maybe_unused]] auto get_huge_page_sizes() -> std::vector<std::size_t> {
     std::vector<std::size_t> ret;
     auto const dflt = get_default_huge_page_size();
@@ -185,7 +188,7 @@ TEST_CASE("parse_huge_page_filename") {
     if (not ec) {
         for (auto const &dirent : dirit) {
             auto const nm = dirent.path().filename().string();
-            std::size_t const siz = parse_huge_page_filename(nm);
+            std::size_t const siz = internal::parse_huge_page_filename(nm);
             if (siz > 0 && siz != dflt)
                 ret.push_back(siz);
         }

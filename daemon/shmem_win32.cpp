@@ -26,7 +26,7 @@
 
 namespace partake::daemon {
 
-namespace {
+namespace internal {
 
 auto add_lock_memory_privilege() -> bool {
     win32::win32_handle const h_token(
@@ -135,7 +135,7 @@ TEST_CASE("create_autodeleted_file") {
 
 auto create_file_mapping(win32::win32_handle const &file_handle,
                          std::string const &name, std::size_t size,
-                         bool use_large_pages = false) -> win32::win32_handle {
+                         bool use_large_pages) -> win32::win32_handle {
     if (name.empty() || size == 0)
         return {};
     if (use_large_pages)
@@ -200,10 +200,6 @@ TEST_CASE("create_file_mapping") {
         CHECK_FALSE(h_mapping.is_valid());
     }
 }
-
-} // namespace
-
-namespace internal {
 
 win32_map_view::win32_map_view(win32::win32_handle const &h_mapping,
                                std::size_t size, bool use_large_pages)
@@ -286,8 +282,9 @@ auto create_win32_shmem(std::string const &mapping_name, std::size_t size,
         return {};
 
     return win32_shmem(
-        {}, create_file_mapping({}, mapping_name, size, use_large_pages), size,
-        use_large_pages);
+        {},
+        internal::create_file_mapping({}, mapping_name, size, use_large_pages),
+        size, use_large_pages);
 }
 
 TEST_CASE("create_win32_shmem") {
@@ -305,11 +302,11 @@ auto create_win32_file_shmem(std::filesystem::path const &path,
     if (not round_up_or_check_size(size, granularity))
         return {};
 
-    auto h_file = create_autodeleted_file(path, force);
+    auto h_file = internal::create_autodeleted_file(path, force);
     if (not h_file.is_valid())
         return {};
-    auto h_mapping =
-        create_file_mapping(h_file, mapping_name, size, use_large_pages);
+    auto h_mapping = internal::create_file_mapping(h_file, mapping_name, size,
+                                                   use_large_pages);
     return win32_shmem(std::move(h_file), std::move(h_mapping), size,
                        use_large_pages);
 }

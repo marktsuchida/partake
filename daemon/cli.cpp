@@ -23,78 +23,7 @@
 
 namespace partake::daemon {
 
-namespace {
-
-struct cli_args {
-    std::size_t memory = 0;
-    std::string socket;
-    std::string name;
-    std::string filename;
-    bool posix = false;
-    bool systemv = false;
-    bool windows = false;
-    std::size_t granularity = 0;
-    bool huge_pages = false;
-    std::size_t huge_page_size = 0;
-    bool large_pages = false;
-    bool force = false;
-    double voucher_ttl = default_voucher_ttl_seconds;
-};
-
-constexpr auto partake_version =
-#ifdef PARTAKE_VERSION
-#define PARTAKE_STRINGIFY_INTERNAL(s) #s                   // NOLINT
-#define PARTAKE_STRINGIFY(s) PARTAKE_STRINGIFY_INTERNAL(s) // NOLINT
-    PARTAKE_STRINGIFY(PARTAKE_VERSION);
-#else
-    "development build";
-#endif
-
-constexpr auto extra_help =
-    R"(Memory size:
-  A shared memory size that is a multiple of the platform page size
-  must be given via --memory.
-
-Client connection:
-  You must pass --socket with a path name to use for the Unix domain
-  socket (AF_UNIX socket) used for client connection. An absolute
-  path is recommeded because the same path must also be given to
-  clients.
-
-Unix shared memory:
-  [--posix] [--name=/myshmem]: Create with shm_open(2) and map with
-      mmap(2). If name is given it should start with a slash and
-      contain no more slashes.
-  --systemv [--name=key]: Create with shmget(2) and map with shmat(2).
-      If name is given it must be an integer key.
-  --file=myfile: Create with open(2) and map with mmap(2). The --name
-      option is ignored.
-  Not all of the above may be available on a given Unix-like system.
-  On Linux, huge pages can be allocated either by using --file with a
-  location in a mounted hugetlbfs or by giving --huge-pages with
-  --systemv. In both cases, --memory must be a multiple of the huge
-  page size.
-
-Windows shared memory:
-  [--windows] [--name=Local\myshmem]: A named file mapping backed by
-      the system paging file is created. If name is given it should
-      start with "Local\" and contain no further backslashes.
-  --file=myfile [--name=Local\myshmem]: A named file mapping backed
-      by the given file is created. Usage of --name is the same as
-      with --windows.
-  On Windows, --large-pages can be specified with --windows (but not
-  --file). This requires the user to have SeLockMemoryPrivilege. In
-  this case, --memory must be a multiple of the large page size.
-
-In all cases, partaked will exit with an error if the filename given
-by --file or the name given by --name already exists, unless --force
-is also given.)";
-
-auto parse_nonempty(std::string const &s) -> std::string {
-    if (s.empty())
-        return "Argument must not be empty";
-    return {};
-}
+namespace internal {
 
 auto parse_size_suffix(std::string const &s) -> std::string {
     if (s.empty())
@@ -185,122 +114,6 @@ TEST_CASE("parse_size_suffix") {
     }();
     CHECK_THROWS_AS(parse_size_suffix(max_plus_one),
                     CLI::ValidationError const &);
-}
-
-auto parse_cli_args_unvalidated(int argc, char const *const *argv)
-    -> tl::expected<cli_args, int> {
-    using namespace std::string_literals;
-
-    cli_args ret;
-
-    CLI::App app;
-    app.option_defaults()->disable_flag_override();
-    app.description("The partake daemon.\n");
-    app.footer(extra_help);
-
-    // Make the help text fit in 79 columns. May require adjustment if option
-    // description strings change.
-    app.get_formatter()->column_width(26); // NOLINT(readability-magic-numbers)
-
-    app.add_option("-m,--memory", ret.memory,
-                   "Size of shared memory (suffixes K/M/G allowed)")
-        ->type_name("BYTES")
-        ->check(parse_nonempty)
-        ->transform(parse_size_suffix);
-
-    app.add_option("-s,--socket", ret.socket,
-                   "Filename of socket for client connection")
-        ->type_name("NAME")
-        ->check(parse_nonempty);
-
-    app.add_option("-n,--name", ret.name,
-                   "Name of shared memory (integer if --systemv)")
-        ->type_name("NAME");
-    // Allowed to be empty (autogenerate)
-
-    app.add_option("-F,--file", ret.filename,
-                   "Use shared memory backed by the given file")
-        ->type_name("FILENAME")
-        ->check(parse_nonempty);
-
-    app.add_flag("-P,--posix", ret.posix,
-                 "Use POSIX shm_open(2) shared memory (default)");
-
-    app.add_flag("-S,--systemv", ret.systemv,
-                 "Use System V shmget(2) shared memory");
-
-    app.add_flag("-W,--windows", ret.windows,
-                 "Use Win32 named shared memory (default on Windows)");
-
-    app.add_option("-g,--granularity", ret.granularity,
-                   "Allocation granularity (suffixes K/M/G allowed)")
-        ->type_name("BYTES")
-        ->transform(parse_size_suffix);
-
-    app.add_flag("-H,--huge-pages", ret.huge_pages,
-                 "Use Linux huge pages with --systemv");
-
-    app.add_option("--huge-page-size", ret.huge_page_size,
-                   "Select Linux huge page size (implies --huge-pages)")
-        ->type_name("BYTES")
-        ->transform(parse_size_suffix);
-
-    app.add_flag("-L,--large-pages", ret.large_pages,
-                 "Use Windows large pages");
-
-    app.add_option("--voucher-ttl", ret.voucher_ttl,
-                   fmt::format("Set voucher time-to-live (default: {} s)",
-                               ret.voucher_ttl))
-        ->type_name("SECONDS");
-
-    app.add_flag("-f,--force", ret.force,
-                 "Overwrite existing shared memory and/or file");
-
-    app.set_help_flag("-h,--help", "Display this help and exit"s);
-    app.set_version_flag("-V,--version", "partaked "s + partake_version);
-
-    try {
-        app.parse(argc, argv);
-        return ret;
-    } catch (CLI::ParseError const &err) { // Includes --help, --version
-        return tl::unexpected(app.exit(err));
-    }
-}
-
-enum class shmem_type { posix, system_v, win32, posix_file, win32_file };
-
-template <bool IsWindows =
-#ifdef _WIN32
-              true
-#else
-              false
-#endif
-          >
-auto validate_segment_type(cli_args const &args)
-    -> tl::expected<shmem_type, std::string> {
-    using namespace std::string_literals;
-    int const shmem_type_count = int(args.posix) + int(args.systemv) +
-                                 int(args.windows) +
-                                 int(not args.filename.empty());
-    if (shmem_type_count > 1)
-        return tl::unexpected(
-            "Only one of --posix, --systemv, --windows, --file may be given"s);
-    if (args.posix)
-        return shmem_type::posix;
-    if (args.systemv)
-        return shmem_type::system_v;
-    if (args.windows)
-        return shmem_type::win32;
-    if (not args.filename.empty()) {
-        if constexpr (IsWindows)
-            return shmem_type::win32_file;
-        else
-            return shmem_type::posix_file;
-    }
-    if constexpr (IsWindows)
-        return shmem_type::win32;
-    else
-        return shmem_type::posix;
 }
 
 TEST_CASE("validate_segment_type") {
@@ -415,6 +228,153 @@ TEST_CASE("validate_win32_shmem_name") {
     CHECK_FALSE(validate_win32_shmem_name(R"(Local\)").has_value());
     CHECK(validate_win32_shmem_name(R"(Local\x)").value() == R"(Local\x)");
     CHECK_FALSE(validate_win32_shmem_name(R"(Local\x\)").has_value());
+}
+
+} // namespace internal
+
+namespace {
+
+using internal::cli_args;
+using internal::parse_size_suffix;
+using internal::shmem_type;
+using internal::validate_posix_shmem_name;
+using internal::validate_segment_type;
+using internal::validate_sysv_shmem_name;
+using internal::validate_win32_shmem_name;
+
+constexpr auto partake_version =
+#ifdef PARTAKE_VERSION
+#define PARTAKE_STRINGIFY_INTERNAL(s) #s                   // NOLINT
+#define PARTAKE_STRINGIFY(s) PARTAKE_STRINGIFY_INTERNAL(s) // NOLINT
+    PARTAKE_STRINGIFY(PARTAKE_VERSION);
+#else
+    "development build";
+#endif
+
+constexpr auto extra_help =
+    R"(Memory size:
+  A shared memory size that is a multiple of the platform page size
+  must be given via --memory.
+
+Client connection:
+  You must pass --socket with a path name to use for the Unix domain
+  socket (AF_UNIX socket) used for client connection. An absolute
+  path is recommeded because the same path must also be given to
+  clients.
+
+Unix shared memory:
+  [--posix] [--name=/myshmem]: Create with shm_open(2) and map with
+      mmap(2). If name is given it should start with a slash and
+      contain no more slashes.
+  --systemv [--name=key]: Create with shmget(2) and map with shmat(2).
+      If name is given it must be an integer key.
+  --file=myfile: Create with open(2) and map with mmap(2). The --name
+      option is ignored.
+  Not all of the above may be available on a given Unix-like system.
+  On Linux, huge pages can be allocated either by using --file with a
+  location in a mounted hugetlbfs or by giving --huge-pages with
+  --systemv. In both cases, --memory must be a multiple of the huge
+  page size.
+
+Windows shared memory:
+  [--windows] [--name=Local\myshmem]: A named file mapping backed by
+      the system paging file is created. If name is given it should
+      start with "Local\" and contain no further backslashes.
+  --file=myfile [--name=Local\myshmem]: A named file mapping backed
+      by the given file is created. Usage of --name is the same as
+      with --windows.
+  On Windows, --large-pages can be specified with --windows (but not
+  --file). This requires the user to have SeLockMemoryPrivilege. In
+  this case, --memory must be a multiple of the large page size.
+
+In all cases, partaked will exit with an error if the filename given
+by --file or the name given by --name already exists, unless --force
+is also given.)";
+
+auto parse_nonempty(std::string const &s) -> std::string {
+    if (s.empty())
+        return "Argument must not be empty";
+    return {};
+}
+
+auto parse_cli_args_unvalidated(int argc, char const *const *argv)
+    -> tl::expected<cli_args, int> {
+    using namespace std::string_literals;
+
+    cli_args ret;
+
+    CLI::App app;
+    app.option_defaults()->disable_flag_override();
+    app.description("The partake daemon.\n");
+    app.footer(extra_help);
+
+    // Make the help text fit in 79 columns. May require adjustment if option
+    // description strings change.
+    app.get_formatter()->column_width(26); // NOLINT(readability-magic-numbers)
+
+    app.add_option("-m,--memory", ret.memory,
+                   "Size of shared memory (suffixes K/M/G allowed)")
+        ->type_name("BYTES")
+        ->check(parse_nonempty)
+        ->transform(parse_size_suffix);
+
+    app.add_option("-s,--socket", ret.socket,
+                   "Filename of socket for client connection")
+        ->type_name("NAME")
+        ->check(parse_nonempty);
+
+    app.add_option("-n,--name", ret.name,
+                   "Name of shared memory (integer if --systemv)")
+        ->type_name("NAME");
+    // Allowed to be empty (autogenerate)
+
+    app.add_option("-F,--file", ret.filename,
+                   "Use shared memory backed by the given file")
+        ->type_name("FILENAME")
+        ->check(parse_nonempty);
+
+    app.add_flag("-P,--posix", ret.posix,
+                 "Use POSIX shm_open(2) shared memory (default)");
+
+    app.add_flag("-S,--systemv", ret.systemv,
+                 "Use System V shmget(2) shared memory");
+
+    app.add_flag("-W,--windows", ret.windows,
+                 "Use Win32 named shared memory (default on Windows)");
+
+    app.add_option("-g,--granularity", ret.granularity,
+                   "Allocation granularity (suffixes K/M/G allowed)")
+        ->type_name("BYTES")
+        ->transform(parse_size_suffix);
+
+    app.add_flag("-H,--huge-pages", ret.huge_pages,
+                 "Use Linux huge pages with --systemv");
+
+    app.add_option("--huge-page-size", ret.huge_page_size,
+                   "Select Linux huge page size (implies --huge-pages)")
+        ->type_name("BYTES")
+        ->transform(parse_size_suffix);
+
+    app.add_flag("-L,--large-pages", ret.large_pages,
+                 "Use Windows large pages");
+
+    app.add_option("--voucher-ttl", ret.voucher_ttl,
+                   fmt::format("Set voucher time-to-live (default: {} s)",
+                               ret.voucher_ttl))
+        ->type_name("SECONDS");
+
+    app.add_flag("-f,--force", ret.force,
+                 "Overwrite existing shared memory and/or file");
+
+    app.set_help_flag("-h,--help", "Display this help and exit"s);
+    app.set_version_flag("-V,--version", "partaked "s + partake_version);
+
+    try {
+        app.parse(argc, argv);
+        return ret;
+    } catch (CLI::ParseError const &err) { // Includes --help, --version
+        return tl::unexpected(app.exit(err));
+    }
 }
 
 auto validate_segment_config(cli_args const &args)

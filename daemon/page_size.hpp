@@ -9,10 +9,21 @@
 #include <cassert>
 #include <cstddef>
 #include <filesystem>
+#include <iosfwd>
 #include <string>
 #include <vector>
 
 namespace partake::daemon {
+
+namespace internal {
+
+// Parse the contents of /proc/meminfo. Return 0 if not found.
+auto read_default_huge_page_size(std::istream &meminfo) -> std::size_t;
+
+// "hugepages-2048kB" -> 2097152; return 0 if not parseable.
+auto parse_huge_page_filename(std::string const &name) -> std::size_t;
+
+} // namespace internal
 
 // Return the system's regular page size. On Windows, do not confuse with
 // system_allocation_granularity().

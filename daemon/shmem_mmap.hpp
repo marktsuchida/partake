@@ -21,6 +21,16 @@ namespace partake::daemon {
 
 namespace internal {
 
+auto create_posix_shmem(std::string const &name, bool force)
+    -> std::pair<common::posix::unlinkable, common::posix::file_descriptor>;
+
+auto create_regular_file(std::string const &path, bool force)
+    -> std::pair<common::posix::unlinkable, common::posix::file_descriptor>;
+
+auto generate_posix_shmem_name() -> std::string;
+
+auto generate_filename() -> std::string;
+
 class mmap_mapping {
     std::size_t siz = 0;
     void *addr = nullptr;
