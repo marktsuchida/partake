@@ -20,6 +20,10 @@ repos:
   - repo: https://github.com/fsfe/reuse-tool
     rev: v6.2.0
     hooks:
+      # Per-file check on every commit; ignores untracked files
+      - id: reuse-lint-file
+        args: ["--include-meson-subprojects", "lint-file"]
+      # Full project lint, CI and when requested (--hook-stage manual)
       - id: reuse
-        # See: https://github.com/fsfe/reuse-tool/issues/576
         args: ["--include-meson-subprojects", "lint"]
+        stages: [manual]
