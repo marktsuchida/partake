@@ -263,6 +263,38 @@ TEST_CASE("request_handler: hello") {
         CHECK(resp->status() == Status::INVALID_REQUEST);
         CHECK(resp->response_type() == AnyResponse::NONE);
     }
+
+    SUBCASE("no name field") {
+        flatbuffers::FlatBufferBuilder b2;
+        b2.FinishSizePrefixed(CreateRequestMessage(
+            b2, b2.CreateVector({
+                    CreateRequest(b2, 44, AnyRequest::HelloRequest,
+                                  CreateHelloRequest(b2, 123).Union()),
+                })));
+        auto req_span2 = b2.GetBufferSpan();
+
+        REQUIRE_CALL(sess, hello("", 123u, _, _)).SIDE_EFFECT(_3(7)).TIMES(1);
+        flatbuffers::DetachedBuffer resp_buf;
+        REQUIRE_CALL(write, call(_))
+            .LR_SIDE_EFFECT(resp_buf = std::move(_1))
+            .TIMES(1);
+        REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
+
+        CHECK_FALSE(rh.handle_message(req_span2));
+
+        auto verif = flatbuffers::Verifier(resp_buf.data(), resp_buf.size());
+        REQUIRE(verif.VerifySizePrefixedBuffer<ResponseMessage>(nullptr));
+        auto const *resp_msg =
+            flatbuffers::GetSizePrefixedRoot<ResponseMessage>(resp_buf.data());
+        auto const *resps = resp_msg->responses();
+        CHECK(resps->size() == 1);
+        auto const *resp = resps->Get(0);
+        CHECK(resp->seqno() == 44);
+        CHECK(resp->status() == Status::OK);
+        CHECK(resp->response_type() == AnyResponse::HelloResponse);
+        auto const *hello_resp = resp->response_as_HelloResponse();
+        CHECK(hello_resp->conn_no() == 7);
+    }
 }
 
 TEST_CASE("request_handler: quit") {

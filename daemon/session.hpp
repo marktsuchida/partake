@@ -138,7 +138,10 @@ class session {
             error_cb(protocol::Status::INVALID_REQUEST);
         } else {
             // TODO Make error if name too long?
-            client_name = name.substr(0, max_client_name_length);
+            if (name.empty())
+                client_name = "pid-" + std::to_string(pid);
+            else
+                client_name = name.substr(0, max_client_name_length);
             client_pid = pid;
             has_said_hello = true;
             success_cb(id);

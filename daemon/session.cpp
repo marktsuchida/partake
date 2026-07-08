@@ -97,6 +97,16 @@ TEST_CASE("session: global ops") {
         CHECK(err == Status::INVALID_REQUEST);
     }
 
+    SUBCASE("hello with empty name") {
+        std::uint32_t session_id = 0;
+        sess.hello(
+            "", 1234, [&](std::uint32_t id) { session_id = id; },
+            []([[maybe_unused]] Status err) { CHECK(false); });
+        CHECK(session_id == 42);
+        CHECK(sess.name() == "pid-1234");
+        CHECK(sess.pid() == 1234);
+    }
+
     SUBCASE("get_segment") {
         int spec = 0;
         ALLOW_CALL(seg, spec()).RETURN(5678);

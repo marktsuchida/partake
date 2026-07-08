@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <string_view>
 #include <utility>
 
 namespace partake::daemon {
@@ -202,8 +203,11 @@ template <typename Session> class request_handler {
     auto handle_hello(std::uint64_t seqno, protocol::HelloRequest const *req,
                       response_builder &rb) -> bool {
         auto const *name = req->name();
+        auto const name_sv =
+            name != nullptr ? std::string_view(name->c_str(), name->size())
+                            : std::string_view();
         sess->hello(
-            {name->c_str(), name->size()}, req->pid(),
+            name_sv, req->pid(),
             [seqno, &rb](std::uint32_t session_id) {
                 auto &fbb = rb.fbbuilder();
                 auto resp = protocol::CreateHelloResponse(fbb, session_id);
