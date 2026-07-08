@@ -61,7 +61,8 @@ template <typename AsioContext> class partake_daemon {
         client<socket_type, message_reader_type, message_writer_type,
                session_type, request_handler_type>;
 
-    daemon_config cfg;
+    daemon_config cfg; // Must be declared first: initializers of members
+                       // below read it
 
     quitter<io_context_type> quitr;
     connection_acceptor<asio::local::stream_protocol, io_context_type>
@@ -84,9 +85,9 @@ template <typename AsioContext> class partake_daemon {
                             daemon_config config)
         : cfg(std::move(config)),
           quitr(asio_context, [this]() { acceptor.close(); }),
-          acceptor(asio_context, config.endpoint), seg(config.seg_config),
-          allocr(seg.size(), config.log2_granularity != 0u
-                                 ? config.log2_granularity
+          acceptor(asio_context, cfg.endpoint), seg(cfg.seg_config),
+          allocr(seg.size(), cfg.log2_granularity != 0u
+                                 ? cfg.log2_granularity
                                  : log2_size(page_size())),
           clk_traits(asio_context), vq(clk_traits), repo(key_sequence(), vq) {
         if (not seg.is_valid()) {
