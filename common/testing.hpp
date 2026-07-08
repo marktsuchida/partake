@@ -10,7 +10,6 @@
 #include "random.hpp"
 #include "win32.hpp"
 
-#include <doctest.h>
 #include <fmt/core.h>
 #include <gsl/span>
 #include <spdlog/spdlog.h>
@@ -19,6 +18,7 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>
 #include <string>
 
 namespace partake::testing {
@@ -44,7 +44,9 @@ class tempdir {
     tempdir()
         : p(tdp() /
             ("partake-test-" + common::random_string(rand_suffix_len))) {
-        REQUIRE_FALSE(std::filesystem::exists(p));
+        if (std::filesystem::exists(p))
+            throw std::runtime_error("test path unexpectedly exists: " +
+                                     p.string());
         std::filesystem::create_directories(p);
     }
 
@@ -77,7 +79,9 @@ inline auto unique_path(std::filesystem::path const &parent,
     static constexpr auto rand_suffix_len = 20;
     auto fname = hint + "-" + common::random_string(rand_suffix_len);
     auto p = parent / fname;
-    REQUIRE_FALSE(std::filesystem::exists(p));
+    if (std::filesystem::exists(p))
+        throw std::runtime_error("test path unexpectedly exists: " +
+                                 p.string());
     return p;
 }
 

@@ -6,6 +6,8 @@
 
 #include "testing.hpp"
 
+#include <doctest.h>
+
 #include <array>
 
 namespace partake::testing {
