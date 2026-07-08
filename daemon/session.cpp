@@ -262,8 +262,7 @@ TEST_CASE("session: object ops") {
 
         SUBCASE("close by sess2 -> no such object") {
             auto err = Status::OK;
-            sess2.close(
-                key, [] { CHECK(false); }, [&](Status e) { err = e; });
+            sess2.close(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
@@ -371,8 +370,7 @@ TEST_CASE("session: object ops") {
 
         SUBCASE("share by sess2 -> no such object") {
             auto err = Status::OK;
-            sess2.share(
-                key, [] { CHECK(false); }, [&](Status e) { err = e; });
+            sess2.share(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
@@ -465,8 +463,7 @@ TEST_CASE("session: object ops") {
 
         SUBCASE("close by sess2 -> no such object") {
             auto err = Status::OK;
-            sess2.close(
-                key, [] { CHECK(false); }, [&](Status e) { err = e; });
+            sess2.close(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
@@ -515,15 +512,13 @@ TEST_CASE("session: object ops") {
 
         SUBCASE("share by sess1 -> no such object") {
             auto err = Status::OK;
-            sess1.share(
-                key, [] { CHECK(false); }, [&](Status e) { err = e; });
+            sess1.share(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
         SUBCASE("share by sess2 -> no such object") {
             auto err = Status::OK;
-            sess2.share(
-                key, [] { CHECK(false); }, [&](Status e) { err = e; });
+            sess2.share(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
@@ -663,8 +658,7 @@ TEST_CASE("session: object ops") {
 
         SUBCASE("share by sess1 -> no such object") {
             auto err = Status::OK;
-            sess1.share(
-                key, [] { CHECK(false); }, [&](Status e) { err = e; });
+            sess1.share(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
@@ -1148,8 +1142,7 @@ TEST_CASE("session: object ops") {
 
         SUBCASE("close by sess2 -> no such object") {
             auto err = Status::OK;
-            sess2.close(
-                key, [] { CHECK(false); }, [&](Status e) { err = e; });
+            sess2.close(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
@@ -1228,15 +1221,13 @@ TEST_CASE("session: object ops") {
 
         SUBCASE("share by sess1 -> no such object") {
             auto err = Status::OK;
-            sess1.share(
-                key, [] { CHECK(false); }, [&](Status e) { err = e; });
+            sess1.share(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
         SUBCASE("share by sess2 -> no such object") {
             auto err = Status::OK;
-            sess2.share(
-                key, [] { CHECK(false); }, [&](Status e) { err = e; });
+            sess2.share(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 

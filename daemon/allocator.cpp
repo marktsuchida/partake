@@ -34,15 +34,21 @@ TEST_CASE("arena") {
     REQUIRE(a3);
     REQUIRE(a3.count() == 1);
     REQUIRE(!a.allocate(1));
-    { auto discard = std::move(a1); }
+    {
+        auto discard = std::move(a1);
+    }
     auto a4 = a.allocate(1);
     REQUIRE(a4);
     REQUIRE(a4.count() == 1);
     auto a5 = a.allocate(1);
     REQUIRE(a5);
     REQUIRE(a5.count() == 1);
-    { auto discard = std::move(a4); }
-    { auto discard = std::move(a5); }
+    {
+        auto discard = std::move(a4);
+    }
+    {
+        auto discard = std::move(a5);
+    }
     // Check coalescence of neighboring a4 and a5 (former a1)
     auto a6 = a.allocate(2);
     REQUIRE(a6);

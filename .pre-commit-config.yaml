@@ -4,21 +4,21 @@
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: check-yaml
         args: ["--allow-multiple-documents"]
   - repo: https://github.com/editorconfig-checker/editorconfig-checker.python
-    rev: 2.7.3
+    rev: 3.6.1
     hooks:
       - id: editorconfig-checker
         alias: ec
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v17.0.2
+    rev: v22.1.5
     hooks:
       - id: clang-format
   - repo: https://github.com/fsfe/reuse-tool
-    rev: v2.1.0
+    rev: v6.2.0
     hooks:
       - id: reuse
         # See: https://github.com/fsfe/reuse-tool/issues/576

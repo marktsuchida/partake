@@ -228,7 +228,7 @@ TEST_CASE("huge_page_sizes") {
 }
 
 auto file_page_size(int fd) -> std::size_t {
-    struct statfs st {};
+    struct statfs st{};
     if (::fstatfs(fd, &st) != 0)
         return 0;
     static constexpr decltype(st.f_type) hugetlbfs_magic = 0x958458f6;
