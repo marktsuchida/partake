@@ -176,7 +176,7 @@ table AllocRequest {
 
     /*
      * An object of the given size is allocated. If there was not enough space
-     * in the shared memory pool, status is OUT_OF_MEMORY.
+     * in the shared memory pool, status is OUT_OF_SHMEM.
      *
      * If 'policy' is DEFAULT, the returned object is in the "unshared"
      * state and opened for writing by this connection. It can later be
