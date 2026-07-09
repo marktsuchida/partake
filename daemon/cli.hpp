@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "asio.hpp"
 #include "config.hpp"
 #include "daemon.hpp"
 
@@ -81,6 +82,9 @@ auto validate_sysv_shmem_name(std::string const &name)
 
 auto validate_win32_shmem_name(std::string const &name)
     -> tl::expected<std::string, std::string>;
+
+auto validate_socket_path(std::string const &path)
+    -> tl::expected<asio::local::stream_protocol::endpoint, std::string>;
 
 } // namespace internal
 

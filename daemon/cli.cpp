@@ -120,6 +120,21 @@ auto validate_win32_shmem_name(std::string const &name)
     return name;
 }
 
+auto validate_socket_path(std::string const &path)
+    -> tl::expected<asio::local::stream_protocol::endpoint, std::string> {
+    using namespace std::string_literals;
+    if (path.empty())
+        return tl::unexpected("--socket is required"s);
+    // Unix domain socket path names have a low length limit (~92-108 bytes
+    // depending on platform); defer the exact check to Asio.
+    try {
+        return asio::local::stream_protocol::endpoint(path);
+    } catch (boost::system::system_error const &err) {
+        return tl::unexpected(
+            fmt::format("--socket: {}: {}", path, err.code().message()));
+    }
+}
+
 } // namespace internal
 
 namespace {
@@ -129,6 +144,7 @@ using internal::parse_size_suffix;
 using internal::shmem_type;
 using internal::validate_posix_shmem_name;
 using internal::validate_segment_type;
+using internal::validate_socket_path;
 using internal::validate_sysv_shmem_name;
 using internal::validate_win32_shmem_name;
 
@@ -329,12 +345,10 @@ auto validate_cli_args(cli_args const &args)
         return tl::unexpected(
             "--memory is required and its argument must be positive"s);
 
-    // Unix domain socket path names have a low length limit. Linux and Windows
-    // limits are 107, (some?) BSDs have 103, and apparently some Unices have
-    // limits as low as 91. However, we defer the length check to Asio.
-    if (args.socket.empty())
-        return tl::unexpected("--socket is required"s);
-    ret.endpoint = args.socket;
+    auto const maybe_endpoint = validate_socket_path(args.socket);
+    if (not maybe_endpoint.has_value())
+        return tl::unexpected(maybe_endpoint.error());
+    ret.endpoint = *maybe_endpoint;
 
     if (args.granularity > 0) {
         if (not is_size_power_of_2(args.granularity))

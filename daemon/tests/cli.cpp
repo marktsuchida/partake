@@ -118,6 +118,15 @@ TEST_CASE("validate_sysv_shmem_name") {
     CHECK_FALSE(validate_sysv_shmem_name("abc").has_value());
 }
 
+TEST_CASE("validate_socket_path") {
+    CHECK(validate_socket_path("/tmp/some.sock").value().path() ==
+          "/tmp/some.sock");
+    CHECK_FALSE(validate_socket_path("").has_value());
+    auto const too_long = validate_socket_path(std::string(200, 'a'));
+    CHECK_FALSE(too_long.has_value());
+    CHECK_FALSE(too_long.error().empty());
+}
+
 TEST_CASE("validate_win32_shmem_name") {
     CHECK(validate_win32_shmem_name("").value().empty());
     CHECK_FALSE(validate_win32_shmem_name("x").has_value());
