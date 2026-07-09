@@ -328,6 +328,47 @@ TEST_CASE("session: object ops") {
                 CHECK(ok);
                 CHECK(opened_key == key);
             }
+
+            SECTION("second open-wait by sess1 -> waits") {
+                token opened_key2;
+                auto err2 = Status::OK;
+                sess1.open(
+                    key, Policy::DEFAULT, true, clock::now(),
+                    []([[maybe_unused]] token k,
+                       [[maybe_unused]] fake_resource const &r) {
+                        CHECK(false);
+                    },
+                    []([[maybe_unused]] Status e) { CHECK(false); },
+                    [&](token k, [[maybe_unused]] fake_resource const &r) {
+                        opened_key2 = k;
+                    },
+                    [&](Status e) { err2 = e; });
+                CHECK_FALSE(opened_key.is_valid());
+                CHECK_FALSE(opened_key2.is_valid());
+                CHECK(err == Status::OK);
+                CHECK(err2 == Status::OK);
+
+                SECTION("share by sess1 -> both open-waits succeed") {
+                    bool ok = false;
+                    sess1.share(
+                        key, [&] { ok = true; },
+                        []([[maybe_unused]] Status e) { CHECK(false); });
+                    CHECK(ok);
+                    CHECK(opened_key == key);
+                    CHECK(opened_key2 == key);
+                }
+
+                SECTION(
+                    "close by sess1 -> both open-waits fail, no such object") {
+                    bool ok = false;
+                    sess1.close(
+                        key, [&] { ok = true; },
+                        []([[maybe_unused]] Status e) { CHECK(false); });
+                    CHECK(ok);
+                    CHECK(err == Status::NO_SUCH_OBJECT);
+                    CHECK(err2 == Status::NO_SUCH_OBJECT);
+                }
+            }
         }
 
         SECTION("open-wait by sess2 -> waits") {

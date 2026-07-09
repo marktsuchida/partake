@@ -107,7 +107,8 @@ class handle : public token_hash_table<handle<Object>>::hook,
 
     void add_request_pending_on_share(
         std::function<void(std::shared_ptr<handle>)> handler) {
-        obj->as_proper_object().add_handle_awaiting_share(this);
+        if (requests_pending_on_share.empty())
+            obj->as_proper_object().add_handle_awaiting_share(this);
         requests_pending_on_share.insert(
             {this->shared_from_this(), std::move(handler)});
     }
