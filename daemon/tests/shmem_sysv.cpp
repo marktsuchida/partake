@@ -36,10 +36,15 @@ TEST_CASE("sysv_shmem_id") {
     }
 
     SECTION("create id by finding non-existent key") {
+        static constexpr key_t max_search_key = 100;
         key_t key = 0;
         sysv_shmem_id shmid;
         while (not shmid.is_valid()) {
-            ++key;
+            if (++key > max_search_key)
+                FAIL("no usable SysV shmem key in 1.."
+                     << max_search_key
+                     << "; leaked segments or system-wide segment limit "
+                        "(shmmni) reached? Check with ipcs -m");
             shmid = create_sysv_shmem_id(key, 100);
         }
         CHECK(shmid.id() >= 0);

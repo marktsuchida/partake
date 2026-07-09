@@ -245,10 +245,15 @@ TEST_CASE("segment: file mmap") {
 
 TEST_CASE("segment: sysv") {
     GIVEN("known, preexisting key") {
+        static constexpr int max_search_key = 100;
         int key = 0;
         sysv_shmem preexisting;
         while (not preexisting.is_valid()) {
-            ++key;
+            if (++key > max_search_key)
+                FAIL("no usable SysV shmem key in 1.."
+                     << max_search_key
+                     << "; leaked segments or system-wide segment limit "
+                        "(shmmni) reached? Check with ipcs -m");
             preexisting = create_sysv_shmem(key, 4096);
         }
         preexisting.detach(); // But don't remove
