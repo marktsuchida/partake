@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 ---
 HeaderFilterRegex: >-
-    \.\./(common|daemon)/[^/]*\.hpp$
+    \.\./(common|daemon)/(tests/)?[^/]*\.hpp$
 
 Checks: >-
     -*,
