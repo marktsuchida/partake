@@ -56,6 +56,7 @@ daemon_test = executable(
     ],
     include_directories: [
         common_incdir,
+        common_tests_incdir,
     ],
     dependencies: daemon_deps,
     cpp_args: [
@@ -73,6 +74,10 @@ executable('partaked',
     ],
     include_directories: [
         common_incdir,
+        # Temporary until daemon tests move out of production sources: four
+        # daemon TUs still include testing.hpp (their doctest TEST_CASEs are
+        # compiled even when disabled).
+        common_tests_incdir,
     ],
     cpp_args: [
         '-DDOCTEST_CONFIG_DISABLE',

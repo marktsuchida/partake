@@ -90,6 +90,13 @@ trompeloeil_dep = dependency(
     include_type: 'system',
 )
 
+catch2_dep = dependency(
+    'catch2',
+    fallback: ['catch2', 'catch2_dep'],
+    default_options: ['tests=false'],
+    include_type: 'system',
+)
+
 subdir('common')
 subdir('protocol')
 subdir('daemon')

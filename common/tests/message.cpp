@@ -11,8 +11,12 @@
 #include "testing.hpp"
 #include "win32.hpp"
 
-#include <doctest.h>
+#include <catch2/catch_test_macros.hpp>
 
+#include <flatbuffers/flatbuffers.h>
+#include <gsl/span>
+
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
@@ -21,6 +25,32 @@
 #include <vector>
 
 namespace partake::common {
+
+namespace internal {
+
+TEST_CASE("round_size_up_to_alignment") {
+    CHECK(round_size_up_to_alignment(0) == 0);
+    CHECK(round_size_up_to_alignment(1) == 8);
+    CHECK(round_size_up_to_alignment(7) == 8);
+    CHECK(round_size_up_to_alignment(8) == 8);
+    CHECK(round_size_up_to_alignment(9) == 16);
+    CHECK(round_size_up_to_alignment(4097) == 4104);
+}
+
+TEST_CASE("read_message_frame_size") {
+    // NOLINTBEGIN(readability-magic-numbers)
+    std::array<std::uint8_t, 5> bytes{};
+    auto s = gsl::make_span(bytes);
+    CHECK(read_message_frame_size(s) == 4); // Prefix size only
+    CHECK(read_message_frame_size(s.subspan(0, 4)) == 4);
+    CHECK(read_message_frame_size(s.subspan(0, 3)) == 0);
+    CHECK(read_message_frame_size(s.subspan(0, 0)) == 0);
+    bytes[1] = 1; // Prefix set to 256 (FlatBuffers is little endian)
+    CHECK(read_message_frame_size(s) == 260);
+    // NOLINTEND(readability-magic-numbers)
+}
+
+} // namespace internal
 
 // Testing async_message_writer and async_message_reader is slightly
 // complicated due to platform differences in Asio support.
@@ -180,7 +210,7 @@ TEST_CASE("async_message_writer") {
             s.close();
         });
 
-    SUBCASE("empty") {
+    SECTION("empty") {
         std::vector<std::uint8_t> v;
         writer.async_write_message(std::move(v));
         ctx.run();
@@ -191,7 +221,7 @@ TEST_CASE("async_message_writer") {
 
     // NOLINTBEGIN(readability-magic-numbers)
 
-    SUBCASE("unaligned-7") {
+    SECTION("unaligned-7") {
         // Prefix 3; the writer pads to 8 and patches the prefix to 4.
         std::vector<std::uint8_t> v{3, 0, 0, 0, 'e', 'f', 'g'};
         writer.async_write_message(std::move(v));
@@ -210,7 +240,7 @@ TEST_CASE("async_message_writer") {
               std::vector<std::uint8_t>{4, 0, 0, 0, 'e', 'f', 'g', '\0'});
     }
 
-    SUBCASE("unaligned-12") {
+    SECTION("unaligned-12") {
         // Prefix 8; the writer pads to 16 and patches the prefix to 12.
         std::vector<std::uint8_t> v{8,   0,   0,   0,   'a', 'b',
                                     'c', 'd', 'e', 'f', 'g', 'h'};
@@ -230,7 +260,7 @@ TEST_CASE("async_message_writer") {
                                                 '\0', '\0', '\0'});
     }
 
-    SUBCASE("aligned") {
+    SECTION("aligned") {
         // Prefix 4; written verbatim with the prefix untouched.
         std::vector<std::uint8_t> v{4, 0, 0, 0, 'e', 'f', 'g', 'h'};
         writer.async_write_message(std::move(v));

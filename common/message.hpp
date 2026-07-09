@@ -9,7 +9,6 @@
 #include "asio.hpp"
 #include "errors.hpp"
 
-#include <doctest.h>
 #include <flatbuffers/flatbuffers.h>
 #include <fmt/core.h>
 #include <gsl/pointers>
@@ -45,15 +44,6 @@ constexpr auto round_size_up_to_alignment(std::size_t s) noexcept
     return (s + message_frame_alignment - 1) & ~(message_frame_alignment - 1);
 }
 
-TEST_CASE("round_size_up_to_alignment") {
-    CHECK(round_size_up_to_alignment(0) == 0);
-    CHECK(round_size_up_to_alignment(1) == 8);
-    CHECK(round_size_up_to_alignment(7) == 8);
-    CHECK(round_size_up_to_alignment(8) == 8);
-    CHECK(round_size_up_to_alignment(9) == 16);
-    CHECK(round_size_up_to_alignment(4097) == 4104);
-}
-
 [[nodiscard]] inline auto
 read_message_frame_size(gsl::span<std::uint8_t const> bytes) noexcept
     -> std::size_t {
@@ -61,19 +51,6 @@ read_message_frame_size(gsl::span<std::uint8_t const> bytes) noexcept
         return 0;
     auto const fblen = flatbuffers::GetPrefixedSize(bytes.data());
     return fblen + sizeof(flatbuffers::uoffset_t);
-}
-
-TEST_CASE("read_message_frame_size") {
-    // NOLINTBEGIN(readability-magic-numbers)
-    std::array<std::uint8_t, 5> bytes{};
-    auto s = gsl::make_span(bytes);
-    CHECK(read_message_frame_size(s) == 4); // Prefix size only
-    CHECK(read_message_frame_size(s.subspan(0, 4)) == 4);
-    CHECK(read_message_frame_size(s.subspan(0, 3)) == 0);
-    CHECK(read_message_frame_size(s.subspan(0, 0)) == 0);
-    bytes[1] = 1; // Prefix set to 256 (FlatBuffers is little endian)
-    CHECK(read_message_frame_size(s) == 260);
-    // NOLINTEND(readability-magic-numbers)
 }
 
 } // namespace internal

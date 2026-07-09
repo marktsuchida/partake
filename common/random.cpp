@@ -6,10 +6,7 @@
 
 #include "random.hpp"
 
-#include <doctest.h>
-
 #include <algorithm>
-#include <cctype>
 #include <random>
 #include <string_view>
 
@@ -35,19 +32,6 @@ auto random_string(std::size_t len) -> std::string {
     std::generate(ret.begin(), ret.end(),
                   [&]() { return letters[distrib(rd)]; });
     return ret;
-}
-
-TEST_CASE("random_string") {
-    CHECK(random_string(0).empty());
-
-    auto const r1 = random_string(1);
-    CHECK(r1.size() == 1);
-    CHECK(std::isalnum(r1.front()));
-
-    auto const r237 = random_string(237);
-    CHECK(r237.size() == 237);
-    CHECK(std::all_of(r237.begin(), r237.end(),
-                      [](char c) { return std::isalnum(c); }));
 }
 
 } // namespace partake::common

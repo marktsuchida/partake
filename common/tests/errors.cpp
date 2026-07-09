@@ -6,9 +6,9 @@
 
 #include "errors.hpp"
 
-#include <doctest.h>
+#include <catch2/catch_test_macros.hpp>
 
-#include <ostream> // operator<< used by doctest
+#include <ostream> // operator<< used by Catch2
 #include <system_error>
 
 TEST_CASE("errc") {

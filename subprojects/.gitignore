@@ -10,6 +10,7 @@
 
 # List our wraps explicitly because transitive dependencies may be added
 /*.wrap
+!/catch2.wrap
 !/cli11.wrap
 !/doctest.wrap
 !/flatbuffers.wrap
