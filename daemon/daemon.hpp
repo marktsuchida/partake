@@ -12,7 +12,6 @@
 #include "config.hpp"
 #include "connection_acceptor.hpp"
 #include "handle.hpp"
-#include "hive.hpp"
 #include "key_sequence.hpp"
 #include "message.hpp"
 #include "object.hpp"
@@ -30,6 +29,8 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <unordered_set>
 #include <utility>
 
 namespace partake::daemon {
@@ -75,7 +76,7 @@ template <typename AsioContext> class partake_daemon {
     voucher_queue_type vq;
     repository_type repo;
 
-    hive<client_type> clients;
+    std::unordered_set<std::shared_ptr<client_type>> clients;
     std::uint32_t session_counter = 0;
 
     int exitcode = 0;
@@ -127,24 +128,25 @@ template <typename AsioContext> class partake_daemon {
 
   private:
     void start_client(socket_type &&socket) {
-        clients
-            .emplace(
-                std::move(socket), session_counter++, seg, allocr, repo,
-                cfg.voucher_ttl, [this]() { repo.perform_housekeeping(); },
-                [this](client_type &c) {
-                    clients.erase(clients.get_iterator(&c));
-                })
-            ->start();
+        auto c = std::make_shared<client_type>(
+            std::move(socket), session_counter++, seg, allocr, repo,
+            cfg.voucher_ttl, [this]() { repo.perform_housekeeping(); },
+            [this](client_type &cl) { clients.erase(cl.shared_from_this()); });
+        clients.insert(c);
+        c->start();
     }
 
     void quit() {
         quitr.stop();
 
-        // Drop pending requests before closing sessions (and hence
-        // handles, objects), so that none of them resume.
-        for (auto &c : clients)
-            c.prepare_for_shutdown();
-        clients.clear();
+        // Drop pending requests on all clients before closing any session,
+        // so that none of them resume during teardown.
+        for (auto const &c : clients)
+            c->prepare_for_shutdown();
+        for (auto const &c : clients)
+            c->close();
+        clients.clear(); // Pending handlers still hold keepalives; clients
+                         // are destroyed as the aborted handlers drain.
 
         repo.drop_all_vouchers();
     }

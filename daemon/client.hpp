@@ -6,24 +6,32 @@
 
 #pragma once
 
-#include "allocator.hpp"
 #include "asio.hpp"
-#include "segment.hpp"
 
 #include <gsl/span>
 #include <spdlog/spdlog.h>
 
 #include <chrono>
 #include <cstdint>
+#include <functional>
+#include <memory>
 #include <string_view>
 #include <system_error>
 #include <utility>
 
 namespace partake::daemon {
 
+// Lifetime: instances must be owned by shared_ptr. Every pending async
+// operation's handler holds a keepalive shared_ptr to this client (never
+// stored as a member, to avoid a reference cycle), so the client is
+// destroyed only after all pending handlers have drained. close_self only
+// removes the owner's reference; it is called exactly once, from the
+// reader's end callback.
 template <typename Socket, typename MessageReader, typename MessageWriter,
           typename Session, typename RequestHandler>
-class client {
+class client
+    : public std::enable_shared_from_this<client<
+          Socket, MessageReader, MessageWriter, Session, RequestHandler>> {
   public:
     using self_type = client;
     using socket_type = Socket;
@@ -39,17 +47,13 @@ class client {
     request_handler_type handler;
     message_reader_type reader;
 
-    // Number of async read/write operations in flight. This could be replaced
-    // with an automatic refcounting token/pointer, but manual refcounting is
-    // simple enough for now since message reading and writing always goes
-    // through the client object.
-    std::size_t io_refcount = 0;
     std::function<void(self_type &)> close_self;
 
   public:
-    template <typename Repository, typename HousekeepFunc, typename CloseFunc>
+    template <typename Segment, typename Allocator, typename Repository,
+              typename HousekeepFunc, typename CloseFunc>
     explicit client(socket_type &&socket, std::uint32_t session_id,
-                    segment &seg, arena_allocator &allocator, Repository &repo,
+                    Segment &seg, Allocator &allocator, Repository &repo,
                     std::chrono::milliseconds voucher_time_to_live,
                     HousekeepFunc per_req_housekeeping, CloseFunc close_client)
         : sock(std::forward<socket_type>(socket)),
@@ -58,13 +62,12 @@ class client {
                  [this](std::error_code err) {
                      if (err)
                          handle_read_write_error(err);
-                     decrement_io_refcount();
                  }),
           handler(
               sess,
               [this](auto &&buf) {
-                  increment_io_refcount();
-                  writer.async_write_message(std::forward<decltype(buf)>(buf));
+                  writer.async_write_message(std::forward<decltype(buf)>(buf),
+                                             this->shared_from_this());
               },
               std::move(per_req_housekeeping),
               [this](std::error_code err) { handle_read_write_error(err); }),
@@ -78,7 +81,7 @@ class client {
                       handle_read_write_error(err);
                   else
                       handle_end_of_read();
-                  decrement_io_refcount();
+                  close_self(*this);
               }),
           close_self(std::move(close_client)) {}
 
@@ -89,12 +92,16 @@ class client {
     client(client &&) = delete;
     auto operator=(client &&) = delete;
 
-    void start() {
-        reader.start();
-        increment_io_refcount();
-    }
+    // Must not be called until this client is owned by a shared_ptr.
+    void start() { reader.start(this->shared_from_this()); }
 
     void prepare_for_shutdown() { sess.drop_pending_requests(); }
+
+    void close() {
+        boost::system::error_code ignore;
+        sock.shutdown(asio::socket_base::shutdown_type::shutdown_both, ignore);
+        sock.close(ignore); // Cancel all async reads/writes.
+    }
 
   private:
     void handle_end_of_read() {
@@ -119,15 +126,6 @@ class client {
         sock.shutdown(asio::socket_base::shutdown_type::shutdown_both, ignore);
         sess.drop_pending_requests();
         sock.close(); // Cancel all async read/writes.
-    }
-
-    void increment_io_refcount() noexcept { ++io_refcount; }
-
-    void decrement_io_refcount() {
-        --io_refcount;
-        if (io_refcount == 0) {
-            close_self(*this);
-        }
     }
 };
 

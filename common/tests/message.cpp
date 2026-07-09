@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
+#include <memory>
 #include <system_error>
 #include <utility>
 #include <vector>
@@ -148,6 +149,55 @@ TEST_CASE("Unix domain socket stream finishes with asio::error::eof") {
     // NOLINTEND(readability-magic-numbers)
 }
 
+TEST_CASE("async_message_reader: keepalive held until handlers drain") {
+#ifdef _WIN32
+    using unlinkable_type = typename win32::unlinkable;
+#else
+    using unlinkable_type = typename posix::unlinkable;
+#endif
+
+    testing::tempdir const td;
+    auto path = testing::unique_path(
+        td.path(), testing::make_test_filename(__FILE__, __LINE__));
+    asio::local::stream_protocol::endpoint const endpt(path.string());
+
+    asio::io_context ctx;
+    asio::local::stream_protocol::acceptor server(ctx);
+    server.open(endpt.protocol());
+    server.bind(endpt);
+    unlinkable_type const unlk(path.string());
+    server.listen(
+        asio::local::stream_protocol::socket::max_listen_connections);
+    asio::local::stream_protocol::socket peer(ctx);
+    peer.connect(endpt);
+    asio::local::stream_protocol::socket sock(ctx);
+    server.accept(sock);
+
+    auto keepalive = std::make_shared<int>(42);
+    std::weak_ptr<int> const observer = keepalive;
+    bool ended = false;
+    async_message_reader r(
+        sock,
+        [](gsl::span<std::uint8_t const> msg) -> bool {
+            (void)msg;
+            CHECK(false); // Should not be called
+            return false;
+        },
+        [&](std::error_code ec) {
+            CHECK(ec); // operation_aborted
+            ended = true;
+        });
+    r.start(std::move(keepalive));
+
+    // The pending read's handler holds the keepalive.
+    CHECK_FALSE(observer.expired());
+
+    sock.close(); // Abort the pending read.
+    ctx.run();
+    CHECK(ended);
+    CHECK(observer.expired());
+}
+
 namespace {
 
 [[maybe_unused]] inline auto
@@ -212,7 +262,7 @@ TEST_CASE("async_message_writer") {
 
     SECTION("empty") {
         std::vector<std::uint8_t> v;
-        writer.async_write_message(std::move(v));
+        writer.async_write_message(std::move(v), {});
         ctx.run();
         CHECK(done);
         auto data = get_file_contents(path);
@@ -224,7 +274,7 @@ TEST_CASE("async_message_writer") {
     SECTION("unaligned-7") {
         // Prefix 3; the writer pads to 8 and patches the prefix to 4.
         std::vector<std::uint8_t> v{3, 0, 0, 0, 'e', 'f', 'g'};
-        writer.async_write_message(std::move(v));
+        writer.async_write_message(std::move(v), {});
         ctx.run();
         CHECK(done);
         auto data = get_file_contents(path);
@@ -244,7 +294,7 @@ TEST_CASE("async_message_writer") {
         // Prefix 8; the writer pads to 16 and patches the prefix to 12.
         std::vector<std::uint8_t> v{8,   0,   0,   0,   'a', 'b',
                                     'c', 'd', 'e', 'f', 'g', 'h'};
-        writer.async_write_message(std::move(v));
+        writer.async_write_message(std::move(v), {});
         ctx.run();
         CHECK(done);
         auto data = get_file_contents(path);
@@ -263,7 +313,7 @@ TEST_CASE("async_message_writer") {
     SECTION("aligned") {
         // Prefix 4; written verbatim with the prefix untouched.
         std::vector<std::uint8_t> v{4, 0, 0, 0, 'e', 'f', 'g', 'h'};
-        writer.async_write_message(std::move(v));
+        writer.async_write_message(std::move(v), {});
         ctx.run();
         CHECK(done);
         auto data = get_file_contents(path);
@@ -293,7 +343,7 @@ TEST_CASE("async_message_reader: empty stream") {
             CHECK_FALSE(ec);
             ended = true;
         });
-    r.start();
+    r.start({});
     ctx.run();
     CHECK(ended);
 }
@@ -319,7 +369,7 @@ TEST_CASE("async_message_reader: single empty message") {
             return false;
         },
         [&](std::error_code ec) { CHECK_FALSE(ec); });
-    r.start();
+    r.start({});
     ctx.run();
     CHECK(received);
 }
@@ -347,7 +397,7 @@ TEST_CASE("async_message_reader: large message") {
             return false;
         },
         [&](std::error_code ec) { CHECK_FALSE(ec); });
-    r.start();
+    r.start({});
     ctx.run();
     CHECK(received);
     // NOLINTEND(readability-magic-numbers)
@@ -373,7 +423,7 @@ TEST_CASE("async_message_reader: quit by handler") {
             return true; // Notify quit.
         },
         [&](std::error_code ec) { CHECK_FALSE(ec); });
-    r.start();
+    r.start({});
     ctx.run();
     CHECK(message_count == 1);
 }
@@ -404,7 +454,7 @@ TEST_CASE("async_message_reader: message too long") {
             CHECK(ec == std::error_code(errc::message_too_long));
             ended = true;
         });
-    r.start();
+    r.start({});
     ctx.run();
     CHECK(ended);
 }
@@ -434,7 +484,7 @@ TEST_CASE("async_message_reader: misaligned frame") {
             CHECK(ec == std::error_code(errc::misaligned_message));
             ended = true;
         });
-    r.start();
+    r.start({});
     ctx.run();
     CHECK(ended);
 }
@@ -465,7 +515,7 @@ TEST_CASE("async_message_reader: eof in message") {
             CHECK(ec == std::error_code(errc::eof_in_message));
             ended = true;
         });
-    r.start();
+    r.start({});
     ctx.run();
     CHECK(ended);
 }
@@ -503,8 +553,10 @@ TEST_CASE("writer-reader round trip of FlatBuffer needing padding") {
                 written = true;
                 s.close();
             });
-        writer.async_write_message(std::vector<std::uint8_t>(
-            b.GetBufferPointer(), b.GetBufferPointer() + b.GetSize()));
+        writer.async_write_message(
+            std::vector<std::uint8_t>(b.GetBufferPointer(),
+                                      b.GetBufferPointer() + b.GetSize()),
+            {});
         ctx.run();
         CHECK(written);
     }
@@ -536,7 +588,7 @@ TEST_CASE("writer-reader round trip of FlatBuffer needing padding") {
             return false;
         },
         [&](std::error_code ec) { CHECK_FALSE(ec); });
-    r.start();
+    r.start({});
     ctx.run();
     CHECK(received);
 

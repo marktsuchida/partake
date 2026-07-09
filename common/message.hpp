@@ -55,6 +55,13 @@ read_message_frame_size(gsl::span<std::uint8_t const> bytes) noexcept
 
 } // namespace internal
 
+// Keepalive contract (async_message_writer and async_message_reader):
+// callers pass an object (typically a shared_ptr to the owner of the
+// socket/reader/writer) that must outlive pending handlers; each pending
+// asio handler holds it until it runs. For the writer, messages queued while
+// a write is in flight are flushed by that write chain and are covered by
+// its keepalive, so per-message keepalives must all guard the same object.
+
 // Buffer can be flatbuffers::DetachedBuffer or anything with size() and
 // mutable data() that owns its storage and is movable. Each buffer must
 // contain a size-prefixed FlatBuffer message (its prefix may be patched to
@@ -84,14 +91,18 @@ template <typename Socket, typename Buffer> class async_message_writer {
     async_message_writer(async_message_writer &&) = delete;
     auto operator=(async_message_writer &&) = delete;
 
-    void async_write_message(buffer_type &&buffer) {
+    void async_write_message(buffer_type &&buffer,
+                             std::shared_ptr<void> keepalive) {
         if (buffer.size() == 0)
             return asio::defer(sock->get_executor(),
-                               [this] { handle_cmpl({}); });
+                               [this, ka = std::move(keepalive)] {
+                                   (void)ka;
+                                   handle_cmpl({});
+                               });
 
         buffers_to_write_next.push_back(std::move(buffer));
         if (not is_write_in_progress())
-            start_writing();
+            start_writing(std::move(keepalive));
     }
 
   private:
@@ -99,7 +110,7 @@ template <typename Socket, typename Buffer> class async_message_writer {
         return not buffers_being_written.empty();
     }
 
-    void start_writing() {
+    void start_writing(std::shared_ptr<void> keepalive) {
         assert(not is_write_in_progress());
         assert(asio_buffers.empty());
         assert(end_offsets.empty());
@@ -142,7 +153,8 @@ template <typename Socket, typename Buffer> class async_message_writer {
 
         asio::async_write(
             *sock, asio_buffers,
-            [this](boost::system::error_code err, std::size_t written) {
+            [this, keepalive = std::move(keepalive)](
+                boost::system::error_code err, std::size_t written) {
                 static const boost::system::error_code canceled =
                     asio::error::operation_aborted;
 
@@ -170,7 +182,7 @@ template <typename Socket, typename Buffer> class async_message_writer {
                         handle_cmpl(canceled);
                     buffers_to_write_next.clear();
                 } else if (not buffers_to_write_next.empty()) {
-                    start_writing();
+                    start_writing(keepalive);
                 }
             });
     }
@@ -209,15 +221,18 @@ template <typename Socket> class async_message_reader {
     async_message_reader(async_message_reader &&) = delete;
     auto operator=(async_message_reader &&) = delete;
 
-    void start() { schedule_read(); }
+    void start(std::shared_ptr<void> keepalive) {
+        schedule_read(std::move(keepalive));
+    }
 
   private:
-    void schedule_read(std::size_t start = 0) {
+    void schedule_read(std::shared_ptr<void> keepalive,
+                       std::size_t start = 0) {
         auto new_read = gsl::span(readbuf).subspan(start);
         sock->async_read_some(
             asio::buffer(new_read.data(), new_read.size()),
-            [this, start](boost::system::error_code err,
-                          std::size_t bytes_read) {
+            [this, start, keepalive = std::move(keepalive)](
+                boost::system::error_code err, std::size_t bytes_read) {
                 if (err && err != asio::error::eof)
                     return handle_ed(err);
 
@@ -262,7 +277,7 @@ template <typename Socket> class async_message_reader {
                     return handle_ed({});
                 }
 
-                schedule_read(remaining_size);
+                schedule_read(keepalive, remaining_size);
             });
     }
 };
