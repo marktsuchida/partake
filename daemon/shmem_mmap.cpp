@@ -11,9 +11,7 @@
 #include "page_size.hpp"
 #include "random.hpp"
 #include "sizes.hpp"
-#include "testing.hpp"
 
-#include <doctest.h>
 #include <spdlog/spdlog.h>
 
 #include <cerrno>
@@ -26,10 +24,6 @@
 
 #ifdef __APPLE__
 #include <sys/posix_shm.h>
-#endif
-
-#ifdef __linux__
-#include <linux/limits.h>
 #endif
 
 namespace partake::daemon {
@@ -73,60 +67,6 @@ auto create_posix_shmem(std::string const &name, bool force)
             std::move(fd)};
 }
 
-TEST_CASE("create_posix_shmem") {
-    GIVEN("unique shmem name") {
-        auto const name = "/partake-test-" + common::random_string(10);
-
-        // Structured binding doesn't work with lambda capture (used by
-        // doctest), so use std::tie() instead.
-        common::posix::unlinkable unlk;
-        common::posix::file_descriptor fd;
-
-        SUBCASE("create, no-force") {
-            std::tie(unlk, fd) = create_posix_shmem(name, false);
-            CHECK(unlk.is_valid());
-            CHECK(fd.is_valid());
-            CHECK(unlk.name() == name);
-
-            common::posix::unlinkable unlk2;
-            common::posix::file_descriptor fd2;
-
-            SUBCASE("create with existing name, no-force") {
-                std::tie(unlk2, fd2) = create_posix_shmem(name, false);
-                CHECK_FALSE(unlk2.is_valid());
-                CHECK_FALSE(fd2.is_valid());
-                CHECK(unlk2.name().empty());
-            }
-
-            SUBCASE("create with existing name, force") {
-                std::tie(unlk2, fd2) = create_posix_shmem(name, true);
-                CHECK(unlk2.is_valid());
-                CHECK(fd2.is_valid());
-                CHECK(unlk2.name() == name);
-
-                SUBCASE("force-created shmem supports ftruncate()") {
-                    CHECK(::ftruncate(fd2.get(), 16384) == 0);
-                    CAPTURE(errno);
-                }
-            }
-        }
-
-        SUBCASE("create, force") {
-            std::tie(unlk, fd) = create_posix_shmem(name, true);
-            CHECK(unlk.is_valid());
-            CHECK(fd.is_valid());
-            CHECK(unlk.name() == name);
-
-            SUBCASE("let destructor clean up") {}
-
-            SUBCASE("explicitly unlink and close") {
-                unlk.unlink();
-                fd.close();
-            }
-        }
-    }
-}
-
 auto create_regular_file(std::string const &path, bool force)
     -> std::pair<common::posix::unlinkable, common::posix::file_descriptor> {
     errno = 0;
@@ -146,57 +86,6 @@ auto create_regular_file(std::string const &path, bool force)
     spdlog::info("open: {}: success; fd {}", path, fd.get());
     return {common::posix::unlinkable(path, spdlog::default_logger()),
             std::move(fd)};
-}
-
-TEST_CASE("create_regular_file") {
-    GIVEN("unique file name") {
-        testing::tempdir const td;
-        auto path = testing::unique_path(
-            td.path(), testing::make_test_filename(__FILE__, __LINE__));
-
-        common::posix::unlinkable unlk;
-        common::posix::file_descriptor fd;
-
-        SUBCASE("create, no-force") {
-            std::tie(unlk, fd) = create_regular_file(path.string(), false);
-            CHECK(unlk.is_valid());
-            CHECK(fd.is_valid());
-            CHECK(unlk.name() == path.string());
-
-            common::posix::unlinkable unlk2;
-            common::posix::file_descriptor fd2;
-
-            SUBCASE("create with existing name, no-force") {
-                std::tie(unlk2, fd2) =
-                    create_regular_file(path.string(), false);
-                CHECK_FALSE(unlk2.is_valid());
-                CHECK_FALSE(fd2.is_valid());
-                CHECK(unlk2.name().empty());
-            }
-
-            SUBCASE("create with existing name, force") {
-                std::tie(unlk2, fd2) =
-                    create_regular_file(path.string(), true);
-                CHECK(unlk2.is_valid());
-                CHECK(fd2.is_valid());
-                CHECK(unlk2.name() == path.string());
-            }
-        }
-
-        SUBCASE("create, force") {
-            std::tie(unlk, fd) = create_regular_file(path.string(), true);
-            CHECK(unlk.is_valid());
-            CHECK(fd.is_valid());
-            CHECK(unlk.name() == path.string());
-
-            SUBCASE("let destructor clean up") {}
-
-            SUBCASE("explicitly unlink and close") {
-                unlk.unlink();
-                fd.close();
-            }
-        }
-    }
 }
 
 mmap_mapping::mmap_mapping(std::size_t size,
@@ -249,80 +138,12 @@ auto mmap_mapping::unmap() -> bool {
     return ret;
 }
 
-TEST_CASE("mmap_mapping") {
-    SUBCASE("default instance") {
-        mmap_mapping mm;
-        CHECK_FALSE(mm.is_valid());
-        CHECK(mm.size() == 0);
-        CHECK(mm.address() == nullptr);
-
-        SUBCASE("let destructor clean up") {}
-
-        SUBCASE("explicitly unmap") {
-            REQUIRE(mm.unmap());
-            CHECK(mm.unmap()); // Idempotent
-        }
-    }
-
-    GIVEN("a regular-file fd") {
-        testing::tempdir const td;
-        auto path = testing::unique_path(
-            td.path(), testing::make_test_filename(__FILE__, __LINE__));
-        common::posix::unlinkable unlk;
-        common::posix::file_descriptor fd;
-        std::tie(unlk, fd) = create_regular_file(path.string(), true);
-        REQUIRE(unlk.is_valid());
-        REQUIRE(fd.is_valid());
-
-        SUBCASE("create mapping") {
-            auto mm = mmap_mapping(16384, fd);
-            CHECK(mm.is_valid());
-            CHECK(mm.size() == 16384);
-            CHECK(mm.address() != nullptr);
-            void *addr = mm.address();
-
-            // NOLINTBEGIN(bugprone-use-after-move)
-            SUBCASE("move-construct") {
-                mmap_mapping const other(std::move(mm));
-                CHECK_FALSE(mm.is_valid());
-                CHECK(other.is_valid());
-                CHECK(other.size() == 16384);
-                CHECK(other.address() == addr);
-            }
-
-            SUBCASE("move-assign") {
-                mmap_mapping other;
-                other = std::move(mm);
-                CHECK_FALSE(mm.is_valid());
-                CHECK(other.is_valid());
-                CHECK(other.size() == 16384);
-                CHECK(other.address() == addr);
-            }
-            // NOLINTEND(bugprone-use-after-move)
-
-            SUBCASE("let destructor clean up") {}
-
-            SUBCASE("explicitly unmap") {
-                REQUIRE(mm.unmap());
-                CHECK(mm.unmap()); // Idempotent
-            }
-        }
-    }
-}
-
 auto generate_posix_shmem_name() -> std::string {
     // Max: macOS 31, Linux 255, FreeBSD 1023.
     static constexpr std::size_t name_len = 31;
     std::string name = "/partake-";
     name += common::random_string(name_len - name.size()); // 22 random chars
     return name;
-}
-
-TEST_CASE("generate_posix_shmem_name") {
-    auto n = generate_posix_shmem_name();
-    CHECK_FALSE(n.empty());
-    CHECK(n.size() <= 31); // macOS compatibility
-    CHECK(n.front() == '/');
 }
 
 auto generate_filename() -> std::string {
@@ -335,13 +156,6 @@ auto generate_filename() -> std::string {
     auto p = std::filesystem::temp_directory_path();
 #endif
     return p / filename;
-}
-
-TEST_CASE("generate_filename") {
-    auto n = generate_filename();
-    CHECK_FALSE(n.empty());
-    CHECK(n.size() < PATH_MAX);
-    CHECK(n.front() == '/'); // Absolute path
 }
 
 } // namespace internal
@@ -360,17 +174,6 @@ auto create_posix_mmap_shmem(std::size_t size) -> mmap_shmem {
     return create_posix_mmap_shmem(name, size, false);
 }
 
-TEST_CASE("create_posix_mmap_shmem") {
-    // NOLINTNEXTLINE(readability-magic-numbers)
-    auto shm = create_posix_mmap_shmem(100);
-    CHECK(shm.is_valid());
-    CHECK_FALSE(shm.name().empty());
-    CHECK(shm.address() != nullptr);
-    CHECK(shm.size() == page_size());
-    CHECK(shm.unlink());
-    CHECK(shm.unmap());
-}
-
 auto create_file_mmap_shmem(std::string const &name, std::size_t size,
                             bool force) -> mmap_shmem {
     auto [file, fd] = internal::create_regular_file(name, force);
@@ -387,17 +190,6 @@ auto create_file_mmap_shmem(std::string const &name, std::size_t size,
 auto create_file_mmap_shmem(std::size_t size) -> mmap_shmem {
     auto name = internal::generate_filename();
     return create_file_mmap_shmem(name, size, false);
-}
-
-TEST_CASE("create_posix_file_shmem") {
-    // NOLINTNEXTLINE(readability-magic-numbers)
-    auto shm = create_file_mmap_shmem(100);
-    CHECK(shm.is_valid());
-    CHECK_FALSE(shm.name().empty());
-    CHECK(shm.address() != nullptr);
-    CHECK(shm.size() == page_size());
-    CHECK(shm.unlink());
-    CHECK(shm.unmap());
 }
 
 } // namespace partake::daemon

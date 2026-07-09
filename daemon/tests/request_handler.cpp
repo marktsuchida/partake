@@ -6,8 +6,9 @@
 
 #include "request_handler.hpp"
 
-#include <doctest.h>
-#include <trompeloeil.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/trompeloeil.hpp>
+#include <trompeloeil/mock.hpp>
 
 #include <cstdint>
 #include <functional>
@@ -214,7 +215,7 @@ TEST_CASE("request_handler: hello") {
 
     using trompeloeil::_;
 
-    SUBCASE("success") {
+    SECTION("success") {
         REQUIRE_CALL(sess, hello("some_client", 123u, _, _))
             .SIDE_EFFECT(_3(7))
             .TIMES(1);
@@ -240,7 +241,7 @@ TEST_CASE("request_handler: hello") {
         CHECK(hello_resp->conn_no() == 7);
     }
 
-    SUBCASE("failure") {
+    SECTION("failure") {
         REQUIRE_CALL(sess, hello("some_client", 123u, _, _))
             .SIDE_EFFECT(_4(Status::INVALID_REQUEST))
             .TIMES(1);
@@ -264,7 +265,7 @@ TEST_CASE("request_handler: hello") {
         CHECK(resp->response_type() == AnyResponse::NONE);
     }
 
-    SUBCASE("no name field") {
+    SECTION("no name field") {
         flatbuffers::FlatBufferBuilder b2;
         b2.FinishSizePrefixed(CreateRequestMessage(
             b2, b2.CreateVector({
@@ -353,7 +354,7 @@ TEST_CASE("request_handler: get_segment") {
 
     using trompeloeil::_;
 
-    SUBCASE("posix_mmap") {
+    SECTION("posix_mmap") {
         auto spec = segment_spec{posix_mmap_segment_spec{"/myshmem"}, 16384};
         REQUIRE_CALL(sess, get_segment(7u, _, _))
             .LR_SIDE_EFFECT(_2(spec))
@@ -384,7 +385,7 @@ TEST_CASE("request_handler: get_segment") {
         CHECK(mapping->use_shm_open());
     }
 
-    SUBCASE("file_mmap") {
+    SECTION("file_mmap") {
         auto spec = segment_spec{file_mmap_segment_spec{"/tmp/myfile"}, 16384};
         REQUIRE_CALL(sess, get_segment(7u, _, _))
             .LR_SIDE_EFFECT(_2(spec))
@@ -415,7 +416,7 @@ TEST_CASE("request_handler: get_segment") {
         CHECK_FALSE(mapping->use_shm_open());
     }
 
-    SUBCASE("sysv") {
+    SECTION("sysv") {
         auto spec = segment_spec{sysv_segment_spec{1234}, 16384};
         REQUIRE_CALL(sess, get_segment(7u, _, _))
             .LR_SIDE_EFFECT(_2(spec))
@@ -445,7 +446,7 @@ TEST_CASE("request_handler: get_segment") {
         CHECK(mapping->shm_id() == 1234);
     }
 
-    SUBCASE("win32") {
+    SECTION("win32") {
         auto spec =
             segment_spec{win32_segment_spec{"Local\\MyMapping", true}, 16384};
         REQUIRE_CALL(sess, get_segment(7u, _, _))
@@ -477,7 +478,7 @@ TEST_CASE("request_handler: get_segment") {
         CHECK(mapping->use_large_pages());
     }
 
-    SUBCASE("failure") {
+    SECTION("failure") {
         REQUIRE_CALL(sess, get_segment(7u, _, _))
             .SIDE_EFFECT(_3(Status::NO_SUCH_SEGMENT))
             .TIMES(1);
@@ -521,7 +522,7 @@ TEST_CASE("request_handler: alloc") {
 
     using trompeloeil::_;
 
-    SUBCASE("success") {
+    SECTION("success") {
         auto const rsrc = mock_resource{7, 4096, 1024};
         REQUIRE_CALL(sess, alloc(1000, Policy::DEFAULT, _, _))
             .SIDE_EFFECT(_3(common::token(12345), rsrc))
@@ -552,7 +553,7 @@ TEST_CASE("request_handler: alloc") {
         CHECK_FALSE(alloc_resp->zeroed()); // Currently fixed
     }
 
-    SUBCASE("failure") {
+    SECTION("failure") {
         REQUIRE_CALL(sess, alloc(1000, Policy::DEFAULT, _, _))
             .SIDE_EFFECT(_4(Status::OUT_OF_SHMEM))
             .TIMES(1);
@@ -596,7 +597,7 @@ TEST_CASE("request_handler: open") {
 
     using trompeloeil::_;
 
-    SUBCASE("immediate_success") {
+    SECTION("immediate_success") {
         auto const rsrc = mock_resource{7, 4096, 1024};
         REQUIRE_CALL(sess, open(common::token(12345), Policy::DEFAULT, true, _,
                                 _, _, _, _))
@@ -627,7 +628,7 @@ TEST_CASE("request_handler: open") {
         CHECK(open_resp->object()->size() == 1024);
     }
 
-    SUBCASE("immediate_failure") {
+    SECTION("immediate_failure") {
         REQUIRE_CALL(sess, open(common::token(12345), Policy::DEFAULT, true, _,
                                 _, _, _, _))
             .SIDE_EFFECT(_6(Status::NO_SUCH_OBJECT))
@@ -652,7 +653,7 @@ TEST_CASE("request_handler: open") {
         CHECK(resp->response_type() == AnyResponse::NONE);
     }
 
-    SUBCASE("deferred_success") {
+    SECTION("deferred_success") {
         std::function<void(common::token, mock_resource const &)>
             deferred_success_cb;
         REQUIRE_CALL(sess, open(common::token(12345), Policy::DEFAULT, true, _,
@@ -688,7 +689,7 @@ TEST_CASE("request_handler: open") {
         CHECK(open_resp->object()->size() == 1024);
     }
 
-    SUBCASE("deferred_failure") {
+    SECTION("deferred_failure") {
         std::function<void(Status)> deferred_error_cb;
         REQUIRE_CALL(sess, open(common::token(12345), Policy::DEFAULT, true, _,
                                 _, _, _, _))
@@ -737,7 +738,7 @@ TEST_CASE("request_handler: close") {
 
     using trompeloeil::_;
 
-    SUBCASE("success") {
+    SECTION("success") {
         REQUIRE_CALL(sess, close(common::token(12345), _, _))
             .SIDE_EFFECT(_2())
             .TIMES(1);
@@ -761,7 +762,7 @@ TEST_CASE("request_handler: close") {
         CHECK(resp->response_type() == AnyResponse::CloseResponse);
     }
 
-    SUBCASE("immediate_failure") {
+    SECTION("immediate_failure") {
         REQUIRE_CALL(sess, close(common::token(12345), _, _))
             .SIDE_EFFECT(_3(Status::NO_SUCH_OBJECT))
             .TIMES(1);
@@ -805,7 +806,7 @@ TEST_CASE("request_handler: share") {
 
     using trompeloeil::_;
 
-    SUBCASE("success") {
+    SECTION("success") {
         REQUIRE_CALL(sess, share(common::token(12345), _, _))
             .SIDE_EFFECT(_2())
             .TIMES(1);
@@ -829,7 +830,7 @@ TEST_CASE("request_handler: share") {
         CHECK(resp->response_type() == AnyResponse::ShareResponse);
     }
 
-    SUBCASE("failure") {
+    SECTION("failure") {
         REQUIRE_CALL(sess, share(common::token(12345), _, _))
             .SIDE_EFFECT(_3(Status::NO_SUCH_OBJECT))
             .TIMES(1);
@@ -873,7 +874,7 @@ TEST_CASE("request_handler: unshare") {
 
     using trompeloeil::_;
 
-    SUBCASE("immediate_success") {
+    SECTION("immediate_success") {
         REQUIRE_CALL(sess, unshare(common::token(12345), true, _, _, _, _))
             .SIDE_EFFECT(_3(common::token(23456)))
             .TIMES(1);
@@ -900,7 +901,7 @@ TEST_CASE("request_handler: unshare") {
         CHECK_FALSE(unshare_resp->zeroed()); // Fixed for now
     }
 
-    SUBCASE("immediate_failure") {
+    SECTION("immediate_failure") {
         REQUIRE_CALL(sess, unshare(common::token(12345), true, _, _, _, _))
             .SIDE_EFFECT(_4(Status::NO_SUCH_OBJECT))
             .TIMES(1);
@@ -924,7 +925,7 @@ TEST_CASE("request_handler: unshare") {
         CHECK(resp->response_type() == AnyResponse::NONE);
     }
 
-    SUBCASE("deferred_success") {
+    SECTION("deferred_success") {
         std::function<void(common::token)> deferred_success_cb;
         REQUIRE_CALL(sess, unshare(common::token(12345), true, _, _, _, _))
             .LR_SIDE_EFFECT(deferred_success_cb = _5)
@@ -955,7 +956,7 @@ TEST_CASE("request_handler: unshare") {
         CHECK_FALSE(unshare_resp->zeroed());
     }
 
-    SUBCASE("deferred_failure") {
+    SECTION("deferred_failure") {
         std::function<void(Status)> deferred_error_cb;
         REQUIRE_CALL(sess, unshare(common::token(12345), true, _, _, _, _))
             .LR_SIDE_EFFECT(deferred_error_cb = _6)
@@ -1003,7 +1004,7 @@ TEST_CASE("request_handler: create_voucher") {
 
     using trompeloeil::_;
 
-    SUBCASE("success") {
+    SECTION("success") {
         REQUIRE_CALL(sess, create_voucher(common::token(12345), 3u, _, _, _))
             .SIDE_EFFECT(_4(common::token(23456)))
             .TIMES(1);
@@ -1028,7 +1029,7 @@ TEST_CASE("request_handler: create_voucher") {
         CHECK(resp->response_as_CreateVoucherResponse()->key() == 23456);
     }
 
-    SUBCASE("failure") {
+    SECTION("failure") {
         REQUIRE_CALL(sess, create_voucher(common::token(12345), 3u, _, _, _))
             .SIDE_EFFECT(_5(Status::NO_SUCH_OBJECT))
             .TIMES(1);
@@ -1072,7 +1073,7 @@ TEST_CASE("request_handler: discard_voucher") {
 
     using trompeloeil::_;
 
-    SUBCASE("success") {
+    SECTION("success") {
         REQUIRE_CALL(sess, discard_voucher(common::token(12345), _, _, _))
             .SIDE_EFFECT(_3(common::token(23456)))
             .TIMES(1);
@@ -1097,7 +1098,7 @@ TEST_CASE("request_handler: discard_voucher") {
         CHECK(resp->response_as_DiscardVoucherResponse()->key() == 23456);
     }
 
-    SUBCASE("failure") {
+    SECTION("failure") {
         REQUIRE_CALL(sess, discard_voucher(common::token(12345), _, _, _))
             .SIDE_EFFECT(_4(Status::NO_SUCH_OBJECT))
             .TIMES(1);

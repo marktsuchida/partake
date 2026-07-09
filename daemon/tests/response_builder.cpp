@@ -6,7 +6,8 @@
 
 #include "response_builder.hpp"
 
-#include <doctest.h>
+#include <catch2/catch_test_macros.hpp>
+
 #include <gsl/span>
 
 namespace partake::daemon {

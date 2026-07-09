@@ -6,8 +6,9 @@
 
 #include "proper_object.hpp"
 
-#include <doctest.h>
-#include <trompeloeil.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/trompeloeil.hpp>
+#include <trompeloeil/mock.hpp>
 
 namespace partake::daemon {
 
@@ -31,7 +32,7 @@ TEST_CASE("proper_object") {
     CHECK_FALSE(po.is_shared());
     CHECK(po.exclusive_writer() == nullptr);
 
-    SUBCASE("open_once") {
+    SECTION("open_once") {
         po.open();
         CHECK(po.is_opened_by_unique_handle());
         mock_handle h;
@@ -39,7 +40,7 @@ TEST_CASE("proper_object") {
         po.close(&h);
     }
 
-    SUBCASE("open_twice") {
+    SECTION("open_twice") {
         po.open();
         po.open();
         CHECK_FALSE(po.is_opened_by_unique_handle());
@@ -48,23 +49,23 @@ TEST_CASE("proper_object") {
         po.close(&h);
     }
 
-    SUBCASE("close_exclusive_writer") {
+    SECTION("close_exclusive_writer") {
         po.open();
         mock_handle h;
         po.exclusive_writer(&h);
 
-        SUBCASE("no_awaiting_share") {
+        SECTION("no_awaiting_share") {
             // Nothing special since h is not awaiting share
             po.close(&h);
         }
 
-        SUBCASE("awaiting_share_self") {
+        SECTION("awaiting_share_self") {
             po.add_handle_awaiting_share(&h);
             REQUIRE_CALL(h, resume_requests_pending_on_share()).TIMES(1);
             po.close(&h);
         }
 
-        SUBCASE("awaiting_share_other") {
+        SECTION("awaiting_share_other") {
             mock_handle g;
             po.add_handle_awaiting_share(&g);
             REQUIRE_CALL(g, resume_requests_pending_on_share()).TIMES(1);
@@ -72,7 +73,7 @@ TEST_CASE("proper_object") {
         }
     }
 
-    SUBCASE("share") {
+    SECTION("share") {
         po.open();
         mock_handle h;
         po.exclusive_writer(&h);
@@ -86,7 +87,7 @@ TEST_CASE("proper_object") {
         po.close(&h);
     }
 
-    SUBCASE("unique_ownership") {
+    SECTION("unique_ownership") {
         po.open();
         mock_handle h;
         po.exclusive_writer(&h);
@@ -96,7 +97,7 @@ TEST_CASE("proper_object") {
         mock_handle g;
         po.set_handle_awaiting_unique_ownership(&g);
 
-        SUBCASE("close_awaiting") {
+        SECTION("close_awaiting") {
             REQUIRE_CALL(g, resume_request_pending_on_unique_ownership())
                 .TIMES(1);
             ALLOW_CALL(g, is_open_uniquely()).RETURN(true);
@@ -104,7 +105,7 @@ TEST_CASE("proper_object") {
             po.close(&h);
         }
 
-        SUBCASE("close_other") {
+        SECTION("close_other") {
             REQUIRE_CALL(g, resume_request_pending_on_unique_ownership())
                 .TIMES(1);
             ALLOW_CALL(g, is_open_uniquely()).RETURN(true);

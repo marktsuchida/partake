@@ -6,9 +6,11 @@
 
 #include "voucher_queue.hpp"
 
-#include <doctest.h>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/trompeloeil.hpp>
+#include <trompeloeil/mock.hpp>
+
 #include <gsl/pointers>
-#include <trompeloeil.hpp>
 
 #include <functional>
 #include <memory>
@@ -97,7 +99,7 @@ TEST_CASE("voucher_queue") {
 
     using trompeloeil::_;
 
-    SUBCASE("enqueue") {
+    SECTION("enqueue") {
         auto exp_impl = std::make_shared<mock_timer_impl>();
         mock_timer const exp_timer{exp_impl};
         REQUIRE_CALL(ct, make_timer(_))
@@ -113,20 +115,20 @@ TEST_CASE("voucher_queue") {
         CHECK_FALSE(vq.empty());
         CHECK(v1->h.has_value());
 
-        SUBCASE("drop") {
+        SECTION("drop") {
             vq.drop(v1);
             CHECK(vq.empty());
             CHECK_FALSE(v1->h.has_value());
         }
 
-        SUBCASE("fire; expired") {
+        SECTION("fire; expired") {
             ALLOW_CALL(mock_clock::instance(), now()).RETURN(time_point(100s));
             handler({});
             CHECK(vq.empty());
             CHECK_FALSE(v1->h.has_value());
         }
 
-        SUBCASE("fire; unexpired") {
+        SECTION("fire; unexpired") {
             ALLOW_CALL(mock_clock::instance(), now()).RETURN(time_point(99s));
             ALLOW_CALL(*exp_impl, cancel());
             auto exp_impl2 = std::make_shared<mock_timer_impl>();
@@ -144,7 +146,7 @@ TEST_CASE("voucher_queue") {
             CHECK_FALSE(vq.empty());
             CHECK(v1->h.has_value());
 
-            SUBCASE("fire; now expired") {
+            SECTION("fire; now expired") {
                 ALLOW_CALL(mock_clock::instance(), now())
                     .RETURN(time_point(100s));
                 handler({});
@@ -154,7 +156,7 @@ TEST_CASE("voucher_queue") {
         }
     }
 
-    SUBCASE("enqueue already expired") {
+    SECTION("enqueue already expired") {
         // Behavior is the same even if voucher is already expired when
         // enqueuing: expiration is deferred.
         auto exp_impl = std::make_shared<mock_timer_impl>();

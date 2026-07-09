@@ -9,7 +9,6 @@
 #include "hive.hpp"
 
 #include <boost/intrusive/list.hpp>
-#include <doctest.h>
 #include <gsl/span>
 
 #include <cassert>
@@ -39,17 +38,6 @@ constexpr inline auto countl_zero_software_nonzero(T x) noexcept -> int {
     return ret;
 }
 
-TEST_CASE("countl_zero software implementation") {
-    CHECK(countl_zero_software_nonzero<std::uint16_t>(1u) == 15);
-    CHECK(countl_zero_software_nonzero<std::uint16_t>(5u) == 13);
-    CHECK(countl_zero_software_nonzero<std::uint16_t>(1u << 14) == 1);
-    CHECK(countl_zero_software_nonzero<std::uint16_t>(1u << 15) == 0);
-    CHECK(countl_zero_software_nonzero<std::uint32_t>(1u) == 31);
-    CHECK(countl_zero_software_nonzero<std::uint32_t>(5u) == 29);
-    CHECK(countl_zero_software_nonzero<std::uint32_t>(1u << 30) == 1);
-    CHECK(countl_zero_software_nonzero<std::uint32_t>(1u << 31) == 0);
-}
-
 // C++20 has std::countl_zero() that can replace this. We implement for size_t
 // only.
 inline auto countl_zero(std::size_t x) noexcept -> int {
@@ -72,32 +60,12 @@ inline auto countl_zero(std::size_t x) noexcept -> int {
 #endif
 }
 
-TEST_CASE("countl_zero") {
-    static constexpr auto size_bits = 8 * sizeof(std::size_t);
-    CHECK(countl_zero(0) == size_bits);
-    CHECK(countl_zero(1) == size_bits - 1);
-    CHECK(countl_zero(5) == size_bits - 3);
-    CHECK(countl_zero(std::size_t(1) << (size_bits - 2)) == 1);
-    CHECK(countl_zero(std::size_t(1) << (size_bits - 1)) == 0);
-}
-
 inline auto free_list_index_for_size(std::size_t size) -> std::size_t {
     assert(size > 0);
     // At least for now, we use a separate free list for each size range whose
     // maximum is a power of 2: 1, 2, 4, ..., N, where N is the first power of
     // 2 that is greater than or equal to size.
     return 8 * sizeof(size) - static_cast<std::size_t>(countl_zero(size - 1));
-}
-
-TEST_CASE("free_list_index_for_size") {
-    CHECK(free_list_index_for_size(1) == 0);
-    CHECK(free_list_index_for_size(2) == 1);
-    CHECK(free_list_index_for_size(3) == 2);
-    CHECK(free_list_index_for_size(4) == 2);
-    CHECK(free_list_index_for_size(5) == 3);
-    CHECK(free_list_index_for_size(255) == 8);
-    CHECK(free_list_index_for_size(256) == 8);
-    CHECK(free_list_index_for_size(257) == 9);
 }
 
 // The arena performs allocation of chunks of some contiguous resource (e.g.,

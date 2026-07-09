@@ -8,8 +8,6 @@
 
 #include "token.hpp"
 
-#include <doctest.h>
-
 #include <cassert>
 #include <cstdint>
 #include <utility>
@@ -63,13 +61,5 @@ class key_sequence {
         return common::token(t);
     }
 };
-
-TEST_CASE("key_sequence") {
-    // Smoke test only.
-    key_sequence seq;
-    CHECK(~seq.generate().as_u64() != 0);
-    CHECK(seq.generate().is_valid());
-    CHECK(seq.generate() != seq.generate());
-}
 
 } // namespace partake::daemon

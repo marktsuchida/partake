@@ -6,8 +6,9 @@
 
 #include "repository.hpp"
 
-#include <doctest.h>
-#include <trompeloeil.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/trompeloeil.hpp>
+#include <trompeloeil/mock.hpp>
 
 namespace partake::daemon {
 

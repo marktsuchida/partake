@@ -12,8 +12,11 @@
 #include "repository.hpp"
 #include "token.hpp"
 
-#include <doctest.h>
-#include <trompeloeil.hpp>
+#include <catch2/catch_message.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <catch2/trompeloeil.hpp>
+#include <trompeloeil/mock.hpp>
 
 #include <chrono>
 
@@ -31,7 +34,7 @@ struct fake_resource {
     fake_resource() noexcept = default;
     explicit fake_resource(int i) noexcept : id(i) {}
     explicit operator bool() const noexcept { return id != 0; }
-    // maybe_unused for when doctest assertions are disabled:
+    // Not used by all test configurations:
     [[maybe_unused]] friend auto operator==(fake_resource lhs,
                                             fake_resource rhs) noexcept
         -> bool {
@@ -80,7 +83,7 @@ TEST_CASE("session: global ops") {
     CHECK(sess.name().empty());
     CHECK(sess.pid() == 0);
 
-    SUBCASE("hello") {
+    SECTION("hello") {
         std::uint32_t session_id = 0;
         sess.hello(
             "myclient", 1234, [&](std::uint32_t id) { session_id = id; },
@@ -97,7 +100,7 @@ TEST_CASE("session: global ops") {
         CHECK(err == Status::INVALID_REQUEST);
     }
 
-    SUBCASE("hello with empty name") {
+    SECTION("hello with empty name") {
         std::uint32_t session_id = 0;
         sess.hello(
             "", 1234, [&](std::uint32_t id) { session_id = id; },
@@ -107,7 +110,7 @@ TEST_CASE("session: global ops") {
         CHECK(sess.pid() == 1234);
     }
 
-    SUBCASE("get_segment") {
+    SECTION("get_segment") {
         int spec = 0;
         ALLOW_CALL(seg, spec()).RETURN(5678);
         sess.get_segment(
@@ -141,103 +144,94 @@ TEST_CASE("session: object ops") {
     session_type sess2(43, seg, alloc, repo, 10s);
 
     GIVEN("nonexistent key") {
-        std::vector const keys{token(0), token(12345)};
-        for (token const key : keys) {
-            CAPTURE(key);
+        auto const key = GENERATE(token(0), token(12345));
+        CAPTURE(key);
 
-            SUBCASE("open -> no such object") {
-                std::vector const waits{false, true};
-                std::vector const policies{Policy::DEFAULT, Policy::PRIMITIVE};
-                for (bool wait : waits) {
-                    CAPTURE(wait);
-                    for (Policy policy : policies) {
-                        CAPTURE(policy);
-
-                        auto err = Status::OK;
-                        sess1.open(
-                            key, policy, wait, clock::now(),
-                            []([[maybe_unused]] token k,
-                               [[maybe_unused]] fake_resource const &r) {
-                                CHECK(false);
-                            },
-                            [&](Status e) { err = e; },
-                            []([[maybe_unused]] token k,
-                               [[maybe_unused]] fake_resource const &r) {
-                                CHECK(false);
-                            },
-                            []([[maybe_unused]] Status e) { CHECK(false); });
-                        CHECK(err == Status::NO_SUCH_OBJECT);
-                    }
-                }
-            }
-
-            SUBCASE("close -> no such object") {
-                auto err = Status::OK;
-                sess1.close(
-                    key, [] { CHECK(false); }, [&](Status e) { err = e; });
-                CHECK(err == Status::NO_SUCH_OBJECT);
-            }
-
-            SUBCASE("share -> no such object") {
-                auto err = Status::OK;
-                sess1.share(
-                    key, [] { CHECK(false); }, [&](Status e) { err = e; });
-                CHECK(err == Status::NO_SUCH_OBJECT);
-            }
-
-            SUBCASE("unshare -> no such object") {
-                std::vector const waits{false, true};
-                for (bool wait : waits) {
-                    CAPTURE(wait);
+        SECTION("open -> no such object") {
+            std::vector const waits{false, true};
+            std::vector const policies{Policy::DEFAULT, Policy::PRIMITIVE};
+            for (bool wait : waits) {
+                CAPTURE(wait);
+                for (Policy policy : policies) {
+                    CAPTURE(policy);
 
                     auto err = Status::OK;
-                    sess1.unshare(
-                        key, wait,
-                        []([[maybe_unused]] token k) { CHECK(false); },
+                    sess1.open(
+                        key, policy, wait, clock::now(),
+                        []([[maybe_unused]] token k,
+                           [[maybe_unused]] fake_resource const &r) {
+                            CHECK(false);
+                        },
                         [&](Status e) { err = e; },
-                        []([[maybe_unused]] token k) { CHECK(false); },
+                        []([[maybe_unused]] token k,
+                           [[maybe_unused]] fake_resource const &r) {
+                            CHECK(false);
+                        },
                         []([[maybe_unused]] Status e) { CHECK(false); });
                     CHECK(err == Status::NO_SUCH_OBJECT);
                 }
             }
+        }
 
-            SUBCASE("create_voucher -> no such object") {
+        SECTION("close -> no such object") {
+            auto err = Status::OK;
+            sess1.close(key, [] { CHECK(false); }, [&](Status e) { err = e; });
+            CHECK(err == Status::NO_SUCH_OBJECT);
+        }
+
+        SECTION("share -> no such object") {
+            auto err = Status::OK;
+            sess1.share(key, [] { CHECK(false); }, [&](Status e) { err = e; });
+            CHECK(err == Status::NO_SUCH_OBJECT);
+        }
+
+        SECTION("unshare -> no such object") {
+            std::vector const waits{false, true};
+            for (bool wait : waits) {
+                CAPTURE(wait);
+
                 auto err = Status::OK;
-                sess1.create_voucher(
-                    key, 1, clock::now(),
+                sess1.unshare(
+                    key, wait, []([[maybe_unused]] token k) { CHECK(false); },
+                    [&](Status e) { err = e; },
                     []([[maybe_unused]] token k) { CHECK(false); },
-                    [&](Status e) { err = e; });
+                    []([[maybe_unused]] Status e) { CHECK(false); });
                 CHECK(err == Status::NO_SUCH_OBJECT);
             }
+        }
 
-            SUBCASE("discard_voucher -> no such object") {
-                auto err = Status::OK;
-                sess1.discard_voucher(
-                    key, clock::now(),
-                    []([[maybe_unused]] token k) { CHECK(false); },
-                    [&](Status e) { err = e; });
-                CHECK(err == Status::NO_SUCH_OBJECT);
-            }
+        SECTION("create_voucher -> no such object") {
+            auto err = Status::OK;
+            sess1.create_voucher(
+                key, 1, clock::now(),
+                []([[maybe_unused]] token k) { CHECK(false); },
+                [&](Status e) { err = e; });
+            CHECK(err == Status::NO_SUCH_OBJECT);
+        }
+
+        SECTION("discard_voucher -> no such object") {
+            auto err = Status::OK;
+            sess1.discard_voucher(
+                key, clock::now(),
+                []([[maybe_unused]] token k) { CHECK(false); },
+                [&](Status e) { err = e; });
+            CHECK(err == Status::NO_SUCH_OBJECT);
         }
     }
 
     GIVEN("exhausted allocator") {
-        std::vector const policies{Policy::DEFAULT, Policy::PRIMITIVE};
-        for (Policy const policy : policies) {
-            CAPTURE(policy);
+        auto const policy = GENERATE(Policy::DEFAULT, Policy::PRIMITIVE);
+        CAPTURE(policy);
 
-            SUBCASE("alloc -> out of shmem") {
-                REQUIRE_CALL(alloc, allocate(1024)).RETURN(fake_resource());
-                auto err = Status::OK;
-                sess1.alloc(
-                    1024, policy,
-                    []([[maybe_unused]] token k,
-                       [[maybe_unused]] fake_resource const &r) {
-                        CHECK(false);
-                    },
-                    [&](Status e) { err = e; });
-                CHECK(err == Status::OUT_OF_SHMEM);
-            }
+        SECTION("alloc -> out of shmem") {
+            REQUIRE_CALL(alloc, allocate(1024)).RETURN(fake_resource());
+            auto err = Status::OK;
+            sess1.alloc(
+                1024, policy,
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
+                [&](Status e) { err = e; });
+            CHECK(err == Status::OUT_OF_SHMEM);
         }
     }
 
@@ -253,16 +247,16 @@ TEST_CASE("session: object ops") {
             []([[maybe_unused]] Status e) { CHECK(false); });
         CHECK(key.is_valid());
 
-        SUBCASE("nil") {} // Test for correct cleanup when object left over.
+        SECTION("nil") {} // Test for correct cleanup when object left over.
 
-        SUBCASE("close by sess1 -> succeeds") {
+        SECTION("close by sess1 -> succeeds") {
             bool ok = false;
             sess1.close(
                 key, [&] { ok = true; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(ok);
 
-            SUBCASE("close by sess1 -> no such object") {
+            SECTION("close by sess1 -> no such object") {
                 auto err = Status::OK;
                 sess1.close(
                     key, [] { CHECK(false); }, [&](Status e) { err = e; });
@@ -270,13 +264,13 @@ TEST_CASE("session: object ops") {
             }
         }
 
-        SUBCASE("close by sess2 -> no such object") {
+        SECTION("close by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.close(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("open-nowait by sess1 -> object busy") {
+        SECTION("open-nowait by sess1 -> object busy") {
             auto err = Status::OK;
             sess1.open(
                 key, Policy::DEFAULT, false, clock::now(),
@@ -289,7 +283,7 @@ TEST_CASE("session: object ops") {
             CHECK(err == Status::OBJECT_BUSY);
         }
 
-        SUBCASE("open-nowait by sess2 -> object busy") {
+        SECTION("open-nowait by sess2 -> object busy") {
             auto err = Status::OK;
             sess2.open(
                 key, Policy::DEFAULT, false, clock::now(),
@@ -302,7 +296,7 @@ TEST_CASE("session: object ops") {
             CHECK(err == Status::OBJECT_BUSY);
         }
 
-        SUBCASE("open-wait by sess1 -> waits") {
+        SECTION("open-wait by sess1 -> waits") {
             token opened_key;
             auto err = Status::OK;
             sess1.open(
@@ -317,7 +311,7 @@ TEST_CASE("session: object ops") {
             CHECK_FALSE(opened_key.is_valid());
             CHECK(err == Status::OK);
 
-            SUBCASE("close by sess1 -> open-wait fails, no such object") {
+            SECTION("close by sess1 -> open-wait fails, no such object") {
                 bool ok = false;
                 sess1.close(
                     key, [&] { ok = true; },
@@ -326,7 +320,7 @@ TEST_CASE("session: object ops") {
                 CHECK(err == Status::NO_SUCH_OBJECT);
             }
 
-            SUBCASE("share by sess1 -> open-wait succeeds") {
+            SECTION("share by sess1 -> open-wait succeeds") {
                 bool ok = false;
                 sess1.share(
                     key, [&] { ok = true; },
@@ -336,7 +330,7 @@ TEST_CASE("session: object ops") {
             }
         }
 
-        SUBCASE("open-wait by sess2 -> waits") {
+        SECTION("open-wait by sess2 -> waits") {
             token opened_key;
             auto err = Status::OK;
             sess2.open(
@@ -351,7 +345,7 @@ TEST_CASE("session: object ops") {
             CHECK_FALSE(opened_key.is_valid());
             CHECK(err == Status::OK);
 
-            SUBCASE("close by sess1 -> open-wait fails, no such object") {
+            SECTION("close by sess1 -> open-wait fails, no such object") {
                 bool ok = false;
                 sess1.close(
                     key, [&] { ok = true; },
@@ -360,7 +354,7 @@ TEST_CASE("session: object ops") {
                 CHECK(err == Status::NO_SUCH_OBJECT);
             }
 
-            SUBCASE("share by sess1 -> open-wait succeeds") {
+            SECTION("share by sess1 -> open-wait succeeds") {
                 bool ok = false;
                 sess1.share(
                     key, [&] { ok = true; },
@@ -370,7 +364,7 @@ TEST_CASE("session: object ops") {
             }
         }
 
-        SUBCASE("share by sess1 -> succeeds") {
+        SECTION("share by sess1 -> succeeds") {
             bool ok = false;
             sess1.share(
                 key, [&] { ok = true; },
@@ -378,13 +372,13 @@ TEST_CASE("session: object ops") {
             CHECK(ok);
         }
 
-        SUBCASE("share by sess2 -> no such object") {
+        SECTION("share by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.share(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("unshare by sess1 -> no such object") {
+        SECTION("unshare by sess1 -> no such object") {
             auto err = Status::OK;
             sess1.unshare(
                 key, true, []([[maybe_unused]] token k) { CHECK(false); },
@@ -394,7 +388,7 @@ TEST_CASE("session: object ops") {
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("unshare by sess2 -> no such object") {
+        SECTION("unshare by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.unshare(
                 key, true, []([[maybe_unused]] token k) { CHECK(false); },
@@ -404,7 +398,7 @@ TEST_CASE("session: object ops") {
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("create_voucher by sess1 -> succeeds") {
+        SECTION("create_voucher by sess1 -> succeeds") {
             token vkey;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess1.create_voucher(
@@ -414,7 +408,7 @@ TEST_CASE("session: object ops") {
             CHECK(vkey != key);
         }
 
-        SUBCASE("create_voucher by sess2 -> succeeds") {
+        SECTION("create_voucher by sess2 -> succeeds") {
             token vkey;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess2.create_voucher(
@@ -424,14 +418,14 @@ TEST_CASE("session: object ops") {
             CHECK(vkey != key);
         }
 
-        SUBCASE("discard_voucher by sess1 -> succeeds") {
+        SECTION("discard_voucher by sess1 -> succeeds") {
             token ret;
             sess1.discard_voucher(
                 key, clock::now(), [&](token k) { ret = k; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(ret == key);
 
-            SUBCASE("close by sess1 -> succeeds") {
+            SECTION("close by sess1 -> succeeds") {
                 bool object_unaffected_by_discard_voucher = false;
                 sess1.close(
                     key, [&] { object_unaffected_by_discard_voucher = true; },
@@ -440,7 +434,7 @@ TEST_CASE("session: object ops") {
             }
         }
 
-        SUBCASE("discard_voucher by sess2 -> succeeds") {
+        SECTION("discard_voucher by sess2 -> succeeds") {
             token ret;
             sess2.discard_voucher(
                 key, clock::now(), [&](token k) { ret = k; },
@@ -463,7 +457,7 @@ TEST_CASE("session: object ops") {
             []([[maybe_unused]] Status e) { CHECK(false); });
         CHECK(key.is_valid());
 
-        SUBCASE("close by sess1 -> succeeds") {
+        SECTION("close by sess1 -> succeeds") {
             bool ok = false;
             sess1.close(
                 key, [&] { ok = true; },
@@ -471,13 +465,13 @@ TEST_CASE("session: object ops") {
             CHECK(ok);
         }
 
-        SUBCASE("close by sess2 -> no such object") {
+        SECTION("close by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.close(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("open with wrong policy -> no such object") {
+        SECTION("open with wrong policy -> no such object") {
             auto err = Status::OK;
             sess1.open(
                 key, Policy::PRIMITIVE, true, clock::now(),
@@ -490,7 +484,7 @@ TEST_CASE("session: object ops") {
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("open-wait by sess1 -> succeeds") {
+        SECTION("open-wait by sess1 -> succeeds") {
             token opened;
             sess1.open(
                 key, Policy::DEFAULT, true, clock::now(),
@@ -505,7 +499,7 @@ TEST_CASE("session: object ops") {
             CHECK(opened == key);
         }
 
-        SUBCASE("open-wait by sess2 -> succeeds") {
+        SECTION("open-wait by sess2 -> succeeds") {
             token opened;
             sess2.open(
                 key, Policy::DEFAULT, true, clock::now(),
@@ -520,19 +514,19 @@ TEST_CASE("session: object ops") {
             CHECK(opened == key);
         }
 
-        SUBCASE("share by sess1 -> no such object") {
+        SECTION("share by sess1 -> no such object") {
             auto err = Status::OK;
             sess1.share(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("share by sess2 -> no such object") {
+        SECTION("share by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.share(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("unshare-wait by sess1 -> succeeds") {
+        SECTION("unshare-wait by sess1 -> succeeds") {
             token newkey;
             sess1.unshare(
                 key, true, [&](token k) { newkey = k; },
@@ -542,7 +536,7 @@ TEST_CASE("session: object ops") {
             CHECK(newkey.is_valid());
             CHECK(newkey != key);
 
-            SUBCASE("open-wait by sess1 -> no such object") {
+            SECTION("open-wait by sess1 -> no such object") {
                 auto err = Status::OK;
                 sess1.open(
                     key, Policy::DEFAULT, true, clock::now(),
@@ -560,7 +554,7 @@ TEST_CASE("session: object ops") {
             }
         }
 
-        SUBCASE("unshare-wait by sess2 -> no such object") {
+        SECTION("unshare-wait by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.unshare(
                 key, true, []([[maybe_unused]] token k) { CHECK(false); },
@@ -570,7 +564,7 @@ TEST_CASE("session: object ops") {
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("create_voucher by sess1 -> succeeds") {
+        SECTION("create_voucher by sess1 -> succeeds") {
             token vkey;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess1.create_voucher(
@@ -580,7 +574,7 @@ TEST_CASE("session: object ops") {
             CHECK(vkey != key);
         }
 
-        SUBCASE("create_voucher by sess2 -> succeeds") {
+        SECTION("create_voucher by sess2 -> succeeds") {
             token vkey;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess2.create_voucher(
@@ -590,14 +584,14 @@ TEST_CASE("session: object ops") {
             CHECK(vkey != key);
         }
 
-        SUBCASE("discard_voucher by sess1 -> succeeds") {
+        SECTION("discard_voucher by sess1 -> succeeds") {
             token ret;
             sess1.discard_voucher(
                 key, clock::now(), [&](token k) { ret = k; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(ret == key);
 
-            SUBCASE("close by sess1 -> succeeds") {
+            SECTION("close by sess1 -> succeeds") {
                 bool object_unaffected_by_discard_voucher = false;
                 sess1.close(
                     key, [&] { object_unaffected_by_discard_voucher = true; },
@@ -606,7 +600,7 @@ TEST_CASE("session: object ops") {
             }
         }
 
-        SUBCASE("discard_voucher by sess2 -> succeeds") {
+        SECTION("discard_voucher by sess2 -> succeeds") {
             token ret;
             sess2.discard_voucher(
                 key, clock::now(), [&](token k) { ret = k; },
@@ -643,7 +637,7 @@ TEST_CASE("session: object ops") {
             []([[maybe_unused]] Status e) { CHECK(false); });
         CHECK(key.is_valid());
 
-        SUBCASE("close by sess1 -> succeeds") {
+        SECTION("close by sess1 -> succeeds") {
             bool ok = false;
             sess1.close(
                 key, [&] { ok = true; },
@@ -651,7 +645,7 @@ TEST_CASE("session: object ops") {
             CHECK(ok);
         }
 
-        SUBCASE("open-wait by sess1 -> succeeds") {
+        SECTION("open-wait by sess1 -> succeeds") {
             token opened;
             sess1.open(
                 key, Policy::DEFAULT, true, clock::now(),
@@ -666,13 +660,13 @@ TEST_CASE("session: object ops") {
             CHECK(opened == key);
         }
 
-        SUBCASE("share by sess1 -> no such object") {
+        SECTION("share by sess1 -> no such object") {
             auto err = Status::OK;
             sess1.share(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("unshare-nowait by sess1 -> object busy") {
+        SECTION("unshare-nowait by sess1 -> object busy") {
             auto err = Status::OK;
             sess1.unshare(
                 key, false, []([[maybe_unused]] token k) { CHECK(false); },
@@ -682,7 +676,7 @@ TEST_CASE("session: object ops") {
             CHECK(err == Status::OBJECT_BUSY);
         }
 
-        SUBCASE("unshare-wait by sess1 -> waits") {
+        SECTION("unshare-wait by sess1 -> waits") {
             token newkey;
             auto err = Status::OK;
             sess1.unshare(
@@ -692,7 +686,7 @@ TEST_CASE("session: object ops") {
             CHECK_FALSE(newkey.is_valid());
             CHECK(err == Status::OK);
 
-            SUBCASE("close by sess1 -> unshare fails, no such object") {
+            SECTION("close by sess1 -> unshare fails, no such object") {
                 bool ok = false;
                 sess1.close(
                     key, [&] { ok = true; },
@@ -702,7 +696,7 @@ TEST_CASE("session: object ops") {
                 CHECK(err == Status::NO_SUCH_OBJECT);
             }
 
-            SUBCASE("close by sess2 -> unshare succeeds") {
+            SECTION("close by sess2 -> unshare succeeds") {
                 bool ok = false;
                 sess2.close(
                     key, [&] { ok = true; },
@@ -713,7 +707,7 @@ TEST_CASE("session: object ops") {
                 CHECK(err == Status::OK);
             }
 
-            SUBCASE("unshare-wait by sess2 -> object reserved") {
+            SECTION("unshare-wait by sess2 -> object reserved") {
                 auto err2 = Status::OK;
                 sess2.unshare(
                     key, true, []([[maybe_unused]] token k) { CHECK(false); },
@@ -725,7 +719,7 @@ TEST_CASE("session: object ops") {
                 CHECK(err == Status::OK);
             }
 
-            SUBCASE("open-wait by sess1 -> succeeds") {
+            SECTION("open-wait by sess1 -> succeeds") {
                 token opened;
                 sess1.open(
                     key, Policy::DEFAULT, true, clock::now(),
@@ -744,7 +738,7 @@ TEST_CASE("session: object ops") {
                 CHECK(err == Status::OK);
             }
 
-            SUBCASE("open-wait by sess2 -> succeeds") {
+            SECTION("open-wait by sess2 -> succeeds") {
                 token opened;
                 sess2.open(
                     key, Policy::DEFAULT, true, clock::now(),
@@ -793,7 +787,7 @@ TEST_CASE("session: object ops") {
             []([[maybe_unused]] Status e) { CHECK(false); });
         CHECK(key.is_valid());
 
-        SUBCASE("unshare-nowait by sess1 -> object busy") {
+        SECTION("unshare-nowait by sess1 -> object busy") {
             auto err = Status::OK;
             sess1.unshare(
                 key, false, []([[maybe_unused]] token k) { CHECK(false); },
@@ -803,7 +797,7 @@ TEST_CASE("session: object ops") {
             CHECK(err == Status::OBJECT_BUSY);
         }
 
-        SUBCASE("unshare-wait by sess1 -> waits") {
+        SECTION("unshare-wait by sess1 -> waits") {
             token newkey;
             auto err = Status::OK;
             sess1.unshare(
@@ -813,7 +807,7 @@ TEST_CASE("session: object ops") {
             CHECK_FALSE(newkey.is_valid());
             CHECK(err == Status::OK);
 
-            SUBCASE("close by sess1 -> unshare succeeds") {
+            SECTION("close by sess1 -> unshare succeeds") {
                 bool ok = false;
                 sess1.close(
                     key, [&] { ok = true; },
@@ -825,7 +819,7 @@ TEST_CASE("session: object ops") {
             }
         }
 
-        SUBCASE("open-wait by sess2 -> succeeds") {
+        SECTION("open-wait by sess2 -> succeeds") {
             token opened;
             sess2.open(
                 key, Policy::DEFAULT, true, clock::now(),
@@ -839,7 +833,7 @@ TEST_CASE("session: object ops") {
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(opened == key);
 
-            SUBCASE("unshare-wait by sess2 -> waits") {
+            SECTION("unshare-wait by sess2 -> waits") {
                 token newkey;
                 auto err = Status::OK;
                 sess2.unshare(
@@ -849,7 +843,7 @@ TEST_CASE("session: object ops") {
                 CHECK_FALSE(newkey.is_valid());
                 CHECK(err == Status::OK);
 
-                SUBCASE("close by sess1 -> unshare still waiting") {
+                SECTION("close by sess1 -> unshare still waiting") {
                     bool ok = false;
                     sess1.close(
                         key, [&] { ok = true; },
@@ -858,7 +852,7 @@ TEST_CASE("session: object ops") {
                     CHECK_FALSE(newkey.is_valid());
                     CHECK(err == Status::OK);
 
-                    SUBCASE("close by sess1 -> unshare succeeds") {
+                    SECTION("close by sess1 -> unshare succeeds") {
                         bool ok2 = false;
                         sess1.close(
                             key, [&] { ok2 = true; },
@@ -894,14 +888,14 @@ TEST_CASE("session: object ops") {
         CHECK(vkey.is_valid());
         CHECK(vkey != key);
 
-        SUBCASE("close by sess1 -> succeeds") {
+        SECTION("close by sess1 -> succeeds") {
             bool ok = false;
             sess1.close(
                 key, [&] { ok = true; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(ok);
 
-            SUBCASE("open-wait voucher by sess2 -> no such object") {
+            SECTION("open-wait voucher by sess2 -> no such object") {
                 auto err = Status::OK;
                 REQUIRE_CALL(vq, drop(_))
                     .LR_SIDE_EFFECT(vptr.reset())
@@ -922,7 +916,7 @@ TEST_CASE("session: object ops") {
             }
         }
 
-        SUBCASE("open-wait voucher by sess2 -> waits") {
+        SECTION("open-wait voucher by sess2 -> waits") {
             token opened;
             auto err = Status::OK;
             REQUIRE_CALL(vq, drop(_)).LR_SIDE_EFFECT(vptr.reset()).TIMES(1);
@@ -939,7 +933,7 @@ TEST_CASE("session: object ops") {
             CHECK_FALSE(opened.is_valid());
             CHECK(err == Status::OK);
 
-            SUBCASE("open-wait voucher by sess2 -> no such object") {
+            SECTION("open-wait voucher by sess2 -> no such object") {
                 auto err2 = Status::OK;
                 sess2.open(
                     vkey, Policy::DEFAULT, true, clock::now(),
@@ -956,7 +950,7 @@ TEST_CASE("session: object ops") {
                 CHECK(err2 == Status::NO_SUCH_OBJECT);
             }
 
-            SUBCASE("share by sess1 -> open succeeds") {
+            SECTION("share by sess1 -> open succeeds") {
                 bool ok = false;
                 sess1.share(
                     key, [&] { ok = true; },
@@ -966,7 +960,7 @@ TEST_CASE("session: object ops") {
                 CHECK(err == Status::OK);
             }
 
-            SUBCASE("close by sess1 -> open fails, no such object") {
+            SECTION("close by sess1 -> open fails, no such object") {
                 bool ok = false;
                 sess1.close(
                     key, [&] { ok = true; },
@@ -977,7 +971,7 @@ TEST_CASE("session: object ops") {
             }
         }
 
-        SUBCASE("create_voucher voucher by sess1 -> succeeds") {
+        SECTION("create_voucher voucher by sess1 -> succeeds") {
             token newvkey;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess1.create_voucher(
@@ -987,7 +981,7 @@ TEST_CASE("session: object ops") {
             CHECK(newvkey != vkey);
         }
 
-        SUBCASE("discard_voucher voucher by sess1 -> succeeds") {
+        SECTION("discard_voucher voucher by sess1 -> succeeds") {
             token ret;
             REQUIRE_CALL(vq, drop(_)).TIMES(1);
             sess1.discard_voucher(
@@ -996,21 +990,21 @@ TEST_CASE("session: object ops") {
             CHECK(ret == key);
         }
 
-        SUBCASE("close voucher by sess1 -> no such object") {
+        SECTION("close voucher by sess1 -> no such object") {
             auto err = Status::OK;
             sess1.close(
                 vkey, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("share voucher by sess1 -> no such object") {
+        SECTION("share voucher by sess1 -> no such object") {
             auto err = Status::OK;
             sess1.share(
                 vkey, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("unshare-wait voucher by sess1 -> no such object") {
+        SECTION("unshare-wait voucher by sess1 -> no such object") {
             auto err = Status::OK;
             sess1.unshare(
                 vkey, true, []([[maybe_unused]] token k) { CHECK(false); },
@@ -1047,14 +1041,14 @@ TEST_CASE("session: object ops") {
         CHECK(vkey.is_valid());
         CHECK(vkey != key);
 
-        SUBCASE("close by sess1 -> succeeds") {
+        SECTION("close by sess1 -> succeeds") {
             bool ok = false;
             sess1.close(
                 key, [&] { ok = true; },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(ok);
 
-            SUBCASE("open-wait voucher by sess2 -> succeeds") {
+            SECTION("open-wait voucher by sess2 -> succeeds") {
                 token opened;
                 REQUIRE_CALL(vq, drop(_))
                     .LR_SIDE_EFFECT(vptr.reset())
@@ -1075,7 +1069,7 @@ TEST_CASE("session: object ops") {
             }
         }
 
-        SUBCASE("open-wait voucher by sess2 -> succeeds") {
+        SECTION("open-wait voucher by sess2 -> succeeds") {
             token opened;
             REQUIRE_CALL(vq, drop(_)).LR_SIDE_EFFECT(vptr.reset()).TIMES(1);
             sess2.open(
@@ -1091,7 +1085,7 @@ TEST_CASE("session: object ops") {
             CHECK(opened == key);
         }
 
-        SUBCASE("unshare-nowait by sess1 -> object busy") {
+        SECTION("unshare-nowait by sess1 -> object busy") {
             auto err = Status::OK;
             sess1.unshare(
                 key, false, []([[maybe_unused]] token k) { CHECK(false); },
@@ -1101,7 +1095,7 @@ TEST_CASE("session: object ops") {
             CHECK(err == Status::OBJECT_BUSY);
         }
 
-        SUBCASE("unshare-wait by sess1 -> waits") {
+        SECTION("unshare-wait by sess1 -> waits") {
             token newkey;
             auto err = Status::OK;
             sess1.unshare(
@@ -1111,14 +1105,14 @@ TEST_CASE("session: object ops") {
             CHECK_FALSE(newkey.is_valid());
             CHECK(err == Status::OK);
 
-            SUBCASE("voucher expires -> unshare succeeds") {
+            SECTION("voucher expires -> unshare succeeds") {
                 vptr.reset(); // Simulate expiration.
                 CHECK(newkey.is_valid());
                 CHECK(newkey != key);
                 CHECK(err == Status::OK);
             }
 
-            SUBCASE("close by sess1 -> unshare fails, no such object") {
+            SECTION("close by sess1 -> unshare fails, no such object") {
                 bool ok = false;
                 sess1.close(
                     key, [&] { ok = true; },
@@ -1142,7 +1136,7 @@ TEST_CASE("session: object ops") {
             []([[maybe_unused]] Status e) { CHECK(false); });
         CHECK(key.is_valid());
 
-        SUBCASE("close by sess1 -> succeeds") {
+        SECTION("close by sess1 -> succeeds") {
             bool ok = false;
             sess1.close(
                 key, [&] { ok = true; },
@@ -1150,13 +1144,13 @@ TEST_CASE("session: object ops") {
             CHECK(ok);
         }
 
-        SUBCASE("close by sess2 -> no such object") {
+        SECTION("close by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.close(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("open with wrong policy -> no such object") {
+        SECTION("open with wrong policy -> no such object") {
             auto err = Status::OK;
             sess1.open(
                 key, Policy::DEFAULT, true, clock::now(),
@@ -1169,7 +1163,7 @@ TEST_CASE("session: object ops") {
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("open-nowait by sess1 -> succeeds") {
+        SECTION("open-nowait by sess1 -> succeeds") {
             token opened;
             sess1.open(
                 key, Policy::PRIMITIVE, false, clock::now(),
@@ -1184,7 +1178,7 @@ TEST_CASE("session: object ops") {
             CHECK(opened == key);
         }
 
-        SUBCASE("open-nowait by sess2 -> succeeds") {
+        SECTION("open-nowait by sess2 -> succeeds") {
             token opened;
             sess2.open(
                 key, Policy::PRIMITIVE, false, clock::now(),
@@ -1199,7 +1193,7 @@ TEST_CASE("session: object ops") {
             CHECK(opened == key);
         }
 
-        SUBCASE("open-wait by sess1 -> succeeds") {
+        SECTION("open-wait by sess1 -> succeeds") {
             token opened;
             sess1.open(
                 key, Policy::PRIMITIVE, true, clock::now(),
@@ -1214,7 +1208,7 @@ TEST_CASE("session: object ops") {
             CHECK(opened == key);
         }
 
-        SUBCASE("open-wait by sess2 -> succeeds") {
+        SECTION("open-wait by sess2 -> succeeds") {
             token opened;
             sess2.open(
                 key, Policy::PRIMITIVE, true, clock::now(),
@@ -1229,19 +1223,19 @@ TEST_CASE("session: object ops") {
             CHECK(opened == key);
         }
 
-        SUBCASE("share by sess1 -> no such object") {
+        SECTION("share by sess1 -> no such object") {
             auto err = Status::OK;
             sess1.share(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("share by sess2 -> no such object") {
+        SECTION("share by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.share(key, [] { CHECK(false); }, [&](Status e) { err = e; });
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("unshare-wait by sess1 -> no such object") {
+        SECTION("unshare-wait by sess1 -> no such object") {
             auto err = Status::OK;
             sess1.unshare(
                 key, true, []([[maybe_unused]] token k) { CHECK(false); },
@@ -1251,7 +1245,7 @@ TEST_CASE("session: object ops") {
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("unshare-wait by sess2 -> no such object") {
+        SECTION("unshare-wait by sess2 -> no such object") {
             auto err = Status::OK;
             sess2.unshare(
                 key, true, []([[maybe_unused]] token k) { CHECK(false); },
@@ -1261,7 +1255,7 @@ TEST_CASE("session: object ops") {
             CHECK(err == Status::NO_SUCH_OBJECT);
         }
 
-        SUBCASE("create_voucher by sess1 -> succeeds") {
+        SECTION("create_voucher by sess1 -> succeeds") {
             token vkey;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess1.create_voucher(
@@ -1271,7 +1265,7 @@ TEST_CASE("session: object ops") {
             CHECK(vkey != key);
         }
 
-        SUBCASE("create_voucher by sess2 -> succeeds") {
+        SECTION("create_voucher by sess2 -> succeeds") {
             token vkey;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
             sess2.create_voucher(
@@ -1281,7 +1275,7 @@ TEST_CASE("session: object ops") {
             CHECK(vkey != key);
         }
 
-        SUBCASE("discard_voucher by sess1 -> succeeds") {
+        SECTION("discard_voucher by sess1 -> succeeds") {
             token ret;
             sess1.discard_voucher(
                 key, clock::now(), [&](token k) { ret = k; },
@@ -1289,7 +1283,7 @@ TEST_CASE("session: object ops") {
             CHECK(ret == key);
         }
 
-        SUBCASE("discard_voucher by sess2 -> succeeds") {
+        SECTION("discard_voucher by sess2 -> succeeds") {
             token ret;
             sess2.discard_voucher(
                 key, clock::now(), [&](token k) { ret = k; },
