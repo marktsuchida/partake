@@ -194,10 +194,13 @@ class session {
         std::shared_ptr<object_type> obj;
         std::shared_ptr<object_type> vchr;
         auto hnd = find_handle(key);
-        if (hnd)
+        if (hnd) {
             obj = hnd->object();
-        else
+        } else {
             std::tie(obj, vchr) = find_target(key, now);
+            if (vchr && obj)
+                hnd = find_handle(obj->key());
+        }
         if (not obj || obj->policy() != policy)
             return error_cb(protocol::Status::NO_SUCH_OBJECT);
 

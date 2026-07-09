@@ -971,6 +971,48 @@ TEST_CASE("session: object ops") {
             }
         }
 
+        SECTION("open-wait voucher by sess1 -> waits on existing handle") {
+            token opened;
+            auto err = Status::OK;
+            REQUIRE_CALL(vq, drop(_)).LR_SIDE_EFFECT(vptr.reset()).TIMES(1);
+            sess1.open(
+                vkey, Policy::DEFAULT, true, clock::now(),
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
+                []([[maybe_unused]] Status e) { CHECK(false); },
+                [&](token k, fake_resource const &r) {
+                    opened = k;
+                    CHECK(r == fake_resource(532));
+                },
+                [&](Status e) { err = e; });
+            CHECK_FALSE(opened.is_valid());
+            CHECK(err == Status::OK);
+
+            SECTION("share by sess1 -> open succeeds") {
+                bool ok = false;
+                sess1.share(
+                    key, [&] { ok = true; },
+                    []([[maybe_unused]] Status e) { CHECK(false); });
+                CHECK(ok);
+                CHECK(opened == key);
+
+                SECTION("close twice by sess1 -> succeeds; third fails") {
+                    for (int i = 0; i < 2; ++i) {
+                        bool closed = false;
+                        sess1.close(
+                            key, [&] { closed = true; },
+                            []([[maybe_unused]] Status e) { CHECK(false); });
+                        CHECK(closed);
+                    }
+                    auto err2 = Status::OK;
+                    sess1.close(
+                        key, [] { CHECK(false); },
+                        [&](Status e) { err2 = e; });
+                    CHECK(err2 == Status::NO_SUCH_OBJECT);
+                }
+            }
+        }
+
         SECTION("create_voucher voucher by sess1 -> succeeds") {
             token newvkey;
             REQUIRE_CALL(vq, enqueue(_)).TIMES(1);
@@ -1083,6 +1125,36 @@ TEST_CASE("session: object ops") {
                    [[maybe_unused]] fake_resource const &r) { CHECK(false); },
                 []([[maybe_unused]] Status e) { CHECK(false); });
             CHECK(opened == key);
+        }
+
+        SECTION("open-wait voucher by sess1 -> succeeds on existing handle") {
+            token opened;
+            REQUIRE_CALL(vq, drop(_)).LR_SIDE_EFFECT(vptr.reset()).TIMES(1);
+            sess1.open(
+                vkey, Policy::DEFAULT, true, clock::now(),
+                [&](token k, fake_resource const &r) {
+                    opened = k;
+                    CHECK(r == fake_resource(532));
+                },
+                []([[maybe_unused]] Status e) { CHECK(false); },
+                []([[maybe_unused]] token k,
+                   [[maybe_unused]] fake_resource const &r) { CHECK(false); },
+                []([[maybe_unused]] Status e) { CHECK(false); });
+            CHECK(opened == key);
+
+            SECTION("close twice by sess1 -> succeeds; third fails") {
+                for (int i = 0; i < 2; ++i) {
+                    bool closed = false;
+                    sess1.close(
+                        key, [&] { closed = true; },
+                        []([[maybe_unused]] Status e) { CHECK(false); });
+                    CHECK(closed);
+                }
+                auto err = Status::OK;
+                sess1.close(
+                    key, [] { CHECK(false); }, [&](Status e) { err = e; });
+                CHECK(err == Status::NO_SUCH_OBJECT);
+            }
         }
 
         SECTION("unshare-nowait by sess1 -> object busy") {

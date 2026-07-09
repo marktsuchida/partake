@@ -11,6 +11,7 @@
 #include <boost/intrusive/unordered_set.hpp>
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <type_traits>
 #include <vector>
@@ -62,7 +63,10 @@ template <typename E> class token_hash_table {
         return table.iterator_to(e);
     }
 
-    void insert(element_type &e) { table.insert(e); }
+    void insert(element_type &e) {
+        [[maybe_unused]] bool const inserted = table.insert(e).second;
+        assert(inserted);
+    }
     void erase(iterator it) { table.erase(it); }
 
     auto find(common::token key) -> iterator { return table.find(key); }
