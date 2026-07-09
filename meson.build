@@ -78,12 +78,6 @@ endif
 # POSIX shm_open() and shm_unlink()
 librt = cxx.find_library('rt', required: false)
 
-doctest_dep = dependency(
-    'doctest',
-    fallback: 'doctest',
-    include_type: 'system',
-)
-
 trompeloeil_dep = dependency(
     'trompeloeil',
     fallback: ['trompeloeil', 'trompeloeil_dep'],

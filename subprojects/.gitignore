@@ -12,7 +12,6 @@
 /*.wrap
 !/catch2.wrap
 !/cli11.wrap
-!/doctest.wrap
 !/flatbuffers.wrap
 !/fmt.wrap
 !/microsoft-gsl.wrap
