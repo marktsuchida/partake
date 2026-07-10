@@ -37,9 +37,8 @@ struct mock_session {
     bool said_hello = true; // Most tests assume hello already done.
     [[nodiscard]] auto has_said_hello() const -> bool { return said_hello; }
 
-    MAKE_MOCK4(hello, void(std::string_view, std::uint32_t,
-                           std::function<void(std::uint32_t)>,
-                           std::function<void(protocol::Status)>));
+    // NOLINTNEXTLINE(modernize-use-trailing-return-type)
+    MAKE_MOCK2(hello, auto(std::string_view, std::uint32_t)->std::uint32_t);
     MAKE_MOCK3(get_segment,
                void(std::uint32_t, std::function<void(segment_spec)>,
                     std::function<void(protocol::Status)>));
@@ -200,107 +199,133 @@ TEST_CASE("request_handler: ping") {
     CHECK(resp1->response_type() == AnyResponse::PingResponse);
 }
 
-TEST_CASE("request_handler: hello") {
+TEST_CASE("request_handler: hello exchange") {
     mock_session sess;
+    sess.said_hello = false;
     mock_writer write;
     mock_error_handler handle_error;
     auto rh = request_handler<mock_session>(
         sess, std::reference_wrapper(write), [] {},
         std::reference_wrapper(handle_error));
 
-    flatbuffers::FlatBufferBuilder b;
     using namespace protocol;
-    b.FinishSizePrefixed(CreateRequestMessage(
-        b, b.CreateVector({
-               CreateRequest(
-                   b, 42, AnyRequest::HelloRequest,
-                   CreateHelloRequest(b, 123, b.CreateString("some_client"))
-                       .Union()),
-           })));
-    auto req_span = b.GetBufferSpan();
-
     using trompeloeil::_;
+    static constexpr auto current_version =
+        static_cast<std::uint32_t>(ProtocolVersion::CURRENT);
 
-    SECTION("success") {
-        REQUIRE_CALL(sess, hello("some_client", 123u, _, _))
-            .SIDE_EFFECT(_3(7))
+    SECTION("accepted") {
+        flatbuffers::FlatBufferBuilder b;
+        b.FinishSizePrefixed(CreateClientHelloMessage(
+            b, current_version, 123, b.CreateString("some_client")));
+        auto hello_span = b.GetBufferSpan();
+
+        REQUIRE_CALL(sess, hello("some_client", 123u))
+            .LR_SIDE_EFFECT(sess.said_hello = true)
+            .RETURN(7u)
             .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
         REQUIRE_CALL(write, call(_))
             .LR_SIDE_EFFECT(resp_buf = std::move(_1))
+            .TIMES(1);
+
+        CHECK_FALSE(rh.handle_message(hello_span));
+
+        auto verif = flatbuffers::Verifier(resp_buf.data(), resp_buf.size());
+        REQUIRE(verif.VerifySizePrefixedBuffer<ServerHelloMessage>(nullptr));
+        auto const *hello_resp =
+            flatbuffers::GetSizePrefixedRoot<ServerHelloMessage>(
+                resp_buf.data());
+        CHECK(hello_resp->result() == HelloResult::OK);
+        CHECK(hello_resp->protocol_version() == current_version);
+        CHECK(hello_resp->conn_no() == 7);
+
+        // Subsequent frames are handled as request messages.
+        flatbuffers::FlatBufferBuilder b2;
+        b2.FinishSizePrefixed(CreateRequestMessage(
+            b2, b2.CreateVector({
+                    CreateRequest(b2, 42, AnyRequest::PingRequest,
+                                  CreatePingRequest(b2).Union()),
+                })));
+        auto req_span = b2.GetBufferSpan();
+
+        flatbuffers::DetachedBuffer resp_buf2;
+        REQUIRE_CALL(write, call(_))
+            .LR_SIDE_EFFECT(resp_buf2 = std::move(_1))
             .TIMES(1);
         REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
 
         CHECK_FALSE(rh.handle_message(req_span));
 
-        auto verif = flatbuffers::Verifier(resp_buf.data(), resp_buf.size());
-        REQUIRE(verif.VerifySizePrefixedBuffer<ResponseMessage>(nullptr));
+        auto verif2 =
+            flatbuffers::Verifier(resp_buf2.data(), resp_buf2.size());
+        REQUIRE(verif2.VerifySizePrefixedBuffer<ResponseMessage>(nullptr));
         auto const *resp_msg =
-            flatbuffers::GetSizePrefixedRoot<ResponseMessage>(resp_buf.data());
+            flatbuffers::GetSizePrefixedRoot<ResponseMessage>(
+                resp_buf2.data());
         auto const *resps = resp_msg->responses();
         CHECK(resps->size() == 1);
         auto const *resp = resps->Get(0);
         CHECK(resp->seqno() == 42);
         CHECK(resp->status() == Status::OK);
-        CHECK(resp->response_type() == AnyResponse::HelloResponse);
-        auto const *hello_resp = resp->response_as_HelloResponse();
-        CHECK(hello_resp->conn_no() == 7);
-    }
-
-    SECTION("failure") {
-        REQUIRE_CALL(sess, hello("some_client", 123u, _, _))
-            .SIDE_EFFECT(_4(Status::INVALID_REQUEST))
-            .TIMES(1);
-        flatbuffers::DetachedBuffer resp_buf;
-        REQUIRE_CALL(write, call(_))
-            .LR_SIDE_EFFECT(resp_buf = std::move(_1))
-            .TIMES(1);
-        REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
-
-        rh.handle_message(req_span);
-
-        auto verif = flatbuffers::Verifier(resp_buf.data(), resp_buf.size());
-        REQUIRE(verif.VerifySizePrefixedBuffer<ResponseMessage>(nullptr));
-        auto const *resp_msg =
-            flatbuffers::GetSizePrefixedRoot<ResponseMessage>(resp_buf.data());
-        auto const *resps = resp_msg->responses();
-        CHECK(resps->size() == 1);
-        auto const *resp = resps->Get(0);
-        CHECK(resp->seqno() == 42);
-        CHECK(resp->status() == Status::INVALID_REQUEST);
-        CHECK(resp->response_type() == AnyResponse::NONE);
+        CHECK(resp->response_type() == AnyResponse::PingResponse);
     }
 
     SECTION("no name field") {
-        flatbuffers::FlatBufferBuilder b2;
-        b2.FinishSizePrefixed(CreateRequestMessage(
-            b2, b2.CreateVector({
-                    CreateRequest(b2, 44, AnyRequest::HelloRequest,
-                                  CreateHelloRequest(b2, 123).Union()),
-                })));
-        auto req_span2 = b2.GetBufferSpan();
+        flatbuffers::FlatBufferBuilder b;
+        b.FinishSizePrefixed(
+            CreateClientHelloMessage(b, current_version, 123));
+        auto hello_span = b.GetBufferSpan();
 
-        REQUIRE_CALL(sess, hello("", 123u, _, _)).SIDE_EFFECT(_3(7)).TIMES(1);
+        REQUIRE_CALL(sess, hello("", 123u))
+            .LR_SIDE_EFFECT(sess.said_hello = true)
+            .RETURN(7u)
+            .TIMES(1);
         flatbuffers::DetachedBuffer resp_buf;
         REQUIRE_CALL(write, call(_))
             .LR_SIDE_EFFECT(resp_buf = std::move(_1))
             .TIMES(1);
-        REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
 
-        CHECK_FALSE(rh.handle_message(req_span2));
+        CHECK_FALSE(rh.handle_message(hello_span));
 
         auto verif = flatbuffers::Verifier(resp_buf.data(), resp_buf.size());
-        REQUIRE(verif.VerifySizePrefixedBuffer<ResponseMessage>(nullptr));
-        auto const *resp_msg =
-            flatbuffers::GetSizePrefixedRoot<ResponseMessage>(resp_buf.data());
-        auto const *resps = resp_msg->responses();
-        CHECK(resps->size() == 1);
-        auto const *resp = resps->Get(0);
-        CHECK(resp->seqno() == 44);
-        CHECK(resp->status() == Status::OK);
-        CHECK(resp->response_type() == AnyResponse::HelloResponse);
-        auto const *hello_resp = resp->response_as_HelloResponse();
+        REQUIRE(verif.VerifySizePrefixedBuffer<ServerHelloMessage>(nullptr));
+        auto const *hello_resp =
+            flatbuffers::GetSizePrefixedRoot<ServerHelloMessage>(
+                resp_buf.data());
+        CHECK(hello_resp->result() == HelloResult::OK);
         CHECK(hello_resp->conn_no() == 7);
+    }
+
+    SECTION("version mismatch") {
+        flatbuffers::FlatBufferBuilder b;
+        b.FinishSizePrefixed(CreateClientHelloMessage(
+            b, current_version + 1, 123, b.CreateString("some_client")));
+        auto hello_span = b.GetBufferSpan();
+
+        // No call to 'sess.hello'.
+        flatbuffers::DetachedBuffer resp_buf;
+        REQUIRE_CALL(write, call(_))
+            .LR_SIDE_EFFECT(resp_buf = std::move(_1))
+            .TIMES(1);
+
+        CHECK(rh.handle_message(hello_span));
+
+        auto verif = flatbuffers::Verifier(resp_buf.data(), resp_buf.size());
+        REQUIRE(verif.VerifySizePrefixedBuffer<ServerHelloMessage>(nullptr));
+        auto const *hello_resp =
+            flatbuffers::GetSizePrefixedRoot<ServerHelloMessage>(
+                resp_buf.data());
+        CHECK(hello_resp->result() ==
+              HelloResult::UNSUPPORTED_PROTOCOL_VERSION);
+        CHECK(hello_resp->protocol_version() == current_version);
+    }
+
+    SECTION("garbage first frame") {
+        REQUIRE_CALL(handle_error,
+                     call(std::error_code(common::errc::invalid_message)))
+            .TIMES(1);
+
+        CHECK(rh.handle_message(std::vector<std::uint8_t>{}));
     }
 }
 
@@ -1129,7 +1154,7 @@ TEST_CASE("request_handler: discard_voucher") {
     }
 }
 
-TEST_CASE("request_handler: requests before hello") {
+TEST_CASE("request_handler: request message as first frame") {
     mock_session sess;
     sess.said_hello = false;
     mock_writer write;
@@ -1141,149 +1166,43 @@ TEST_CASE("request_handler: requests before hello") {
     using namespace protocol;
     using trompeloeil::_;
 
-    SECTION("non-exempt request rejected") {
-        flatbuffers::FlatBufferBuilder b;
-        b.FinishSizePrefixed(CreateRequestMessage(
-            b, b.CreateVector({
-                   CreateRequest(b, 42, AnyRequest::GetSegmentRequest,
-                                 CreateGetSegmentRequest(b, 7).Union()),
-               })));
-        auto req_span = b.GetBufferSpan();
+    // A RequestMessage sent as the first frame either fails to verify as a
+    // ClientHelloMessage or happens to parse as one carrying a garbage
+    // protocol version; either way the connection is ended without any
+    // session request method being called. Do not over-specify which of the
+    // two reactions (fatal error vs mismatch reply) occurs.
+    flatbuffers::FlatBufferBuilder b;
+    b.FinishSizePrefixed(CreateRequestMessage(
+        b, b.CreateVector({
+               CreateRequest(b, 42, AnyRequest::GetSegmentRequest,
+                             CreateGetSegmentRequest(b, 7).Union()),
+           })));
+    auto req_span = b.GetBufferSpan();
 
-        // No calls to 'sess.get_segment' or 'handle_error'.
-        flatbuffers::DetachedBuffer resp_buf;
-        REQUIRE_CALL(write, call(_))
-            .LR_SIDE_EFFECT(resp_buf = std::move(_1))
-            .TIMES(1);
-        REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
+    ALLOW_CALL(write, call(_));
+    ALLOW_CALL(handle_error, call(_));
 
-        CHECK_FALSE(rh.handle_message(req_span));
+    CHECK(rh.handle_message(req_span));
+}
 
-        auto verif = flatbuffers::Verifier(resp_buf.data(), resp_buf.size());
-        REQUIRE(verif.VerifySizePrefixedBuffer<ResponseMessage>(nullptr));
-        auto const *resp_msg =
-            flatbuffers::GetSizePrefixedRoot<ResponseMessage>(resp_buf.data());
-        auto const *resps = resp_msg->responses();
-        CHECK(resps->size() == 1);
-        auto const *resp = resps->Get(0);
-        CHECK(resp->seqno() == 42);
-        CHECK(resp->status() == Status::INVALID_REQUEST);
-        CHECK(resp->response_type() == AnyResponse::NONE);
-    }
+TEST_CASE("request_handler: request message with no requests vector") {
+    mock_session sess;
+    mock_writer write;
+    mock_error_handler handle_error;
+    auto rh = request_handler<mock_session>(
+        sess, std::reference_wrapper(write), [] {},
+        std::reference_wrapper(handle_error));
 
-    SECTION("ping allowed") {
-        flatbuffers::FlatBufferBuilder b;
-        b.FinishSizePrefixed(CreateRequestMessage(
-            b, b.CreateVector({
-                   CreateRequest(b, 42, AnyRequest::PingRequest,
-                                 CreatePingRequest(b).Union()),
-               })));
-        auto req_span = b.GetBufferSpan();
+    flatbuffers::FlatBufferBuilder b;
+    using namespace protocol;
+    b.FinishSizePrefixed(CreateRequestMessage(b));
+    auto req_span = b.GetBufferSpan();
 
-        flatbuffers::DetachedBuffer resp_buf;
-        REQUIRE_CALL(write, call(_))
-            .LR_SIDE_EFFECT(resp_buf = std::move(_1))
-            .TIMES(1);
-        REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
+    using trompeloeil::_;
+    REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
+    // No calls to 'write' or 'handle_error'.
 
-        CHECK_FALSE(rh.handle_message(req_span));
-
-        auto verif = flatbuffers::Verifier(resp_buf.data(), resp_buf.size());
-        REQUIRE(verif.VerifySizePrefixedBuffer<ResponseMessage>(nullptr));
-        auto const *resp_msg =
-            flatbuffers::GetSizePrefixedRoot<ResponseMessage>(resp_buf.data());
-        auto const *resps = resp_msg->responses();
-        CHECK(resps->size() == 1);
-        auto const *resp = resps->Get(0);
-        CHECK(resp->seqno() == 42);
-        CHECK(resp->status() == Status::OK);
-        CHECK(resp->response_type() == AnyResponse::PingResponse);
-    }
-
-    SECTION("quit allowed") {
-        flatbuffers::FlatBufferBuilder b;
-        b.FinishSizePrefixed(CreateRequestMessage(
-            b, b.CreateVector({
-                   CreateRequest(b, 42, AnyRequest::QuitRequest,
-                                 CreateQuitRequest(b).Union()),
-               })));
-        auto req_span = b.GetBufferSpan();
-
-        flatbuffers::DetachedBuffer resp_buf;
-        REQUIRE_CALL(write, call(_))
-            .LR_SIDE_EFFECT(resp_buf = std::move(_1))
-            .TIMES(1);
-        REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
-
-        CHECK(rh.handle_message(req_span));
-
-        auto verif = flatbuffers::Verifier(resp_buf.data(), resp_buf.size());
-        REQUIRE(verif.VerifySizePrefixedBuffer<ResponseMessage>(nullptr));
-        auto const *resp_msg =
-            flatbuffers::GetSizePrefixedRoot<ResponseMessage>(resp_buf.data());
-        auto const *resps = resp_msg->responses();
-        CHECK(resps->size() == 1);
-        auto const *resp = resps->Get(0);
-        CHECK(resp->seqno() == 42);
-        CHECK(resp->status() == Status::OK);
-        CHECK(resp->response_type() == AnyResponse::QuitResponse);
-    }
-
-    SECTION("batch with hello mid-message") {
-        flatbuffers::FlatBufferBuilder b;
-        b.FinishSizePrefixed(CreateRequestMessage(
-            b, b.CreateVector({
-                   CreateRequest(b, 1, AnyRequest::AllocRequest,
-                                 CreateAllocRequest(b, 1000).Union()),
-                   CreateRequest(b, 2, AnyRequest::HelloRequest,
-                                 CreateHelloRequest(
-                                     b, 123, b.CreateString("some_client"))
-                                     .Union()),
-                   CreateRequest(b, 3, AnyRequest::AllocRequest,
-                                 CreateAllocRequest(b, 1000).Union()),
-               })));
-        auto req_span = b.GetBufferSpan();
-
-        REQUIRE_CALL(sess, hello("some_client", 123u, _, _))
-            .LR_SIDE_EFFECT(sess.said_hello = true)
-            .SIDE_EFFECT(_3(7))
-            .TIMES(1);
-        auto const rsrc = mock_resource{7, 4096, 1024};
-        REQUIRE_CALL(sess, alloc(1000, Policy::DEFAULT, _, _))
-            .SIDE_EFFECT(_3(common::token(12345), rsrc))
-            .TIMES(1);
-        flatbuffers::DetachedBuffer resp_buf;
-        REQUIRE_CALL(write, call(_))
-            .LR_SIDE_EFFECT(resp_buf = std::move(_1))
-            .TIMES(1);
-        REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
-
-        CHECK_FALSE(rh.handle_message(req_span));
-
-        auto verif = flatbuffers::Verifier(resp_buf.data(), resp_buf.size());
-        REQUIRE(verif.VerifySizePrefixedBuffer<ResponseMessage>(nullptr));
-        auto const *resp_msg =
-            flatbuffers::GetSizePrefixedRoot<ResponseMessage>(resp_buf.data());
-        auto const *resps = resp_msg->responses();
-        CHECK(resps->size() == 3);
-
-        auto const *resp0 = resps->Get(0);
-        CHECK(resp0->seqno() == 1);
-        CHECK(resp0->status() == Status::INVALID_REQUEST);
-        CHECK(resp0->response_type() == AnyResponse::NONE);
-
-        auto const *resp1 = resps->Get(1);
-        CHECK(resp1->seqno() == 2);
-        CHECK(resp1->status() == Status::OK);
-        CHECK(resp1->response_type() == AnyResponse::HelloResponse);
-        CHECK(resp1->response_as_HelloResponse()->conn_no() == 7);
-
-        auto const *resp2 = resps->Get(2);
-        CHECK(resp2->seqno() == 3);
-        CHECK(resp2->status() == Status::OK);
-        CHECK(resp2->response_type() == AnyResponse::AllocResponse);
-        CHECK(resp2->response_as_AllocResponse()->object()->key() == 12345);
-    }
+    CHECK_FALSE(rh.handle_message(req_span));
 }
 
 TEST_CASE("request_handler: oversized response batch is split") {

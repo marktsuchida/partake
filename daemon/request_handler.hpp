@@ -16,6 +16,7 @@
 
 #include <gsl/pointers>
 #include <gsl/span>
+#include <spdlog/spdlog.h>
 
 #include <cstdint>
 #include <functional>
@@ -107,6 +108,9 @@ template <typename Session> class request_handler {
 
     // Deserialize and handle one FlatBuffers message.
     auto handle_message(gsl::span<std::uint8_t const> bytes) -> bool {
+        if (not sess->has_said_hello())
+            return handle_hello_message(bytes);
+
         if (not internal::verify_request_message(bytes)) {
             handle_err(std::error_code(common::errc::invalid_message));
             return true;
@@ -115,28 +119,31 @@ template <typename Session> class request_handler {
             flatbuffers::GetSizePrefixedRoot<protocol::RequestMessage>(
                 bytes.data());
         auto const *requests = req_msg->requests();
-        auto rb = response_builder(write_resp, requests->size());
+        auto rb = response_builder(write_resp,
+                                   requests != nullptr ? requests->size() : 0);
         auto now = clock::now();
 
         bool done = false;
-        for (auto const *req : *requests) {
-            auto type = req->request_type();
-            if (type >= protocol::AnyRequest::MIN &&
-                type <= protocol::AnyRequest::MAX &&
-                type != protocol::AnyRequest::NONE) {
-                done = handle_request(req, now, rb);
-            } else {
-                // From here on, we can meaningfully report errors to the
-                // client. However, unexpected request type is a client bug, so
-                // we do end the session.
-                rb.add_error_response(req->seqno(),
-                                      protocol::Status::INVALID_REQUEST);
-                handle_err(
-                    std::error_code(common::errc::invalid_request_type));
-                done = true;
+        if (requests != nullptr) {
+            for (auto const *req : *requests) {
+                auto type = req->request_type();
+                if (type >= protocol::AnyRequest::MIN &&
+                    type <= protocol::AnyRequest::MAX &&
+                    type != protocol::AnyRequest::NONE) {
+                    done = handle_request(req, now, rb);
+                } else {
+                    // From here on, we can meaningfully report errors to the
+                    // client. However, unexpected request type is a client
+                    // bug, so we do end the session.
+                    rb.add_error_response(req->seqno(),
+                                          protocol::Status::INVALID_REQUEST);
+                    handle_err(
+                        std::error_code(common::errc::invalid_request_type));
+                    done = true;
+                }
+                if (done)
+                    break;
             }
-            if (done)
-                break;
         }
 
         rb.flush();
@@ -151,23 +158,59 @@ template <typename Session> class request_handler {
     }
 
   private:
+    // Handle the first frame of a connection, which must be a
+    // ClientHelloMessage (not a RequestMessage).
+    auto handle_hello_message(gsl::span<std::uint8_t const> bytes) -> bool {
+        auto verifier = flatbuffers::Verifier(bytes.data(), bytes.size());
+        if (not verifier
+                    .VerifySizePrefixedBuffer<protocol::ClientHelloMessage>(
+                        nullptr)) {
+            handle_err(std::error_code(common::errc::invalid_message));
+            return true;
+        }
+        auto const *hello =
+            flatbuffers::GetSizePrefixedRoot<protocol::ClientHelloMessage>(
+                bytes.data());
+        auto const *name = hello->name();
+        auto const name_sv =
+            name != nullptr ? std::string_view(name->c_str(), name->size())
+                            : std::string_view();
+        static constexpr auto our_version =
+            static_cast<std::uint32_t>(protocol::ProtocolVersion::CURRENT);
+        if (hello->protocol_version() != our_version) {
+            spdlog::warn(
+                "rejecting client (pid {}; name \"{}\") speaking protocol "
+                "version {} (this server speaks version {})",
+                hello->pid(), name_sv, hello->protocol_version(), our_version);
+            write_server_hello(
+                protocol::HelloResult::UNSUPPORTED_PROTOCOL_VERSION, 0);
+            return true; // End of read stream.
+        }
+        auto const conn_no = sess->hello(name_sv, hello->pid());
+        write_server_hello(protocol::HelloResult::OK, conn_no);
+        return false;
+    }
+
+    void write_server_hello(protocol::HelloResult result,
+                            std::uint32_t conn_no) {
+        auto fbb = flatbuffers::FlatBufferBuilder();
+        fbb.FinishSizePrefixed(protocol::CreateServerHelloMessage(
+            fbb, result,
+            static_cast<std::uint32_t>(protocol::ProtocolVersion::CURRENT),
+            conn_no));
+        write_resp(fbb.Release());
+    }
+
     auto handle_request(protocol::Request const *req, time_point now,
                         response_builder &rb) -> bool {
         auto seqno = req->seqno();
         auto type = req->request_type();
         using r = protocol::AnyRequest;
-        if (not sess->has_said_hello() && type != r::HelloRequest &&
-            type != r::PingRequest && type != r::QuitRequest) {
-            rb.add_error_response(seqno, protocol::Status::INVALID_REQUEST);
-            return false;
-        }
         switch (type) {
         case r::NONE:
             break;
         case r::PingRequest:
             return handle_ping(seqno, req->request_as_PingRequest(), rb);
-        case r::HelloRequest:
-            return handle_hello(seqno, req->request_as_HelloRequest(), rb);
         case r::QuitRequest:
             return handle_quit(seqno, req->request_as_QuitRequest(), rb);
         case r::GetSegmentRequest:
@@ -200,25 +243,6 @@ template <typename Session> class request_handler {
         auto &fbb = rb.fbbuilder();
         auto resp = protocol::CreatePingResponse(fbb);
         rb.add_successful_response(seqno, resp);
-        return false;
-    }
-
-    auto handle_hello(std::uint64_t seqno, protocol::HelloRequest const *req,
-                      response_builder &rb) -> bool {
-        auto const *name = req->name();
-        auto const name_sv =
-            name != nullptr ? std::string_view(name->c_str(), name->size())
-                            : std::string_view();
-        sess->hello(
-            name_sv, req->pid(),
-            [seqno, &rb](std::uint32_t session_id) {
-                auto &fbb = rb.fbbuilder();
-                auto resp = protocol::CreateHelloResponse(fbb, session_id);
-                rb.add_successful_response(seqno, resp);
-            },
-            [seqno, &rb](protocol::Status status) {
-                rb.add_error_response(seqno, status);
-            });
         return false;
     }
 

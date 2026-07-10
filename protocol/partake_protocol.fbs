@@ -7,31 +7,114 @@
 namespace partake.protocol;
 
 /*
- * There is no root_type; RequestMessage and ResponseMessage are our root
- * types, and we always know which to expect.
+ * There is no root_type; ClientHelloMessage, ServerHelloMessage,
+ * RequestMessage, and ResponseMessage are our root types, and each party
+ * always knows which to expect.
  *
- * Additional rules not expressed by the FlatBuffers schema:
+ * Connection lifecycle:
  *
- * - The wire format always prefixes each RequestMessage/ResponseMessage with a
- *   32-bit size field, using the standard FlatBuffers-generated methods.
- *   - This guarantees that the size prefix can be placed at an 8-byte boundary
- *     in order to have aligned access to the message payload.
+ * 1. The client connects and sends, as its first frame, a
+ *    ClientHelloMessage.
+ * 2. The server replies with a ServerHelloMessage frame, which is by
+ *    definition the first frame the client receives.
+ *    - If 'result' is OK, both sides switch to the RequestMessage/
+ *      ResponseMessage stream for the remainder of the connection.
+ *    - Otherwise, the server closes the connection after flushing the
+ *      reply; the client must tolerate the connection closing after (or
+ *      instead of) a reply.
+ * 3. The client may pipeline, that is, send its hello frame and request
+ *    frames back-to-back without awaiting the server's hello; if the hello
+ *    is rejected, the subsequent frames are never processed.
  *
- * - We do the following to ensure that correct alignment can be mainteined at
- *   the receiver:
+ * Framing rules not expressed by the FlatBuffers schema:
+ *
+ * - The wire format always prefixes each message with a 32-bit size field,
+ *   using the standard FlatBuffers-generated methods.
+ *   - This guarantees that the size prefix can be placed at an 8-byte
+ *     boundary in order to have aligned access to the message payload.
+ *
+ * - We do the following to ensure that correct alignment can be maintained
+ *   at the receiver:
  *   - If the value of the size prefix is not a half-integer multiple of 8,
  *     append zero bytes up to an 8-byte boundary.
- *   - The receiver thus only needs to ensure that a buffer holding one or more
- *     consecutive messages is 8-byte aligned. The end-of-message offset is
- *     rounded up to a multiple of 8.
+ *   - The receiver thus only needs to ensure that a buffer holding one or
+ *     more consecutive messages is 8-byte aligned. The end-of-message offset
+ *     is rounded up to a multiple of 8.
  *
- * - The size of a single RequestMessage or ResponseMessage, including the size
- *   prefix, must not exceed 32 KiB.
+ * - The size of a single message, including the size prefix, must not
+ *   exceed 32 KiB.
  *
- * - Although the possible error codes from each request is documented below,
- *   clients should be prepared to receive other codes, including ones that
- *   have not yet been defined.
+ * Protocol versioning: the client states the (single) protocol version it
+ * speaks in its ClientHelloMessage; the server rejects the connection with
+ * result UNSUPPORTED_PROTOCOL_VERSION if it does not speak that exact
+ * version. Either way, the ServerHelloMessage carries the version the
+ * server speaks. Because the reply carries the server's chosen version, a
+ * future server supporting multiple versions could accept an older client
+ * and echo the older version, without any change to this scheme.
+ *
+ * So that any client and any server, regardless of version, can always
+ * complete the hello exchange and detect a version mismatch, the following
+ * frozen kernel must never change in any future protocol version:
+ *
+ * - The framing rules above, as they apply to the hello exchange (the
+ *   ClientHelloMessage frame and the ServerHelloMessage frame).
+ * - The ClientHelloMessage and ServerHelloMessage tables: existing fields
+ *   are frozen; new fields may only be appended.
+ * - The numeric values of HelloResult.
+ *
+ * Everything else is governed by the negotiated version. In particular, the
+ * framing of post-hello frames may change in a future version (for example,
+ * a different alignment, a different frame size cap, or an entirely
+ * different serialization); only the hello exchange itself is bound to the
+ * rules above. Versions 0 and 1 use identical framing throughout the
+ * connection.
+ *
+ * Although the possible error codes from each request is documented below,
+ * clients should be prepared to receive other codes, including ones that
+ * have not yet been defined.
  */
+
+
+// Bumped on any incompatible protocol change. Version 0 is pre-release and
+// unstable: no compatibility is implied even between two parties both
+// claiming version 0; the mechanism provides real guarantees from version 1
+// onward.
+enum ProtocolVersion : uint32 { CURRENT = 0 }
+
+
+enum HelloResult : int32 {
+    OK,
+    UNSUPPORTED_PROTOCOL_VERSION,
+}
+
+
+table ClientHelloMessage {
+    protocol_version: uint32;
+    pid: uint32;
+    name: string;
+
+    /*
+     * The client should send its process id: this is used for logging and
+     * monitoring so that it is easier to identify errors caused by a
+     * particular client. The optional 'name' should be a short,
+     * user-supplied string that describes the client's role; it is again
+     * used for logging and monitoring; long names may be truncated. If the
+     * name is omitted or empty, partaked substitutes an auto-generated
+     * placeholder.
+     */
+}
+
+
+table ServerHelloMessage {
+    result: HelloResult;
+    protocol_version: uint32; // The version the server speaks
+    conn_no: uint32; // Meaningful only when result is OK
+
+    /*
+     * The connection number assigned by partaked is intended for diagnostic
+     * use only (e.g. to match partaked logging to a particular client).
+     */
+}
 
 
 enum Status : int32 {
@@ -95,8 +178,7 @@ struct Mapping {
 table PingRequest {
     /*
      * A no-op for client and server testing. Sending pings is not required for
-     * the purpose of maintaining a connection. This request may be sent before
-     * the HelloRequest.
+     * the purpose of maintaining a connection.
      */
 }
 
@@ -105,45 +187,12 @@ table PingResponse {
 }
 
 
-table HelloRequest {
-    pid: uint32;
-    name: string;
-
-    /*
-     * A newly connected client must issue a successful HelloRequest before
-     * any other request, with the exception of PingRequest and QuitRequest.
-     * Until then, all other requests fail with status INVALID_REQUEST. This
-     * request must not be sent more than once per connection; second and
-     * subsequent HelloRequests fail with INVALID_REQUEST and do not alter the
-     * values sent in the first.
-     *
-     * The client should send its process id: this is used for logging and
-     * monitoring so that it is easier to identify errors caused by a particular
-     * client. The optional 'name' should be a short, user-supplied string that
-     * describes the client's role; it is again used for logging and monitoring;
-     * long names may be truncated. If the name is omitted or empty, partaked
-     * substitutes an auto-generated placeholder.
-     */
-}
-
-
-table HelloResponse {
-    conn_no: uint32;
-
-    /*
-     * The connection number assigned by partaked is intended for diagnostic
-     * use only (e.g. to match partaked logging to a particular client).
-     */
-}
-
-
 table QuitRequest {
     /*
      * Clients should send this request when intentionally disconnecting. It
      * has no effect (other than that partaked may initiate the disconnection),
      * but allows partaked to log the disconnection as intentional, potentially
-     * helping with diagnosing issues. This request may be sent before the
-     * HelloRequest.
+     * helping with diagnosing issues.
      *
      * Any subsequent requests are discarded (the client should not send any).
      * Any pending requests may be canceled without response.
@@ -416,7 +465,6 @@ table DiscardVoucherResponse {
 
 union AnyRequest {
     PingRequest,
-    HelloRequest,
     QuitRequest,
     GetSegmentRequest,
     AllocRequest,
@@ -431,7 +479,6 @@ union AnyRequest {
 
 union AnyResponse {
     PingResponse,
-    HelloResponse,
     QuitResponse,
     GetSegmentResponse,
     AllocResponse,

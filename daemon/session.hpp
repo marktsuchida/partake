@@ -135,22 +135,17 @@ class session {
         return client_pid;
     }
 
-    template <typename Success, typename Error>
-    void hello(std::string_view name, std::uint32_t pid, Success success_cb,
-               Error error_cb) {
+    auto hello(std::string_view name, std::uint32_t pid) -> std::uint32_t {
         assert(valid);
-        if (said_hello) {
-            error_cb(protocol::Status::INVALID_REQUEST);
-        } else {
-            // TODO Make error if name too long?
-            if (name.empty())
-                client_name = "pid-" + std::to_string(pid);
-            else
-                client_name = name.substr(0, max_client_name_length);
-            client_pid = pid;
-            said_hello = true;
-            success_cb(id);
-        }
+        assert(not said_hello);
+        // TODO Make error if name too long?
+        if (name.empty())
+            client_name = "pid-" + std::to_string(pid);
+        else
+            client_name = name.substr(0, max_client_name_length);
+        client_pid = pid;
+        said_hello = true;
+        return id;
     }
 
     template <typename Success, typename Error>
