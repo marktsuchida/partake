@@ -49,7 +49,7 @@ class session {
     token_hash_table<handle_type> handles;
 
     bool valid = false;
-    bool has_said_hello = false;
+    bool said_hello = false;
     std::string client_name;
     std::uint32_t client_pid = 0;
     std::uint32_t id = 0;
@@ -85,7 +85,7 @@ class session {
           handle_storage(std::move(other.handle_storage)),
           handles(std::move(other.handles)),
           valid(std::exchange(other.valid, false)),
-          has_said_hello(other.has_said_hello),
+          said_hello(other.said_hello),
           client_name(std::move(other.client_name)),
           client_pid(other.client_pid), id(other.id),
           voucher_ttl(other.voucher_ttl) {}
@@ -104,7 +104,7 @@ class session {
         swap(handle_storage, other.handle_storage);
         swap(handles, other.handles);
         swap(valid, other.valid);
-        swap(has_said_hello, other.has_said_hello);
+        swap(said_hello, other.said_hello);
         swap(client_name, other.client_name);
         swap(client_pid, other.client_pid);
         swap(id, other.id);
@@ -118,6 +118,11 @@ class session {
     [[nodiscard]] auto session_id() const -> std::uint32_t {
         assert(valid);
         return id;
+    }
+
+    [[nodiscard]] auto has_said_hello() const -> bool {
+        assert(valid);
+        return said_hello;
     }
 
     [[nodiscard]] auto name() const -> std::string {
@@ -134,7 +139,7 @@ class session {
     void hello(std::string_view name, std::uint32_t pid, Success success_cb,
                Error error_cb) {
         assert(valid);
-        if (has_said_hello) {
+        if (said_hello) {
             error_cb(protocol::Status::INVALID_REQUEST);
         } else {
             // TODO Make error if name too long?
@@ -143,7 +148,7 @@ class session {
             else
                 client_name = name.substr(0, max_client_name_length);
             client_pid = pid;
-            has_said_hello = true;
+            said_hello = true;
             success_cb(id);
         }
     }

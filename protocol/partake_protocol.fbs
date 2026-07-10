@@ -95,7 +95,8 @@ struct Mapping {
 table PingRequest {
     /*
      * A no-op for client and server testing. Sending pings is not required for
-     * the purpose of maintaining a connection.
+     * the purpose of maintaining a connection. This request may be sent before
+     * the HelloRequest.
      */
 }
 
@@ -109,9 +110,12 @@ table HelloRequest {
     name: string;
 
     /*
-     * A newly connected client should issue a HelloRequest as the first
-     * request. (Otherwise partaked will drop the connection.) This request
-     * must not be sent more than once per connection.
+     * A newly connected client must issue a successful HelloRequest before
+     * any other request, with the exception of PingRequest and QuitRequest.
+     * Until then, all other requests fail with status INVALID_REQUEST. This
+     * request must not be sent more than once per connection; second and
+     * subsequent HelloRequests fail with INVALID_REQUEST and do not alter the
+     * values sent in the first.
      *
      * The client should send its process id: this is used for logging and
      * monitoring so that it is easier to identify errors caused by a particular
@@ -138,7 +142,8 @@ table QuitRequest {
      * Clients should send this request when intentionally disconnecting. It
      * has no effect (other than that partaked may initiate the disconnection),
      * but allows partaked to log the disconnection as intentional, potentially
-     * helping with diagnosing issues.
+     * helping with diagnosing issues. This request may be sent before the
+     * HelloRequest.
      *
      * Any subsequent requests are discarded (the client should not send any).
      * Any pending requests may be canceled without response.

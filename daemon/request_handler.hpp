@@ -157,8 +157,13 @@ template <typename Session> class request_handler {
                         response_builder &rb) -> bool {
         auto seqno = req->seqno();
         auto type = req->request_type();
+        using r = protocol::AnyRequest;
+        if (not sess->has_said_hello() && type != r::HelloRequest &&
+            type != r::PingRequest && type != r::QuitRequest) {
+            rb.add_error_response(seqno, protocol::Status::INVALID_REQUEST);
+            return false;
+        }
         switch (type) {
-            using r = protocol::AnyRequest;
         case r::NONE:
             break;
         case r::PingRequest:

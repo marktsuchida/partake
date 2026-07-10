@@ -84,6 +84,7 @@ TEST_CASE("session: global ops") {
     CHECK(sess.pid() == 0);
 
     SECTION("hello") {
+        CHECK_FALSE(sess.has_said_hello());
         std::uint32_t session_id = 0;
         sess.hello(
             "myclient", 1234, [&](std::uint32_t id) { session_id = id; },
@@ -91,6 +92,7 @@ TEST_CASE("session: global ops") {
         CHECK(session_id == 42);
         CHECK(sess.name() == "myclient");
         CHECK(sess.pid() == 1234);
+        CHECK(sess.has_said_hello());
 
         // Second call is error
         auto err = Status::OK;
@@ -98,6 +100,7 @@ TEST_CASE("session: global ops") {
             "", 0, [](std::uint32_t) { CHECK(false); },
             [&](Status e) { err = e; });
         CHECK(err == Status::INVALID_REQUEST);
+        CHECK(sess.has_said_hello());
     }
 
     SECTION("hello with empty name") {
