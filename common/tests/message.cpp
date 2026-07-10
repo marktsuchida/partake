@@ -27,16 +27,16 @@
 
 namespace partake::common {
 
-namespace internal {
-
-TEST_CASE("round_size_up_to_alignment") {
-    CHECK(round_size_up_to_alignment(0) == 0);
-    CHECK(round_size_up_to_alignment(1) == 8);
-    CHECK(round_size_up_to_alignment(7) == 8);
-    CHECK(round_size_up_to_alignment(8) == 8);
-    CHECK(round_size_up_to_alignment(9) == 16);
-    CHECK(round_size_up_to_alignment(4097) == 4104);
+TEST_CASE("round_size_up_to_message_frame_alignment") {
+    CHECK(round_size_up_to_message_frame_alignment(0) == 0);
+    CHECK(round_size_up_to_message_frame_alignment(1) == 8);
+    CHECK(round_size_up_to_message_frame_alignment(7) == 8);
+    CHECK(round_size_up_to_message_frame_alignment(8) == 8);
+    CHECK(round_size_up_to_message_frame_alignment(9) == 16);
+    CHECK(round_size_up_to_message_frame_alignment(4097) == 4104);
 }
+
+namespace internal {
 
 TEST_CASE("read_message_frame_size") {
     // NOLINTBEGIN(readability-magic-numbers)
@@ -566,7 +566,7 @@ TEST_CASE("writer-reader round trip of FlatBuffer needing padding") {
 #ifdef _WIN32
         // See the writer tests above regarding extra bytes added by Windows
         // asio::stream_file.
-        auto const frame_len = internal::round_size_up_to_alignment(28);
+        auto const frame_len = round_size_up_to_message_frame_alignment(28);
         while (data.size() > frame_len)
             data.pop_back();
 #endif

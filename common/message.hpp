@@ -8,6 +8,7 @@
 
 #include "asio.hpp"
 #include "errors.hpp"
+#include "framing.hpp"
 
 #include <flatbuffers/flatbuffers.h>
 #include <fmt/core.h>
@@ -28,21 +29,7 @@
 
 namespace partake::common {
 
-// Framing convention: each wire message is a standard size-prefixed
-// FlatBuffer whose total length (4-byte prefix + payload) is a multiple of 8.
-// Senders append zero padding and round the size prefix up to cover it; the
-// padding is unreachable via FlatBuffers offsets, so accessors and the
-// verifier never touch it. This keeps successive frames 8-byte aligned in the
-// receive buffer for in-place parsing.
-constexpr std::size_t message_frame_alignment = 8;
-constexpr std::size_t max_message_frame_len = 32768;
-
 namespace internal {
-
-constexpr auto round_size_up_to_alignment(std::size_t s) noexcept
-    -> std::size_t {
-    return (s + message_frame_alignment - 1) & ~(message_frame_alignment - 1);
-}
 
 [[nodiscard]] inline auto
 read_message_frame_size(gsl::span<std::uint8_t const> bytes) noexcept
@@ -134,7 +121,7 @@ template <typename Socket, typename Buffer> class async_message_writer {
             static constexpr std::array<std::uint8_t, message_frame_alignment>
                 zeros{};
             auto aligned_size =
-                internal::round_size_up_to_alignment(buf.size());
+                round_size_up_to_message_frame_alignment(buf.size());
             auto pad_size = aligned_size - buf.size();
             if (pad_size > 0) {
                 assert(buf.size() >= sizeof(flatbuffers::uoffset_t));
