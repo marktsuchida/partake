@@ -30,11 +30,7 @@ template <typename Handle> class handle_list {
 
     using iterator = typename list_impl_type::iterator;
 
-    auto begin() noexcept -> iterator { return list.begin(); }
-    auto end() noexcept -> iterator { return list.end(); }
-
     [[nodiscard]] auto empty() const noexcept -> bool { return list.empty(); }
-    void clear() noexcept { list.clear(); }
 
     [[nodiscard]] auto iterator_to(handle_type &h) noexcept -> iterator {
         return list.iterator_to(h);

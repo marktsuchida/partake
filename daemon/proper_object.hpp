@@ -97,13 +97,7 @@ template <typename Resource, typename Handle> class proper_object {
             exc_writer = nullptr;
             assert(n_open_handles == 0); // By definition of exclusive.
 
-            while (not handles_awaiting_share.empty()) {
-                // Must remove from list first, because resumption may destroy
-                // the handle.
-                auto &h = handles_awaiting_share.front();
-                handles_awaiting_share.pop_front();
-                h.resume_requests_pending_on_share();
-            }
+            resume_all_awaiting_share();
         }
     }
 
@@ -113,9 +107,7 @@ template <typename Resource, typename Handle> class proper_object {
         shared = true;
         exc_writer = nullptr;
 
-        for (auto &h_awaiting : handles_awaiting_share)
-            h_awaiting.resume_requests_pending_on_share();
-        handles_awaiting_share.clear();
+        resume_all_awaiting_share();
     }
 
     void unshare(handle_type *new_exclusive_writer) {
@@ -163,6 +155,17 @@ template <typename Resource, typename Handle> class proper_object {
              h_awaiting->is_open_uniquely())) {
             h_awaiting->resume_request_pending_on_unique_ownership();
             h_awaiting = nullptr;
+        }
+    }
+
+  private:
+    void resume_all_awaiting_share() {
+        while (not handles_awaiting_share.empty()) {
+            // Must remove from list first, because resumption may destroy
+            // the handle.
+            auto &h = handles_awaiting_share.front();
+            handles_awaiting_share.pop_front();
+            h.resume_requests_pending_on_share();
         }
     }
 };

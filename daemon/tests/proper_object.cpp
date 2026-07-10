@@ -61,14 +61,19 @@ TEST_CASE("proper_object") {
 
         SECTION("awaiting_share_self") {
             po.add_handle_awaiting_share(&h);
-            REQUIRE_CALL(h, resume_requests_pending_on_share()).TIMES(1);
+            // Handle must be unlinked before resumption, which may destroy it.
+            REQUIRE_CALL(h, resume_requests_pending_on_share())
+                .LR_SIDE_EFFECT(CHECK_FALSE(h.is_linked()))
+                .TIMES(1);
             po.close(&h);
         }
 
         SECTION("awaiting_share_other") {
             mock_handle g;
             po.add_handle_awaiting_share(&g);
-            REQUIRE_CALL(g, resume_requests_pending_on_share()).TIMES(1);
+            REQUIRE_CALL(g, resume_requests_pending_on_share())
+                .LR_SIDE_EFFECT(CHECK_FALSE(g.is_linked()))
+                .TIMES(1);
             po.close(&h);
         }
     }
@@ -80,10 +85,35 @@ TEST_CASE("proper_object") {
 
         mock_handle g;
         po.add_handle_awaiting_share(&g);
-        REQUIRE_CALL(g, resume_requests_pending_on_share()).TIMES(1);
+        REQUIRE_CALL(g, resume_requests_pending_on_share())
+            .LR_SIDE_EFFECT(CHECK_FALSE(g.is_linked()))
+            .TIMES(1);
         po.share();
         po.open();
         po.close(&g);
+        po.close(&h);
+    }
+
+    SECTION("share_multiple_awaiting") {
+        po.open();
+        mock_handle h;
+        po.exclusive_writer(&h);
+
+        mock_handle g1;
+        mock_handle g2;
+        po.add_handle_awaiting_share(&g1);
+        po.add_handle_awaiting_share(&g2);
+        REQUIRE_CALL(g1, resume_requests_pending_on_share())
+            .LR_SIDE_EFFECT(CHECK_FALSE(g1.is_linked()))
+            .TIMES(1);
+        REQUIRE_CALL(g2, resume_requests_pending_on_share())
+            .LR_SIDE_EFFECT(CHECK_FALSE(g2.is_linked()))
+            .TIMES(1);
+        po.share();
+        po.open();
+        po.open();
+        po.close(&g1);
+        po.close(&g2);
         po.close(&h);
     }
 
