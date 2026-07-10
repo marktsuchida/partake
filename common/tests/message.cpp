@@ -100,13 +100,13 @@ TEST_CASE("Unix domain socket stream finishes with asio::error::eof") {
     // Server accepts 1 connection, reads, and closes.
     asio::local::stream_protocol::acceptor server(ctx);
     boost::system::error_code ec;
-    server.open(endpt.protocol(), ec);
+    (void)server.open(endpt.protocol(), ec);
     CHECK_FALSE(ec);
-    server.bind(endpt, ec);
+    (void)server.bind(endpt, ec);
     CHECK_FALSE(ec);
     unlinkable_type const unlk(path.string());
-    server.listen(asio::local::stream_protocol::socket::max_listen_connections,
-                  ec);
+    (void)server.listen(
+        asio::local::stream_protocol::socket::max_listen_connections, ec);
     CHECK_FALSE(ec);
     asio::local::stream_protocol::socket sock(ctx);
     std::vector<std::uint8_t> received;
@@ -173,6 +173,7 @@ TEST_CASE("async_message_reader: keepalive held until handlers drain") {
     asio::local::stream_protocol::socket sock(ctx);
     server.accept(sock);
 
+    // NOLINTNEXTLINE(readability-magic-numbers)
     auto keepalive = std::make_shared<int>(42);
     std::weak_ptr<int> const observer = keepalive;
     bool ended = false;
@@ -553,10 +554,12 @@ TEST_CASE("writer-reader round trip of FlatBuffer needing padding") {
                 written = true;
                 s.close();
             });
+        // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         writer.async_write_message(
             std::vector<std::uint8_t>(b.GetBufferPointer(),
                                       b.GetBufferPointer() + b.GetSize()),
             {});
+        // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         ctx.run();
         CHECK(written);
     }

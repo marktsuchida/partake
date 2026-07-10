@@ -43,6 +43,7 @@ struct test_state {
 struct fake_session {
     test_state *state;
 
+    // NOLINTBEGIN(bugprone-easily-swappable-parameters)
     explicit fake_session(std::uint32_t session_id, test_state &st,
                           int &allocator, int &repository,
                           std::chrono::milliseconds voucher_ttl)
@@ -52,6 +53,7 @@ struct fake_session {
         (void)repository;
         (void)voucher_ttl;
     }
+    // NOLINTEND(bugprone-easily-swappable-parameters)
 
     [[nodiscard]] static auto session_id() -> std::uint32_t { return 0; }
     [[nodiscard]] static auto pid() -> std::uint32_t { return 0; }

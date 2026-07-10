@@ -34,6 +34,7 @@ struct mock_session {
         using resource_type = mock_resource;
     };
 
+    // NOLINTNEXTLINE(*-non-private-member-variables-in-classes)
     bool said_hello = true; // Most tests assume hello already done.
     [[nodiscard]] auto has_said_hello() const -> bool { return said_hello; }
 
@@ -139,8 +140,10 @@ TEST_CASE("request_handler: padded frame") {
 
     // Construct the frame the way common::async_message_writer does: append
     // zero padding and round the size prefix up to cover it.
+    // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     std::vector<std::uint8_t> frame(b.GetBufferPointer(),
                                     b.GetBufferPointer() + b.GetSize());
+    // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     frame.resize(frame.size() + 4);
     flatbuffers::WriteScalar(
         frame.data(), static_cast<flatbuffers::uoffset_t>(

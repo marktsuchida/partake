@@ -10,6 +10,8 @@
 
 namespace partake::daemon {
 
+// NOLINTBEGIN(readability-magic-numbers)
+
 TEST_CASE("key_sequence") {
     // Smoke test only.
     key_sequence seq(0xffff'ffff'ffff'ffffuLL);
@@ -38,5 +40,7 @@ TEST_CASE("key_sequence: tokens valid for arbitrary seeds") {
         CHECK(seq.generate().is_valid());
     }
 }
+
+// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::daemon

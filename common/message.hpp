@@ -214,6 +214,8 @@ template <typename Socket> class async_message_reader {
     }
 
   private:
+    // Core framing loop, deliberately kept as one unit.
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
     void schedule_read(std::shared_ptr<void> keepalive,
                        std::size_t start = 0) {
         auto new_read = gsl::span(readbuf).subspan(start);

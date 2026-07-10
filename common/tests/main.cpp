@@ -17,7 +17,8 @@ namespace {
 void print_stacktrace() {
     try {
         std::cerr << boost::stacktrace::stacktrace();
-    } catch (...) {
+    } catch (...) { // NOLINT(bugprone-empty-catch)
+        // Proceed to abort.
     }
     std::abort();
 }

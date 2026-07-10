@@ -26,6 +26,8 @@ using u64 = std::uint64_t;
 
 // NOLINTBEGIN(readability-magic-numbers)
 
+// Aborting on allocation failure at test startup is acceptable.
+// NOLINTNEXTLINE(bugprone-throwing-static-initialization)
 std::vector<std::pair<u64, std::string_view>> const pq_test_data{
     {0uLL, "babab-babab-babab-babab"},
     {u64(1), "babab-babab-babab-babad"},

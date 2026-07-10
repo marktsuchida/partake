@@ -20,10 +20,14 @@ TEST_CASE("errc") {
     CHECK(ec != partake::common::errc::invalid_message);
     CHECK(ec.message().find("message") != std::string::npos);
 
+    // Deliberate out-of-range values to exercise the "Success" and
+    // "Unknown error" paths.
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
     std::error_code const ok = partake::common::errc(0);
     CHECK_FALSE(ok);
     CHECK(ok.message() == "Success");
 
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
     std::error_code const unk = partake::common::errc(-1);
     CHECK(unk);
     CHECK(unk.message().find("Unknown error") == 0);
@@ -38,10 +42,14 @@ TEST_CASE("protocol_errc") {
     CHECK(ec != partake::common::protocol_errc::no_such_object);
     CHECK(ec.message().find("request") != std::string::npos);
 
+    // Deliberate out-of-range values to exercise the "Success" and
+    // "Unknown error" paths.
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
     std::error_code const ok = partake::common::protocol_errc(0);
     CHECK_FALSE(ok);
     CHECK(ok.message() == "Success");
 
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
     std::error_code const unk = partake::common::protocol_errc(-42);
     CHECK(unk);
     CHECK(unk.message().find("Unknown error") == 0);

@@ -43,7 +43,7 @@ template <typename AsioContext> class quitter {
 
     void stop() {
         boost::system::error_code err;
-        signals.cancel(err);
+        (void)signals.cancel(err);
         if (err)
             spdlog::error("failed to cancel signal handler: {} ({})",
                           err.message(), err.value());

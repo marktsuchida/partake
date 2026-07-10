@@ -80,6 +80,8 @@ TEST_CASE("connection_acceptor: connect") {
     std::mutex m;
     std::condition_variable cv;
 
+    // Held for its scope-end join.
+    // NOLINTNEXTLINE(bugprone-unused-local-non-trivial-variable)
     auto async = std::async(std::launch::async, [&] {
         asio::io_context ctx2;
         uds::socket client(ctx2);
