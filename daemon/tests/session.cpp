@@ -72,7 +72,7 @@ TEST_CASE("session: global ops") {
     mock_segment const seg;
     mock_voucher_queue vq;
     repository<object<fake_resource>, key_sequence, mock_voucher_queue> repo(
-        key_sequence(), vq);
+        key_sequence(0xffff'ffff'ffff'ffffuLL), vq);
 
     using protocol::Status;
     using namespace std::chrono_literals;
@@ -120,7 +120,7 @@ TEST_CASE("session: object ops") {
     mock_segment const seg;
     mock_voucher_queue vq;
     repository<object<fake_resource>, key_sequence, mock_voucher_queue> repo(
-        key_sequence(), vq);
+        key_sequence(0xffff'ffff'ffff'ffffuLL), vq);
 
     using common::token;
     using protocol::Policy;

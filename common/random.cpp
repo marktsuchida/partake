@@ -7,6 +7,7 @@
 #include "random.hpp"
 
 #include <algorithm>
+#include <limits>
 #include <random>
 #include <string_view>
 
@@ -32,6 +33,12 @@ auto random_string(std::size_t len) -> std::string {
     std::generate(ret.begin(), ret.end(),
                   [&]() { return letters[distrib(rd)]; });
     return ret;
+}
+
+auto random_nonzero_u64() -> std::uint64_t {
+    auto distrib = std::uniform_int_distribution<std::uint64_t>(
+        1, std::numeric_limits<std::uint64_t>::max());
+    return distrib(randev());
 }
 
 } // namespace partake::common

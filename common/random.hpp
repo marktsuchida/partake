@@ -14,4 +14,6 @@ namespace partake::common {
 
 auto random_string(std::size_t len) -> std::string;
 
+auto random_nonzero_u64() -> std::uint64_t;
+
 } // namespace partake::common

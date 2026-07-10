@@ -17,7 +17,9 @@
 #include "object.hpp"
 #include "overloaded.hpp"
 #include "page_size.hpp"
+#include "proquint.hpp"
 #include "quitter.hpp"
+#include "random.hpp"
 #include "repository.hpp"
 #include "request_handler.hpp"
 #include "segment.hpp"
@@ -81,6 +83,13 @@ template <typename AsioContext> class partake_daemon {
 
     int exitcode = 0;
 
+    static auto make_key_sequence() -> key_sequence {
+        auto const seed = common::random_nonzero_u64();
+        spdlog::info("key sequence seed: {}",
+                     std::string(common::proquint64(seed)));
+        return key_sequence(seed);
+    }
+
   public:
     explicit partake_daemon(io_context_type &asio_context,
                             daemon_config config)
@@ -90,7 +99,8 @@ template <typename AsioContext> class partake_daemon {
           allocr(seg.size(), cfg.log2_granularity != 0u
                                  ? cfg.log2_granularity
                                  : log2_size(page_size())),
-          clk_traits(asio_context), vq(clk_traits), repo(key_sequence(), vq) {
+          clk_traits(asio_context), vq(clk_traits),
+          repo(make_key_sequence(), vq) {
         if (not seg.is_valid()) {
             spdlog::error("failed to create shared memory segment");
             exitcode = 1;

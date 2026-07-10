@@ -26,4 +26,10 @@ TEST_CASE("random_string") {
                       [](char c) { return std::isalnum(c); }));
 }
 
+TEST_CASE("random_nonzero_u64") {
+    auto const r1 = random_nonzero_u64();
+    CHECK(r1 != 0);
+    CHECK(r1 != random_nonzero_u64());
+}
+
 } // namespace partake::common

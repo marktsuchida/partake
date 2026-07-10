@@ -20,17 +20,21 @@ namespace partake::daemon {
 // around.) The null (zero) token is not used as a key.
 //
 // Keys are generated using a pseudorandom sequence that will emit 2^64 - 1
-// _distinct_ non-zero tokens before looping around. Sequential numbers would
-// also work, but we don't want to tempt users to make assumptions about token
-// values (unless they are determined to). The pseudorandom tokens also serve
-// as good hash table keys.
+// _distinct_ non-zero tokens before looping around; any nonzero seed picks a
+// starting point on that single cycle, so uniqueness within an instance holds
+// for every seed. The daemon seeds each instance randomly, so that sequences
+// differ across instances and restarts and a stale key from a previous
+// instance is not certain to collide with the new instance's keys. The
+// pseudorandom values also discourage users from making assumptions about
+// token values (unless they are determined to) and serve as good hash table
+// keys.
 class key_sequence {
-    // The initial value could be any non-zero value; use the simplest one.
-    // NOLINTNEXTLINE(readability-magic-numbers)
-    std::uint64_t prev = 0xffff'ffff'ffff'ffffuLL;
+    std::uint64_t prev;
 
   public:
-    key_sequence() noexcept = default;
+    explicit key_sequence(std::uint64_t seed) noexcept : prev(seed) {
+        assert(seed != 0);
+    }
 
     ~key_sequence() = default;
 
