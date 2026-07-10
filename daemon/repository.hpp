@@ -49,8 +49,7 @@ class repository {
   public:
     explicit repository(key_sequence_type &&key_sequence,
                         voucher_queue_type &voucher_queue)
-        : objects(1 << 3),
-          tokseq(std::forward<key_sequence_type>(key_sequence)),
+        : objects(1 << 3), tokseq(std::move(key_sequence)),
           vqueue(&voucher_queue) {}
 
     ~repository() = default;

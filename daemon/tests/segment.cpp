@@ -249,11 +249,12 @@ TEST_CASE("segment: sysv") {
         int key = 0;
         sysv_shmem preexisting;
         while (not preexisting.is_valid()) {
-            if (++key > max_search_key)
+            if (++key > max_search_key) {
                 FAIL("no usable SysV shmem key in 1.."
                      << max_search_key
                      << "; leaked segments or system-wide segment limit "
                         "(shmmni) reached? Check with ipcs -m");
+            }
             preexisting = create_sysv_shmem(key, 4096);
         }
         preexisting.detach(); // But don't remove

@@ -82,9 +82,9 @@ TEST_CASE("Unix domain socket stream finishes with asio::error::eof") {
     // asio::local::stream_protocol server and client.
 
 #ifdef _WIN32
-    using unlinkable_type = typename win32::unlinkable;
+    using unlinkable_type = win32::unlinkable;
 #else
-    using unlinkable_type = typename posix::unlinkable;
+    using unlinkable_type = posix::unlinkable;
 #endif
 
     testing::tempdir const td;
@@ -151,9 +151,9 @@ TEST_CASE("Unix domain socket stream finishes with asio::error::eof") {
 
 TEST_CASE("async_message_reader: keepalive held until handlers drain") {
 #ifdef _WIN32
-    using unlinkable_type = typename win32::unlinkable;
+    using unlinkable_type = win32::unlinkable;
 #else
-    using unlinkable_type = typename posix::unlinkable;
+    using unlinkable_type = posix::unlinkable;
 #endif
 
     testing::tempdir const td;

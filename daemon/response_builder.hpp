@@ -104,7 +104,7 @@ class response_builder {
         // covers everything but the per-offset cost.
         static constexpr std::size_t finish_overhead = 64;
         return common::round_size_up_to_message_frame_alignment(
-            bldr.GetSize() + 4 * resp_offsets.size() + finish_overhead);
+            bldr.GetSize() + (4 * resp_offsets.size()) + finish_overhead);
     }
 
     void emit_current() {

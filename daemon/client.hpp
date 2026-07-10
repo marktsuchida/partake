@@ -56,7 +56,7 @@ class client
                     Segment &seg, Allocator &allocator, Repository &repo,
                     std::chrono::milliseconds voucher_time_to_live,
                     HousekeepFunc per_req_housekeeping, CloseFunc close_client)
-        : sock(std::forward<socket_type>(socket)),
+        : sock(std::move(socket)),
           sess(session_id, seg, allocator, repo, voucher_time_to_live),
           writer(sock,
                  [this](std::error_code err) {

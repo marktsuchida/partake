@@ -53,9 +53,9 @@ struct fake_session {
         (void)voucher_ttl;
     }
 
-    [[nodiscard]] auto session_id() const -> std::uint32_t { return 0; }
-    [[nodiscard]] auto pid() const -> std::uint32_t { return 0; }
-    [[nodiscard]] auto name() const -> std::string { return "fake"; }
+    [[nodiscard]] static auto session_id() -> std::uint32_t { return 0; }
+    [[nodiscard]] static auto pid() -> std::uint32_t { return 0; }
+    [[nodiscard]] static auto name() -> std::string { return "fake"; }
     void drop_pending_requests() {}
 };
 
@@ -71,7 +71,8 @@ struct fake_request_handler {
         (void)error;
     }
 
-    auto handle_message(gsl::span<std::uint8_t const> bytes) -> bool {
+    [[nodiscard]] auto
+    handle_message(gsl::span<std::uint8_t const> bytes) const -> bool {
         return state->handle_message(bytes);
     }
 };
@@ -84,9 +85,9 @@ using client_type = client<socket_type, reader_type, writer_type, fake_session,
                            fake_request_handler>;
 
 #ifdef _WIN32
-using unlinkable_type = typename common::win32::unlinkable;
+using unlinkable_type = common::win32::unlinkable;
 #else
-using unlinkable_type = typename common::posix::unlinkable;
+using unlinkable_type = common::posix::unlinkable;
 #endif
 
 // A client under test connected (via Unix domain socket) to a peer socket
@@ -124,6 +125,9 @@ struct client_fixture {
                 ++close_count;
                 owner.reset();
             });
+        // Cannot be a member initializer: 'owner' is created just above,
+        // in the constructor body.
+        // NOLINTNEXTLINE(cppcoreguidelines-prefer-member-initializer)
         observer = owner;
         owner->start();
     }

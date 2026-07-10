@@ -34,7 +34,7 @@ template <typename Resource, typename Handle> class proper_object {
 
   public:
     explicit proper_object(resource_type &&resource)
-        : rsrc(std::forward<resource_type>(resource)) {}
+        : rsrc(std::move(resource)) {}
 
     ~proper_object() {
         assert(n_open_handles == 0);

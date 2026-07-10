@@ -42,8 +42,8 @@ class object : public token_hash_table<object<Resource>>::hook,
   public:
     explicit object(common::token key, object_policy policy,
                     resource_type &&mem)
-        : ky(key), pol(policy), body(std::in_place_type<proper_object_type>,
-                                     std::forward<resource_type>(mem)) {}
+        : ky(key), pol(policy),
+          body(std::in_place_type<proper_object_type>, std::move(mem)) {}
 
     explicit object(common::token key, std::shared_ptr<object> target,
                     unsigned count, time_point expiration)

@@ -13,9 +13,7 @@
 #include <cstddef>
 #include <string>
 
-namespace partake::daemon {
-
-namespace internal {
+namespace partake::daemon::internal {
 
 TEST_CASE("parse_size_suffix") {
     CHECK(parse_size_suffix("0") == "0");
@@ -37,9 +35,9 @@ TEST_CASE("parse_size_suffix") {
     CHECK(parse_size_suffix("1G") == "1073741824");
 
     static constexpr auto max = [] {
-        if constexpr (sizeof(std::size_t) == 4)
+        if constexpr (sizeof(std::size_t) == 4) {
             return "2147483647"; // 2^31 - 1
-        else {
+        } else {
             static_assert(sizeof(std::size_t) == 8);
             return "9223372036854775807"; // 2^63 - 1
         }
@@ -53,9 +51,9 @@ TEST_CASE("parse_size_suffix") {
     CHECK_THROWS_AS(parse_size_suffix("1 B"), CLI::ValidationError);
 
     static constexpr auto max_plus_one = [] {
-        if constexpr (sizeof(std::size_t) == 4)
+        if constexpr (sizeof(std::size_t) == 4) {
             return "2147483648"; // 2^31
-        else {
+        } else {
             static_assert(sizeof(std::size_t) == 8);
             return "9223372036854775808"; // 2^63
         }
@@ -135,6 +133,4 @@ TEST_CASE("validate_win32_shmem_name") {
     CHECK_FALSE(validate_win32_shmem_name(R"(Local\x\)").has_value());
 }
 
-} // namespace internal
-
-} // namespace partake::daemon
+} // namespace partake::daemon::internal

@@ -41,7 +41,10 @@ namespace internal {
 
 namespace {
 
-::mode_t const the_umask = []() {
+// The check sees through the noexcept lambda to ::umask(), which, like any C
+// function, is not declared noexcept (but cannot throw).
+// NOLINTNEXTLINE(bugprone-throwing-static-initialization)
+::mode_t const the_umask = []() noexcept {
     // Store the umask at static initialization time so that we don't have any
     // chance of a data race.
     auto ret = ::umask(S_IRWXG | S_IRWXO);

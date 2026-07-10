@@ -39,7 +39,7 @@ namespace internal {
 constexpr std::size_t proquint64_words = 4;
 constexpr std::size_t proquint_word_len = 5;
 constexpr std::size_t proquint64_length =
-    proquint_word_len * proquint64_words + (proquint64_words - 1);
+    (proquint_word_len * proquint64_words) + (proquint64_words - 1);
 
 void proquint_from_u64(gsl::span<char, proquint64_length> dest,
                        std::uint64_t i) noexcept;

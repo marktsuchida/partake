@@ -12,9 +12,7 @@
 
 #include <cstdint>
 
-namespace partake::daemon {
-
-namespace internal {
+namespace partake::daemon::internal {
 
 TEST_CASE("countl_zero software implementation") {
     CHECK(countl_zero_software_nonzero<std::uint16_t>(1u) == 15);
@@ -47,9 +45,7 @@ TEST_CASE("free_list_index_for_size") {
     CHECK(free_list_index_for_size(257) == 9);
 }
 
-} // namespace internal
-
-} // namespace partake::daemon
+} // namespace partake::daemon::internal
 
 namespace {
 

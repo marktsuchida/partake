@@ -80,12 +80,13 @@ template <typename Socket, typename Buffer> class async_message_writer {
 
     void async_write_message(buffer_type &&buffer,
                              std::shared_ptr<void> keepalive) {
-        if (buffer.size() == 0)
+        if (buffer.size() == 0) {
             return asio::defer(sock->get_executor(),
                                [this, ka = std::move(keepalive)] {
                                    (void)ka;
                                    handle_cmpl({});
                                });
+        }
 
         buffers_to_write_next.push_back(std::move(buffer));
         if (not is_write_in_progress())

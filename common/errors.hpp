@@ -27,11 +27,11 @@ enum class errc {
 enum class protocol_errc {
     unknown_protocol_error = -1,
     invalid_request = 1,
-    out_of_shmem,
-    no_such_segment,
-    no_such_object,
-    object_busy,
-    object_reserved,
+    out_of_shmem = 2,
+    no_such_segment = 3,
+    no_such_object = 4,
+    object_busy = 5,
+    object_reserved = 6,
 };
 
 struct partake_error_category : std::error_category {

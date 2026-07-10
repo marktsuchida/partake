@@ -138,7 +138,7 @@ TEST_CASE("session: object ops") {
         SECTION("open -> no such object") {
             std::vector const waits{false, true};
             std::vector const policies{Policy::DEFAULT, Policy::PRIMITIVE};
-            for (bool wait : waits) {
+            for (bool const wait : waits) {
                 CAPTURE(wait);
                 for (Policy policy : policies) {
                     CAPTURE(policy);
@@ -175,7 +175,7 @@ TEST_CASE("session: object ops") {
 
         SECTION("unshare -> no such object") {
             std::vector const waits{false, true};
-            for (bool wait : waits) {
+            for (bool const wait : waits) {
                 CAPTURE(wait);
 
                 auto err = Status::OK;

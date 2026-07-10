@@ -27,10 +27,10 @@ namespace partake::daemon {
 namespace internal {
 
 template <typename T>
-constexpr inline auto countl_zero_software_nonzero(T x) noexcept -> int {
+constexpr auto countl_zero_software_nonzero(T x) noexcept -> int {
     static_assert(std::is_unsigned_v<T>);
     int ret = 0;
-    auto hi_bit = T(1) << (8 * sizeof(T) - 1);
+    auto hi_bit = T(1) << ((8 * sizeof(T)) - 1);
     while ((x & hi_bit) == 0) {
         ++ret;
         hi_bit >>= 1;
@@ -65,7 +65,8 @@ inline auto free_list_index_for_size(std::size_t size) -> std::size_t {
     // At least for now, we use a separate free list for each size range whose
     // maximum is a power of 2: 1, 2, 4, ..., N, where N is the first power of
     // 2 that is greater than or equal to size.
-    return 8 * sizeof(size) - static_cast<std::size_t>(countl_zero(size - 1));
+    return (8 * sizeof(size)) -
+           static_cast<std::size_t>(countl_zero(size - 1));
 }
 
 // The arena performs allocation of chunks of some contiguous resource (e.g.,

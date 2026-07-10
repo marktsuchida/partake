@@ -61,7 +61,7 @@ struct mock_clock_traits {
 struct mock_voucher {
     time_point exp;
     using queue_type = voucher_queue<mock_voucher, mock_clock_traits>;
-    std::optional<typename queue_type::handle_type> h;
+    std::optional<queue_type::handle_type> h;
 
     explicit mock_voucher(time_point expiration) : exp(expiration) {}
 
@@ -70,9 +70,9 @@ struct mock_voucher {
 
     [[nodiscard]] auto expiration() const -> time_point { return exp; }
 
-    void set_queued(typename queue_type::handle_type qh) { h = qh; }
+    void set_queued(queue_type::handle_type qh) { h = qh; }
 
-    auto clear_queued() -> std::optional<typename queue_type::handle_type> {
+    auto clear_queued() -> std::optional<queue_type::handle_type> {
         auto ret = h;
         h.reset();
         return ret;
