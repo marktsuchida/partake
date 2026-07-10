@@ -6,12 +6,15 @@
 
 #include "request_handler.hpp"
 
+#include "framing.hpp"
+
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/trompeloeil.hpp>
 #include <trompeloeil/mock.hpp>
 
 #include <cstdint>
 #include <functional>
+#include <vector>
 
 namespace partake::daemon {
 
@@ -1281,6 +1284,62 @@ TEST_CASE("request_handler: requests before hello") {
         CHECK(resp2->response_type() == AnyResponse::AllocResponse);
         CHECK(resp2->response_as_AllocResponse()->object()->key() == 12345);
     }
+}
+
+TEST_CASE("request_handler: oversized response batch is split") {
+    mock_session sess;
+    mock_writer write;
+    mock_error_handler handle_error;
+    auto rh = request_handler<mock_session>(
+        sess, std::reference_wrapper(write), [] {},
+        std::reference_wrapper(handle_error));
+
+    // Enough AllocRequests that the responses (each carrying a 28-byte
+    // Mapping) cannot fit in a single max-size ResponseMessage.
+    static constexpr std::size_t n_requests = 700;
+
+    flatbuffers::FlatBufferBuilder b;
+    using namespace protocol;
+    std::vector<flatbuffers::Offset<Request>> reqs;
+    reqs.reserve(n_requests);
+    for (std::uint64_t seqno = 0; seqno < n_requests; ++seqno) {
+        reqs.push_back(CreateRequest(b, seqno, AnyRequest::AllocRequest,
+                                     CreateAllocRequest(b, 1000).Union()));
+    }
+    b.FinishSizePrefixed(CreateRequestMessage(b, b.CreateVector(reqs)));
+    auto req_span = b.GetBufferSpan();
+    REQUIRE(req_span.size() <= common::max_message_frame_len);
+
+    using trompeloeil::_;
+    auto const rsrc = mock_resource{7, 4096, 1024};
+    REQUIRE_CALL(sess, alloc(1000, Policy::DEFAULT, _, _))
+        .SIDE_EFFECT(_3(common::token(12345), rsrc))
+        .TIMES(n_requests);
+    std::vector<flatbuffers::DetachedBuffer> resp_bufs;
+    REQUIRE_CALL(write, call(_))
+        .LR_SIDE_EFFECT(resp_bufs.push_back(std::move(_1)))
+        .TIMES(AT_LEAST(2));
+    REQUIRE_CALL(sess, perform_housekeeping()).TIMES(AT_MOST(1));
+
+    CHECK_FALSE(rh.handle_message(req_span));
+
+    CHECK(resp_bufs.size() > 1);
+    std::vector<std::uint64_t> seqnos;
+    for (auto const &resp_buf : resp_bufs) {
+        CHECK(resp_buf.size() <= common::max_message_frame_len);
+        auto verif = flatbuffers::Verifier(resp_buf.data(), resp_buf.size());
+        REQUIRE(verif.VerifySizePrefixedBuffer<ResponseMessage>(nullptr));
+        auto const *resp_msg =
+            flatbuffers::GetSizePrefixedRoot<ResponseMessage>(resp_buf.data());
+        for (auto const *resp : *resp_msg->responses()) {
+            CHECK(resp->status() == Status::OK);
+            CHECK(resp->response_type() == AnyResponse::AllocResponse);
+            seqnos.push_back(resp->seqno());
+        }
+    }
+    REQUIRE(seqnos.size() == n_requests);
+    for (std::uint64_t seqno = 0; seqno < n_requests; ++seqno)
+        CHECK(seqnos[seqno] == seqno);
 }
 
 // NOLINTEND(readability-magic-numbers)

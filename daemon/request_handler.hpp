@@ -115,7 +115,7 @@ template <typename Session> class request_handler {
             flatbuffers::GetSizePrefixedRoot<protocol::RequestMessage>(
                 bytes.data());
         auto const *requests = req_msg->requests();
-        auto rb = response_builder(requests->size());
+        auto rb = response_builder(write_resp, requests->size());
         auto now = clock::now();
 
         bool done = false;
@@ -139,9 +139,7 @@ template <typename Session> class request_handler {
                 break;
         }
 
-        if (not rb.empty()) {
-            write_resp(rb.release_buffer());
-        }
+        rb.flush();
 
         // Rehash tables at most once per request message, after having
         // kicked off responses (to increase the chance that it is done
@@ -280,17 +278,17 @@ template <typename Session> class request_handler {
                 rb.add_error_response(seqno, status);
             },
             [seqno, this](common::token k, resource_type const &rsrc) {
-                auto rb2 = response_builder(1);
+                auto rb2 = response_builder(write_resp, 1);
                 auto &fbb = rb2.fbbuilder();
                 auto mapping = internal::make_mapping(k, rsrc);
                 auto resp = protocol::CreateOpenResponse(fbb, &mapping);
                 rb2.add_successful_response(seqno, resp);
-                write_resp(rb2.release_buffer());
+                rb2.flush();
             },
             [seqno, this](protocol::Status status) {
-                auto rb2 = response_builder(1);
+                auto rb2 = response_builder(write_resp, 1);
                 rb2.add_error_response(seqno, status);
-                write_resp(rb2.release_buffer());
+                rb2.flush();
             });
         return false;
     }
@@ -340,17 +338,17 @@ template <typename Session> class request_handler {
                 rb.add_error_response(seqno, status);
             },
             [seqno, this](common::token new_key) {
-                auto rb2 = response_builder(1);
+                auto rb2 = response_builder(write_resp, 1);
                 auto &fbb = rb2.fbbuilder();
                 auto resp =
                     protocol::CreateUnshareResponse(fbb, new_key.as_u64());
                 rb2.add_successful_response(seqno, resp);
-                write_resp(rb2.release_buffer());
+                rb2.flush();
             },
             [seqno, this](protocol::Status status) {
-                auto rb2 = response_builder(1);
+                auto rb2 = response_builder(write_resp, 1);
                 rb2.add_error_response(seqno, status);
-                write_resp(rb2.release_buffer());
+                rb2.flush();
             });
         return false;
     }
