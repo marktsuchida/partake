@@ -19,8 +19,16 @@ Checks: >-
     -bugprone-exception-escape,
     -bugprone-macro-parentheses,
     -cppcoreguidelines-avoid-magic-numbers,
+    -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+    -misc-include-cleaner,
+    -misc-multiple-inheritance,
     -misc-no-recursion,
+    -modernize-avoid-c-style-cast,
+    -performance-enum-size,
+    -portability-avoid-pragma-once,
+    -readability-avoid-return-with-void-value,
     -readability-identifier-length,
+    -readability-use-concise-preprocessor-directives,
 
 # Reasons for disabled checks:
 # bugprone-exception-escape
@@ -32,13 +40,46 @@ Checks: >-
 #   to fix. (Using --fix did not reveal anything useful.) As of LLVM 16.
 # cppcoreguidelines-avoid-magic-numbers
 #   Duplicate of readability-magic-numbers.
+# cppcoreguidelines-pro-bounds-avoid-unchecked-container-access
+#   If we want all bounds checked, we should use std lib hardening, not this.
+# misc-include-cleaner
+#   Applied naively, would include lots of asio and flatbuffers headers. May
+#   enable in the future but needs work.
+# misc-multiple-inheritance
+#   Our uses are mixins, not the OO base-class inheritance this check targets.
 # misc-no-recursion
 #   Hard to suppress false positives.
+# modernize-avoid-c-style-cast
+#   We use function-style cast (e.g. 'u16(i >> 48)') for brevity in
+#   bit-manipulation code, at least for now.
+# performance-enum-size
+#   errc enums exist to interoperate with std::error_code (which stores int);
+#   other enums have a handful of instances. Shrinking the base type buys
+#   nothing.
+# portability-avoid-pragma-once
+#   We deliberately use '#pragma once'.
+# readability-avoid-return-with-void-value
+#   'return handler(err);' early-exit in void continuation code is a
+#   deliberate idiom throughout our async/CPS code.
 # readability-identifier-length
 #   Short variable names are not always evil.
+# readability-use-concise-preprocessor-directives
+#   Would be nice only once we have #elif[n]def (C++23).
+#
+# modernize-use-trailing-return-type.TransformLambdas is set to 'none'
+# because return-type-deducing lambdas are idiomatic in our async
+# continuation-passing code; trailing return types are still enforced on
+# functions.
+#
+# performance-unnecessary-value-param.AllowedTypes includes 'iterator'
+# because Boost.Intrusive iterators are not trivially copyable, making the
+# check fire on idiomatic pass-by-value iterator parameters.
 
 CheckOptions:
+    bugprone-unused-return-value.AllowCastToVoid: true
     misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: true
+    modernize-use-trailing-return-type.TransformLambdas: none
+    performance-unnecessary-value-param.AllowedTypes: 'iterator'
     readability-braces-around-statements.ShortStatementLines: 3
     readability-function-cognitive-complexity.IgnoreMacros: true
     readability-magic-numbers.IgnorePowersOf2IntegerValues: true
