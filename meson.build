@@ -94,3 +94,4 @@ catch2_dep = dependency(
 subdir('common')
 subdir('protocol')
 subdir('daemon')
+subdir('client')

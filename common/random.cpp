@@ -30,6 +30,8 @@ auto random_string(std::size_t len) -> std::string {
     auto distrib =
         std::uniform_int_distribution<std::size_t>(0, letters.size() - 1);
     std::string ret(len, '\0');
+    // No std::ranges: this file is also compiled as C++17 (daemon).
+    // NOLINTNEXTLINE(modernize-use-ranges)
     std::generate(ret.begin(), ret.end(),
                   [&]() { return letters[distrib(rd)]; });
     return ret;
