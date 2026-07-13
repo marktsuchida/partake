@@ -1,0 +1,308 @@
+/*
+ * This file is part of the partake project
+ * Copyright 2020-2023 Board of Regents of the University of Wisconsin System
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "mock_server.hpp"
+
+#include "framing.hpp"
+#include "requests.hpp"
+#include "response_builder.hpp"
+
+#include <catch2/catch_test_macros.hpp>
+
+#include <flatbuffers/flatbuffers.h>
+
+#include <array>
+#include <cassert>
+#include <utility>
+
+namespace partake::client {
+
+mock_server::mock_server(options options)
+    : opts(options),
+      path(testing::unique_path(td.path(), "mock-server").string()),
+      unlk(path), guard(asio::make_work_guard(ctx)), acceptor(ctx), sock(ctx),
+      writer(sock,
+             [this](std::error_code) {
+                 --outstanding_writes;
+                 if (close_after_flush and outstanding_writes == 0)
+                     close_sock();
+             }),
+      reader(
+          sock,
+          [this](gsl::span<std::uint8_t const> bytes) {
+              return handle_message(bytes);
+          },
+          [](std::error_code) {}) {
+    asio::local::stream_protocol::endpoint const endpt(path);
+    acceptor.open(endpt.protocol());
+    acceptor.bind(endpt);
+    acceptor.listen(socket_type::max_listen_connections);
+    acceptor.async_accept(sock, [this](boost::system::error_code ec) {
+        if (not ec)
+            reader.start({}); // Members outlive the joined thread.
+    });
+    server_thread = std::thread([this] { ctx.run(); });
+}
+
+mock_server::~mock_server() {
+    asio::post(ctx, [this] {
+        boost::system::error_code ignore;
+        (void)acceptor.close(ignore);
+        close_sock();
+    });
+    guard.reset();
+    server_thread.join();
+}
+
+void mock_server::post(std::function<void()> task) {
+    asio::post(ctx, std::move(task));
+}
+
+void mock_server::send_raw_frame(std::vector<std::uint8_t> frame) {
+    post([this, frame = std::move(frame)]() mutable {
+        ++outstanding_writes;
+        writer.async_write_message(std::move(frame), {});
+    });
+}
+
+void mock_server::send_error_response(std::uint64_t seqno,
+                                      protocol::Status status) {
+    post([this, seqno, status] {
+        auto rb = daemon::response_builder(
+            [this](flatbuffers::DetachedBuffer const &buf) {
+                write_frame(buf);
+            },
+            1);
+        rb.add_error_response(seqno, status);
+        rb.flush();
+    });
+}
+
+void mock_server::send_response_to_unknown_seqno() {
+    post([this] {
+        auto rb = daemon::response_builder(
+            [this](flatbuffers::DetachedBuffer const &buf) {
+                write_frame(buf);
+            },
+            1);
+        static constexpr std::uint64_t bogus_seqno = 1000000;
+        rb.add_successful_response(
+            bogus_seqno, protocol::CreatePingResponse(rb.fbbuilder()));
+        rb.flush();
+    });
+}
+
+void mock_server::close_connection() {
+    post([this] { close_sock(); });
+}
+
+auto mock_server::handle_message(gsl::span<std::uint8_t const> bytes) -> bool {
+    if (not said_hello)
+        return handle_hello(bytes);
+    return handle_requests(bytes);
+}
+
+auto mock_server::handle_hello(gsl::span<std::uint8_t const> bytes) -> bool {
+    auto verifier = flatbuffers::Verifier(bytes.data(), bytes.size());
+    if (not verifier.VerifySizePrefixedBuffer<protocol::ClientHelloMessage>(
+            nullptr)) {
+        close_sock();
+        return true;
+    }
+    switch (opts.hello) {
+    case hello_mode::accept:
+        said_hello = true;
+        write_server_hello(protocol::HelloResult::OK, opts.conn_no);
+        return false;
+    case hello_mode::reject:
+        write_server_hello(protocol::HelloResult::UNSUPPORTED_PROTOCOL_VERSION,
+                           0);
+        close_when_writes_flushed();
+        return true;
+    case hello_mode::close_without_reply:
+        close_sock();
+        return true;
+    }
+    assert(false);
+    return true;
+}
+
+auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
+    -> bool {
+    auto verifier = flatbuffers::Verifier(bytes.data(), bytes.size());
+    if (not verifier.VerifySizePrefixedBuffer<protocol::RequestMessage>(
+            nullptr)) {
+        close_sock();
+        return true;
+    }
+    auto const *msg =
+        flatbuffers::GetSizePrefixedRoot<protocol::RequestMessage>(
+            bytes.data());
+    auto const *requests = msg->requests();
+    auto rb = daemon::response_builder(
+        [this](flatbuffers::DetachedBuffer const &buf) { write_frame(buf); },
+        requests != nullptr ? requests->size() : 0);
+    bool done = false;
+    if (requests != nullptr) {
+        for (auto const *req : *requests) {
+            switch (req->request_type()) {
+            case protocol::AnyRequest::PingRequest:
+                ++n_pings;
+                if (opts.respond_to_ping) {
+                    rb.add_successful_response(
+                        req->seqno(),
+                        protocol::CreatePingResponse(rb.fbbuilder()));
+                }
+                break;
+            case protocol::AnyRequest::QuitRequest:
+                ++n_quits;
+                if (opts.respond_to_quit) {
+                    rb.add_successful_response(
+                        req->seqno(),
+                        protocol::CreateQuitResponse(rb.fbbuilder()));
+                }
+                done = true;
+                break;
+            default:
+                break; // Not needed by stage-2 tests.
+            }
+            if (done)
+                break;
+        }
+    }
+    rb.flush();
+    if (done) // Close (after flushing any reply), as the daemon would.
+        close_when_writes_flushed();
+    return done;
+}
+
+void mock_server::write_frame(flatbuffers::DetachedBuffer const &buf) {
+    ++outstanding_writes;
+    writer.async_write_message(
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        std::vector<std::uint8_t>(buf.data(), buf.data() + buf.size()), {});
+}
+
+void mock_server::write_server_hello(protocol::HelloResult result,
+                                     std::uint32_t conn_no) {
+    auto fbb = flatbuffers::FlatBufferBuilder();
+    fbb.FinishSizePrefixed(protocol::CreateServerHelloMessage(
+        fbb, result,
+        static_cast<std::uint32_t>(protocol::ProtocolVersion::CURRENT),
+        conn_no));
+    write_frame(fbb.Release());
+}
+
+void mock_server::close_when_writes_flushed() {
+    close_after_flush = true;
+    if (outstanding_writes == 0)
+        close_sock();
+}
+
+void mock_server::close_sock() {
+    boost::system::error_code ignore;
+    (void)sock.shutdown(socket_type::shutdown_both, ignore);
+    (void)sock.close(ignore);
+}
+
+// Fixture self-tests, using a raw synchronous socket as the client so that
+// the fixture is validated independently of the partake client library.
+
+namespace {
+
+// Pad a size-prefixed FlatBuffer to the framing convention, the way
+// common::async_message_writer would.
+auto pad_frame(flatbuffers::DetachedBuffer const &buf)
+    -> std::vector<std::uint8_t> {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    std::vector<std::uint8_t> frame(buf.data(), buf.data() + buf.size());
+    auto const padded =
+        common::round_size_up_to_message_frame_alignment(frame.size());
+    if (padded != frame.size()) {
+        frame.resize(padded);
+        flatbuffers::WriteScalar(frame.data(),
+                                 static_cast<flatbuffers::uoffset_t>(
+                                     padded - sizeof(flatbuffers::uoffset_t)));
+    }
+    return frame;
+}
+
+// Read one whole frame (as written by common::async_message_writer, whose
+// size prefix covers any padding).
+auto read_frame(asio::local::stream_protocol::socket &s)
+    -> std::vector<std::uint8_t> {
+    std::vector<std::uint8_t> frame(sizeof(flatbuffers::uoffset_t));
+    asio::read(s, asio::buffer(frame));
+    auto const len = flatbuffers::GetPrefixedSize(frame.data());
+    frame.resize(sizeof(flatbuffers::uoffset_t) + len);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    asio::read(
+        s, asio::buffer(frame.data() + sizeof(flatbuffers::uoffset_t), len));
+    return frame;
+}
+
+auto connect_and_say_hello(asio::io_context &ctx, mock_server const &srv)
+    -> asio::local::stream_protocol::socket {
+    asio::local::stream_protocol::socket s(ctx);
+    s.connect(asio::local::stream_protocol::endpoint(srv.socket_path()));
+    asio::write(
+        s, asio::buffer(pad_frame(internal::make_client_hello("self-test"))));
+    return s;
+}
+
+} // namespace
+
+TEST_CASE("mock_server: constructs and destructs without hanging") {
+    mock_server const srv;
+    CHECK_FALSE(srv.socket_path().empty());
+}
+
+TEST_CASE("mock_server: hello accept round trip") {
+    mock_server const srv;
+    asio::io_context ctx; // Synchronous ops only; never run.
+    auto s = connect_and_say_hello(ctx, srv);
+
+    auto const reply = read_frame(s);
+    REQUIRE(internal::verify_server_hello_message(reply));
+    auto const *hello =
+        flatbuffers::GetSizePrefixedRoot<protocol::ServerHelloMessage>(
+            reply.data());
+    CHECK(hello->result() == protocol::HelloResult::OK);
+    CHECK(hello->conn_no() == 42); // NOLINT(readability-magic-numbers)
+}
+
+TEST_CASE("mock_server: hello reject round trip, then close") {
+    mock_server const srv({.hello = mock_server::hello_mode::reject});
+    asio::io_context ctx;
+    auto s = connect_and_say_hello(ctx, srv);
+
+    auto const reply = read_frame(s);
+    REQUIRE(internal::verify_server_hello_message(reply));
+    auto const *hello =
+        flatbuffers::GetSizePrefixedRoot<protocol::ServerHelloMessage>(
+            reply.data());
+    CHECK(hello->result() ==
+          protocol::HelloResult::UNSUPPORTED_PROTOCOL_VERSION);
+
+    boost::system::error_code ec;
+    std::array<std::uint8_t, 1> byte{};
+    (void)asio::read(s, asio::buffer(byte), ec);
+    CHECK(ec == asio::error::eof);
+}
+
+TEST_CASE("mock_server: hello close-without-reply") {
+    mock_server const srv(
+        {.hello = mock_server::hello_mode::close_without_reply});
+    asio::io_context ctx;
+    auto s = connect_and_say_hello(ctx, srv);
+
+    boost::system::error_code ec;
+    std::array<std::uint8_t, 1> byte{};
+    (void)asio::read(s, asio::buffer(byte), ec);
+    CHECK(ec == asio::error::eof);
+}
+
+} // namespace partake::client

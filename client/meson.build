@@ -12,17 +12,28 @@ client_lib = library(
     [
         files([
             'src/client.cpp',
+            'src/client_impl.cpp',
             'src/connection.cpp',
+            'src/connection_impl.cpp',
             'src/errors.cpp',
             'src/event.cpp',
             'src/objview.cpp',
             'src/queue.cpp',
+            'src/requests.cpp',
             'src/token.cpp',
         ]),
         common_sources,
+        protocol_cpp_headers,
     ],
     include_directories: [client_incdir, client_src_incdir, common_incdir],
-    dependencies: [boost_dep, fmt_dep, gsl_dep, spdlog_dep, threads_dep],
+    dependencies: [
+        boost_dep,
+        flatbuffers_dep,
+        fmt_dep,
+        gsl_dep,
+        spdlog_dep,
+        threads_dep,
+    ],
     override_options: ['cpp_std=c++20'],
 )
 

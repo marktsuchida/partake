@@ -36,14 +36,15 @@ class client {
     client(); // Starts the background I/O thread.
     explicit client(client_options const &options);
 
-    // Aborts remaining connections (failing their pending ops) and joins
-    // the I/O thread.
+    // Quits remaining connections (failing their pending ops) and joins the
+    // I/O thread. Move assignment does the same to the assigned-over
+    // client.
     ~client();
 
     client(client const &) = delete;
     auto operator=(client const &) -> client & = delete;
     client(client &&) noexcept = default;
-    auto operator=(client &&) noexcept -> client & = default;
+    auto operator=(client &&other) noexcept -> client &;
 
     // Async connect: returns op_id immediately; the completion event
     // carries the connection on success (event::get_connection()) or an
@@ -52,9 +53,8 @@ class client {
     // (the server may close instead of replying to a rejected hello)
     // reports connect_failed. The connection is permanently bound to q; all
     // of its op completions (and those of its objviews) are delivered
-    // there.
-    //
-    // NOT YET IMPLEMENTED: currently terminates.
+    // there. The connect op is not cancelable (no connection handle exists
+    // until the completion event).
     auto connect(std::string const &socket_path, std::string const &name,
                  queue &q, void *user_data) -> op_id;
     auto connect(std::string const &socket_path, std::string const &name,

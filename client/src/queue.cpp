@@ -10,7 +10,6 @@
 #include "partake/types.hpp"
 #include "queue_impl.hpp"
 
-#include <array>
 #include <cassert>
 #include <chrono>
 #include <cstddef>
@@ -23,7 +22,19 @@ namespace partake::client {
 
 queue::queue() : impl_(std::make_shared<internal::queue_impl>()) {}
 
-queue::~queue() = default;
+queue::~queue() {
+    if (impl_)
+        impl_->close();
+}
+
+auto queue::operator=(queue &&other) noexcept -> queue & {
+    if (this != &other) {
+        if (impl_)
+            impl_->close();
+        impl_ = std::move(other.impl_);
+    }
+    return *this;
+}
 
 auto queue::wakeup() const noexcept -> wakeup_handle {
     if (not impl_) {
@@ -55,19 +66,20 @@ void queue::dispatch(completion const &fallback) {
         assert(false);
         std::terminate();
     }
-    // This loop terminates because continuations cannot push synchronously:
-    // pushes come from the I/O thread.
-    std::array<event, 16> batch;
-    for (;;) {
-        auto const n = impl_->drain(batch.data(), batch.size());
-        if (n == 0)
-            return;
-        for (std::size_t i = 0; i < n; ++i) {
-            auto &ev = batch[i];
-            if (not ev.deliver() and fallback)
-                fallback(std::move(ev));
-            ev = {};
-        }
+    // Deliver only the events present at entry: pushes during delivery
+    // (from the I/O thread, or synchronous ones from submits on a stopped
+    // client) re-signal the wakeup handle and are delivered by the next
+    // call, so this terminates even if a continuation resubmits
+    // unconditionally. Events stay queued until popped, so an exception
+    // from a continuation (which propagates) cannot lose the ones not yet
+    // delivered.
+    auto const n = impl_->size();
+    for (std::size_t i = 0; i < n; ++i) {
+        auto ev = impl_->try_pop();
+        if (not ev)
+            break;
+        if (not ev->deliver() and fallback)
+            fallback(std::move(*ev));
     }
 }
 

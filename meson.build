@@ -39,7 +39,7 @@ if host_machine.system() == 'darwin'
     )
 endif
 
-boost_dep = dependency('boost', include_type: 'system')
+boost_dep = dependency('boost', version: '>=1.77', include_type: 'system')
 
 gsl_dep = dependency(
     'microsoft-gsl',

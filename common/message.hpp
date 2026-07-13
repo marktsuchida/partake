@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -149,8 +150,25 @@ template <typename Socket, typename Buffer> class async_message_writer {
                 asio_buffers.clear();
                 buffers_being_written.clear();
 
+                // Moved out (like buffers_to_write_next below) because a
+                // completion callback may re-entrantly start a new write
+                // chain, which repopulates end_offsets.
+                auto const offsets = std::move(end_offsets);
+                end_offsets.clear();
+
+                // Snapshot the buffers to cancel BEFORE running the
+                // per-message callbacks: a callback may re-entrantly
+                // enqueue new writes (starting a new chain), which must
+                // not sweep up pre-error queued buffers, nor may the
+                // cancellation below hit the re-entrant chain's buffers.
+                std::vector<buffer_type> canceled_bufs;
+                if (err) {
+                    canceled_bufs = std::move(buffers_to_write_next);
+                    buffers_to_write_next.clear();
+                }
+
                 bool had_error = false;
-                for (auto off : end_offsets) {
+                for (auto off : offsets) {
                     if (written >= off) {
                         handle_cmpl({});
                     } else {
@@ -163,13 +181,15 @@ template <typename Socket, typename Buffer> class async_message_writer {
                         }
                     }
                 }
-                end_offsets.clear();
 
                 if (err) {
-                    for ([[maybe_unused]] auto &b : buffers_to_write_next)
+                    for ([[maybe_unused]] auto &b : canceled_bufs)
                         handle_cmpl(canceled);
-                    buffers_to_write_next.clear();
-                } else if (not buffers_to_write_next.empty()) {
+                } else if (not is_write_in_progress() and
+                           not buffers_to_write_next.empty()) {
+                    // The re-check: a completion callback may have
+                    // re-entrantly started a new chain, which flushes
+                    // buffers_to_write_next itself.
                     start_writing(keepalive);
                 }
             });
@@ -247,6 +267,8 @@ template <typename Socket> class async_message_reader {
                     remaining = remaining.subspan(frame_size);
                 }
                 auto const remaining_size = remaining.size();
+                // No ranges: also compiled as C++17 (daemon).
+                // NOLINTNEXTLINE(modernize-use-ranges)
                 std::copy(remaining.begin(), remaining.end(), readbuf.begin());
 
                 // Ensure the rest of any partial frame will fit in the buffer

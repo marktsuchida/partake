@@ -44,10 +44,20 @@ namespace partake::client::internal {
 // function, exactly one wakeup byte is pending in the pipe iff 'events' is
 // nonempty. All pipe reads and writes happen with 'mut' held. The byte is
 // cleared only when the queue empties, so the wakeup handle stays readable
-// after a partial drain.
+// after a partial drain. A closed queue is permanently empty and
+// unsignaled: close() discards queued events and push() drops new ones
+// (nobody can drain once the public handle is gone).
+//
+// Events are never delivered or destroyed while 'mut' is held: payload
+// destructors and continuations may re-enter this queue (e.g. an objview
+// auto-close submit on a stopped client falls back to push()). try_pop()
+// hands the event out for the caller to deliver/destroy unlocked, drain()
+// overwrites the caller's reused slots outside the lock, and close()
+// discards outside the lock.
 class queue_impl {
     std::mutex mut;
     std::deque<event> events; // Guarded by mut.
+    bool closed = false;      // Guarded by mut.
 
     // Wakeup pipe; never moved after construction so that the read end's fd
     // (the public wakeup_handle) stays stable.
@@ -82,9 +92,28 @@ class queue_impl {
         return rd.get();
     }
 
+    // Called when the public queue handle dies: nobody can drain anymore,
+    // so discard queued events (breaking any ownership cycles through
+    // their payloads) and drop future pushes.
+    void close() noexcept {
+        std::deque<event> discarded;
+        {
+            std::scoped_lock const lock(mut);
+            closed = true;
+            using std::swap;
+            swap(discarded, events);
+            clear_signal();
+        }
+        // 'discarded' is destroyed outside the lock: payloads may hold
+        // handles (connection, later objview) whose release re-enters
+        // (e.g. an objview auto-close submit).
+    }
+
     // Callable from any thread.
     void push(event ev) {
         std::scoped_lock const lock(mut);
+        if (closed)
+            return;
         bool const was_empty = events.empty();
         events.push_back(std::move(ev));
         // Signaling inside the lock keeps the invariant exact and makes
@@ -93,42 +122,62 @@ class queue_impl {
             signal();
     }
 
+    // Pop one event if available; clears the wakeup signal when the pop
+    // empties the queue. The returned event is delivered and destroyed by
+    // the caller without 'mut' held.
+    auto try_pop() -> std::optional<event> {
+        std::scoped_lock const lock(mut);
+        if (events.empty())
+            return std::nullopt;
+        auto ev = std::move(events.front());
+        events.pop_front();
+        if (events.empty())
+            clear_signal();
+        return ev;
+    }
+
+    auto size() -> std::size_t {
+        std::scoped_lock const lock(mut);
+        return events.size();
+    }
+
     auto drain(event *out, std::size_t max_events) -> std::size_t {
-        if (max_events == 0)
-            return 0;
-        if (out == nullptr) {
+        if (out == nullptr and max_events > 0) {
             assert(false);
             std::terminate();
         }
-        std::scoped_lock const lock(mut);
         std::span const dest(out, max_events);
         std::size_t n = 0;
-        while (n < max_events and not events.empty()) {
-            dest[n++] = std::move(events.front());
-            events.pop_front();
+        while (n < max_events) {
+            auto ev = try_pop();
+            if (not ev)
+                break;
+            // Assigned outside the lock: overwriting a reused slot may
+            // destroy an old event whose payload destructor re-enters
+            // this queue (cf. the close() comment).
+            dest[n++] = std::move(*ev);
         }
-        if (events.empty())
-            clear_signal();
         return n;
     }
 
     auto wait_one(std::chrono::milliseconds timeout) -> std::optional<event> {
         using std::chrono::ceil;
+        using std::chrono::floor;
         using std::chrono::milliseconds;
         using std::chrono::steady_clock;
-        bool const infinite = timeout < milliseconds::zero();
-        auto const deadline = steady_clock::now() + timeout;
+        auto const now = steady_clock::now();
+        // Guard the addition below: converting to steady_clock's
+        // (nanosecond) rep overflows for huge timeouts, so treat those as
+        // infinite too.
+        bool const infinite =
+            timeout < milliseconds::zero() or
+            timeout >
+                floor<milliseconds>(steady_clock::time_point::max() - now);
+        auto const deadline =
+            infinite ? steady_clock::time_point::max() : now + timeout;
         for (;;) {
-            {
-                std::scoped_lock const lock(mut);
-                if (not events.empty()) {
-                    auto ev = std::move(events.front());
-                    events.pop_front();
-                    if (events.empty())
-                        clear_signal();
-                    return ev;
-                }
-            }
+            if (auto ev = try_pop())
+                return ev;
             int remaining = -1;
             if (not infinite) {
                 auto const left =
@@ -147,14 +196,7 @@ class queue_impl {
                 std::terminate();
             }
             if (r == 0) { // Timed out; one final re-check.
-                std::scoped_lock const lock(mut);
-                if (events.empty())
-                    return std::nullopt;
-                auto ev = std::move(events.front());
-                events.pop_front();
-                if (events.empty())
-                    clear_signal();
-                return ev;
+                return try_pop();
             }
             // POLLIN: the poll does not consume the byte; a spurious
             // iteration (byte cleared by a racing drain) just loops.

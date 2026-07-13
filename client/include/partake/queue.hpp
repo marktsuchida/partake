@@ -38,6 +38,10 @@ auto get_queue_impl(queue const &q) noexcept
 // while anything references it (later: connections bound to this queue), so
 // it remains valid across moves of this handle object. Calling any method
 // on a moved-from queue is a programmer error (terminates).
+//
+// Destroying the queue (or assigning over it) discards undelivered events
+// and drops events completed afterwards: without the handle nothing could
+// ever drain them.
 class queue {
   public:
     // Creates the wakeup pipe; throws std::system_error on failure.
@@ -47,7 +51,7 @@ class queue {
     queue(queue const &) = delete;
     auto operator=(queue const &) -> queue & = delete;
     queue(queue &&) noexcept = default;
-    auto operator=(queue &&) noexcept -> queue & = default;
+    auto operator=(queue &&other) noexcept -> queue &;
 
     // Poll/select-able handle that becomes readable when the queue is
     // nonempty. Do not read from or close it; use drain()/wait_one().
@@ -60,8 +64,13 @@ class queue {
     // Blocking retrieval of a single event; negative timeout = infinite.
     auto wait_one(std::chrono::milliseconds timeout) -> std::optional<event>;
 
-    // Drain everything, deliver() each event; events with no continuation
-    // go to fallback (dropped if fallback is empty).
+    // Deliver() the events present at entry; events with no continuation
+    // go to fallback (dropped if fallback is empty). Events arriving
+    // during dispatch keep the wakeup handle readable and are delivered
+    // by the next call. If a continuation or the fallback throws, the
+    // exception propagates: the throwing event counts as delivered, the
+    // remaining events stay queued (FIFO) and the wakeup handle stays
+    // readable.
     void dispatch(completion const &fallback = {});
 
   private:

@@ -15,9 +15,17 @@
 
 namespace partake::client {
 
+class connection;
+
 namespace internal {
 
 class connection_impl;
+
+auto make_connection(std::shared_ptr<connection_impl> impl) noexcept
+    -> connection;
+
+auto get_connection_impl(connection const &c) noexcept
+    -> std::shared_ptr<connection_impl> const &;
 
 } // namespace internal
 
@@ -82,6 +90,15 @@ class connection {
     void cancel(op_id id);
 
   private:
+    friend auto internal::make_connection(
+        std::shared_ptr<internal::connection_impl> impl) noexcept
+        -> connection;
+    friend auto internal::get_connection_impl(connection const &c) noexcept
+        -> std::shared_ptr<internal::connection_impl> const &;
+
+    explicit connection(
+        std::shared_ptr<internal::connection_impl> impl) noexcept;
+
     std::shared_ptr<internal::connection_impl> impl_;
 };
 

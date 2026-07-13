@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
+#include <functional>
 #include <memory>
 #include <system_error>
 #include <utility>
@@ -322,6 +323,132 @@ TEST_CASE("async_message_writer") {
               std::vector<std::uint8_t>{4, 0, 0, 0, 'e', 'f', 'g', 'h'});
     }
 
+    // NOLINTEND(readability-magic-numbers)
+}
+
+TEST_CASE("async_message_writer: messages queued behind an in-flight write "
+          "are flushed") {
+    testing::tempdir const td;
+    auto path = testing::unique_path(
+        td.path(), testing::make_test_filename(__FILE__, __LINE__));
+    asio::io_context ctx;
+    auto s = writable_asio_stream_for_file(ctx, path);
+    testing::auto_delete_file const adf(path);
+
+    unsigned completions = 0;
+    async_message_writer<decltype(s), std::vector<std::uint8_t>> writer(
+        s, [&](std::error_code e) {
+            CHECK_FALSE(e);
+            ++completions;
+        });
+
+    // NOLINTBEGIN(readability-magic-numbers)
+    // The first message starts a write batch; the other two queue up behind
+    // it and are flushed by a second batch.
+    for (int i = 0; i < 3; ++i)
+        writer.async_write_message(
+            std::vector<std::uint8_t>{4, 0, 0, 0, 0, 0, 0, 0}, {});
+    ctx.run();
+    CHECK(completions == 3);
+    // NOLINTEND(readability-magic-numbers)
+}
+
+TEST_CASE("async_message_writer: write error fails the in-flight message "
+          "and cancels queued messages") {
+    // Write to a read-only stream so that every write fails.
+    testing::tempdir const td;
+    auto f = testing::unique_file_with_data(
+        td.path(), testing::make_test_filename(__FILE__, __LINE__), {});
+    asio::io_context ctx;
+    auto s = readable_asio_stream_for_file(ctx, f.path());
+
+    unsigned error_completions = 0;
+    async_message_writer<decltype(s), std::vector<std::uint8_t>> writer(
+        s, [&](std::error_code e) {
+            CHECK(e);
+            ++error_completions;
+        });
+
+    // NOLINTBEGIN(readability-magic-numbers)
+    // First message is in flight (fails); second is queued behind it and is
+    // canceled by the error.
+    for (int i = 0; i < 2; ++i)
+        writer.async_write_message(
+            std::vector<std::uint8_t>{4, 0, 0, 0, 0, 0, 0, 0}, {});
+    ctx.run();
+    CHECK(error_completions == 2);
+    // NOLINTEND(readability-magic-numbers)
+}
+
+TEST_CASE("async_message_writer: a write enqueued by a completion callback "
+          "is written") {
+    testing::tempdir const td;
+    auto path = testing::unique_path(
+        td.path(), testing::make_test_filename(__FILE__, __LINE__));
+    asio::io_context ctx;
+    auto s = writable_asio_stream_for_file(ctx, path);
+    testing::auto_delete_file const adf(path);
+
+    // NOLINTBEGIN(readability-magic-numbers)
+    unsigned completions = 0;
+    std::function<void()> write_more;
+    async_message_writer<decltype(s), std::vector<std::uint8_t>> writer(
+        s, [&](std::error_code e) {
+            CHECK_FALSE(e);
+            if (++completions == 1)
+                write_more(); // Re-entrant from the completion callback.
+        });
+    write_more = [&] {
+        writer.async_write_message(
+            std::vector<std::uint8_t>{4, 0, 0, 0, 0, 0, 0, 0}, {});
+    };
+
+    writer.async_write_message(
+        std::vector<std::uint8_t>{4, 0, 0, 0, 0, 0, 0, 0}, {});
+    ctx.run();
+    CHECK(completions == 2);
+    // NOLINTEND(readability-magic-numbers)
+}
+
+TEST_CASE("async_message_writer: write error with re-entrant enqueue "
+          "cancels only pre-error queued messages") {
+    // Write to a read-only stream so that every write fails.
+    testing::tempdir const td;
+    auto f = testing::unique_file_with_data(
+        td.path(), testing::make_test_filename(__FILE__, __LINE__), {});
+    asio::io_context ctx;
+    auto s = readable_asio_stream_for_file(ctx, f.path());
+
+    // NOLINTBEGIN(readability-magic-numbers)
+    std::vector<std::error_code> completions;
+    std::function<void()> write_more;
+    async_message_writer<decltype(s), std::vector<std::uint8_t>> writer(
+        s, [&](std::error_code e) {
+            completions.push_back(e);
+            if (completions.size() == 1)
+                write_more(); // Re-entrant from the completion callback.
+        });
+    write_more = [&] {
+        writer.async_write_message(
+            std::vector<std::uint8_t>{4, 0, 0, 0, 0, 0, 0, 0}, {});
+    };
+
+    // First message is in flight (fails); second is queued behind it and
+    // must be canceled by the error even though the first message's
+    // completion callback re-entrantly enqueues a third (which gets its
+    // own chain and its own write error).
+    for (int i = 0; i < 2; ++i)
+        writer.async_write_message(
+            std::vector<std::uint8_t>{4, 0, 0, 0, 0, 0, 0, 0}, {});
+    ctx.run();
+    std::error_code const canceled(
+        make_error_code(asio::error::operation_aborted));
+    REQUIRE(completions.size() == 3);
+    CHECK(completions[0]);
+    CHECK(completions[0] != canceled);
+    CHECK(completions[1] == canceled);
+    CHECK(completions[2]);
+    CHECK(completions[2] != canceled);
     // NOLINTEND(readability-magic-numbers)
 }
 

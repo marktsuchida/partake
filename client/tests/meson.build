@@ -15,17 +15,21 @@ client_tests_sources = files([
     'client.cpp',
     'client_impl.cpp',
     'connection.cpp',
+    'connection_impl.cpp',
     'errors.cpp',
     'event.cpp',
     'event_impl.cpp',
+    'mock_server.cpp',
     'objview.cpp',
     'partake.cpp',
     'queue.cpp',
     'queue_impl.cpp',
     'request_builder.cpp',
+    'requests.cpp',
     'seqno_map.cpp',
     'token.cpp',
     'types.cpp',
+    'unique_handler.cpp',
 ])
 
 client_tests = executable(
@@ -36,6 +40,7 @@ client_tests = executable(
         client_src_incdir,
         common_incdir,
         common_tests_incdir,
+        daemon_incdir, # For response_builder.hpp (mock_server).
     ],
     dependencies: [
         boost_dep,
