@@ -18,6 +18,7 @@ client_lib = library(
             'src/errors.cpp',
             'src/event.cpp',
             'src/objview.cpp',
+            'src/objview_impl.cpp',
             'src/queue.cpp',
             'src/requests.cpp',
             'src/segment_cache.cpp',

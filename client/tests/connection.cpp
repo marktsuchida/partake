@@ -12,6 +12,7 @@
 #include "partake/event.hpp"
 #include "partake/queue.hpp"
 #include "partake/types.hpp"
+#include "test_helpers.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -36,33 +37,6 @@ TEST_CASE("connection: default-constructed is empty") {
     connection const copy(conn);
     CHECK(not copy);
 }
-
-namespace {
-
-constexpr auto event_timeout = std::chrono::milliseconds(5000);
-
-auto connect_or_fail(client &c, mock_server const &srv, queue &q)
-    -> connection {
-    (void)c.connect(srv.socket_path(), "test", q, nullptr);
-    auto ev = q.wait_one(event_timeout);
-    REQUIRE(ev.has_value());
-    REQUIRE_FALSE(ev->error());
-    auto conn = ev->get_connection();
-    REQUIRE(conn);
-    return conn;
-}
-
-// Wait for a server-side condition (e.g. a withheld ping's arrival) so a
-// subsequent scripted server action happens with the request pending.
-template <typename Cond> void spin_until(Cond cond) {
-    auto const deadline = std::chrono::steady_clock::now() + event_timeout;
-    while (not cond()) {
-        REQUIRE(std::chrono::steady_clock::now() < deadline);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-}
-
-} // namespace
 
 // NOLINTBEGIN(readability-magic-numbers)
 

@@ -102,6 +102,44 @@ void mock_server::close_connection() {
     post([this] { close_sock(); });
 }
 
+void mock_server::release_withheld_alloc_responses() {
+    post([this] {
+        for (auto const &w : withheld_allocs) {
+            auto rb = daemon::response_builder(
+                [this](flatbuffers::DetachedBuffer const &buf) {
+                    write_frame(buf);
+                },
+                1);
+            protocol::Mapping const mapping(w.key, 0, w.offset, w.size);
+            rb.add_successful_response(
+                w.seqno, protocol::CreateAllocResponse(
+                             rb.fbbuilder(), &mapping, opts.alloc_zeroed));
+            rb.flush();
+        }
+        withheld_allocs.clear();
+    });
+}
+
+void mock_server::release_withheld_open_responses() {
+    post([this] {
+        for (auto const &w : withheld_opens) {
+            auto const it = objects.find(w.key);
+            assert(it != objects.end()); // Recorded only for known keys.
+            auto rb = daemon::response_builder(
+                [this](flatbuffers::DetachedBuffer const &buf) {
+                    write_frame(buf);
+                },
+                1);
+            protocol::Mapping const mapping(w.key, 0, it->second.first,
+                                            it->second.second);
+            rb.add_successful_response(w.seqno, protocol::CreateOpenResponse(
+                                                    rb.fbbuilder(), &mapping));
+            rb.flush();
+        }
+        withheld_opens.clear();
+    });
+}
+
 auto mock_server::handle_message(gsl::span<std::uint8_t const> bytes) -> bool {
     if (not said_hello)
         return handle_hello(bytes);
@@ -168,6 +206,51 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
                         protocol::CreateQuitResponse(rb.fbbuilder()));
                 }
                 done = true;
+                break;
+            case protocol::AnyRequest::AllocRequest: {
+                ++n_allocs;
+                auto const *areq = req->request_as_AllocRequest();
+                auto const key = next_key++;
+                auto const offset = bump_offset;
+                bump_offset += (areq->size() + 7) / 8 * 8; // 8-byte-aligned.
+                objects[key] = {offset, areq->size()};
+                if (opts.respond_to_alloc) {
+                    protocol::Mapping const mapping(key, 0, offset,
+                                                    areq->size());
+                    rb.add_successful_response(
+                        req->seqno(),
+                        protocol::CreateAllocResponse(rb.fbbuilder(), &mapping,
+                                                      opts.alloc_zeroed));
+                } else {
+                    withheld_allocs.push_back(
+                        {req->seqno(), key, offset, areq->size()});
+                }
+                break;
+            }
+            case protocol::AnyRequest::OpenRequest: {
+                ++n_opens;
+                auto const *oreq = req->request_as_OpenRequest();
+                auto const it = objects.find(oreq->key());
+                if (it == objects.end()) {
+                    rb.add_error_response(req->seqno(),
+                                          protocol::Status::NO_SUCH_OBJECT);
+                } else if (opts.respond_to_open) {
+                    protocol::Mapping const mapping(
+                        oreq->key(), 0, it->second.first, it->second.second);
+                    rb.add_successful_response(req->seqno(),
+                                               protocol::CreateOpenResponse(
+                                                   rb.fbbuilder(), &mapping));
+                } else {
+                    withheld_opens.push_back({req->seqno(), oreq->key()});
+                }
+                break;
+            }
+            case protocol::AnyRequest::CloseRequest:
+                ++n_closes;
+                objects.erase(req->request_as_CloseRequest()->key());
+                rb.add_successful_response(
+                    req->seqno(),
+                    protocol::CreateCloseResponse(rb.fbbuilder()));
                 break;
             case protocol::AnyRequest::GetSegmentRequest:
                 ++n_get_segments;
@@ -380,6 +463,96 @@ TEST_CASE("mock_server: get_segment can report NO_SUCH_SEGMENT") {
     CHECK(resp->status() == protocol::Status::NO_SUCH_SEGMENT);
     CHECK(resp->response_type() == protocol::AnyResponse::NONE);
     CHECK(srv.get_segments_received() == 1);
+}
+
+namespace {
+
+auto send_alloc(asio::local::stream_protocol::socket &s, std::uint64_t seqno,
+                std::uint64_t size) {
+    auto rb = internal::request_builder(1);
+    internal::add_alloc_request(rb, seqno, size, protocol::Policy::DEFAULT);
+    asio::write(s, asio::buffer(pad_frame(rb.release_buffer())));
+}
+
+auto send_open(asio::local::stream_protocol::socket &s, std::uint64_t seqno,
+               std::uint64_t key) {
+    auto rb = internal::request_builder(1);
+    internal::add_open_request(rb, seqno, key, protocol::Policy::DEFAULT,
+                               true);
+    asio::write(s, asio::buffer(pad_frame(rb.release_buffer())));
+}
+
+auto send_close(asio::local::stream_protocol::socket &s, std::uint64_t seqno,
+                std::uint64_t key) {
+    auto rb = internal::request_builder(1);
+    internal::add_close_request(rb, seqno, key);
+    asio::write(s, asio::buffer(pad_frame(rb.release_buffer())));
+}
+
+auto single_response_of(std::vector<std::uint8_t> const &reply)
+    -> protocol::Response const * {
+    REQUIRE(internal::verify_response_message(reply));
+    auto const *msg =
+        flatbuffers::GetSizePrefixedRoot<protocol::ResponseMessage>(
+            reply.data());
+    return msg->responses()->Get(0);
+}
+
+} // namespace
+
+TEST_CASE("mock_server: alloc, open, close round trips") {
+    mock_server const srv;
+    asio::io_context ctx;
+    auto s = connect_and_say_hello(ctx, srv);
+    (void)read_frame(s); // ServerHello
+
+    send_alloc(s, 10, 100);
+    auto reply = read_frame(s);
+    auto const *aresp = single_response_of(reply);
+    CHECK(aresp->seqno() == 10);
+    CHECK(aresp->status() == protocol::Status::OK);
+    REQUIRE(aresp->response_type() == protocol::AnyResponse::AllocResponse);
+    auto const *amap = aresp->response_as_AllocResponse()->object();
+    REQUIRE(amap != nullptr);
+    auto const key = amap->key();
+    auto const alloc_offset = amap->offset(); // amap dies with 'reply'.
+    CHECK(key != 0);
+    CHECK(amap->segment() == 0);
+    CHECK(amap->offset() + amap->size() <= srv.segment_bytes());
+    CHECK(amap->size() == 100);
+    CHECK(srv.allocs_received() == 1);
+
+    send_open(s, 11, key);
+    reply = read_frame(s);
+    auto const *oresp = single_response_of(reply);
+    CHECK(oresp->seqno() == 11);
+    CHECK(oresp->status() == protocol::Status::OK);
+    REQUIRE(oresp->response_type() == protocol::AnyResponse::OpenResponse);
+    auto const *omap = oresp->response_as_OpenResponse()->object();
+    REQUIRE(omap != nullptr);
+    CHECK(omap->key() == key);
+    CHECK(omap->offset() == alloc_offset);
+    CHECK(omap->size() == 100);
+    CHECK(srv.opens_received() == 1);
+
+    send_open(s, 12, key + 1); // Never-allocated key.
+    reply = read_frame(s);
+    auto const *eresp = single_response_of(reply);
+    CHECK(eresp->seqno() == 12);
+    CHECK(eresp->status() == protocol::Status::NO_SUCH_OBJECT);
+
+    send_close(s, 13, key);
+    reply = read_frame(s);
+    auto const *cresp = single_response_of(reply);
+    CHECK(cresp->seqno() == 13);
+    CHECK(cresp->status() == protocol::Status::OK);
+    CHECK(cresp->response_type() == protocol::AnyResponse::CloseResponse);
+    CHECK(srv.closes_received() == 1);
+
+    send_open(s, 14, key); // Closed keys are forgotten.
+    reply = read_frame(s);
+    CHECK(single_response_of(reply)->status() ==
+          protocol::Status::NO_SUCH_OBJECT);
 }
 
 } // namespace partake::client

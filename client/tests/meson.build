@@ -21,6 +21,7 @@ client_tests_sources = files([
     'event_impl.cpp',
     'mock_server.cpp',
     'objview.cpp',
+    'objview_impl.cpp',
     'partake.cpp',
     'queue.cpp',
     'queue_impl.cpp',
@@ -79,3 +80,12 @@ client_tests = executable(
     override_options: ['cpp_std=c++20'],
 )
 test('client tests', client_tests)
+
+# Manual end-to-end smoke test against a real partaked (public headers only);
+# deliberately not registered as a test. See smoke.cpp for usage.
+executable(
+    'client_smoke',
+    'smoke.cpp',
+    dependencies: [client_dep, threads_dep],
+    override_options: ['cpp_std=c++20'],
+)

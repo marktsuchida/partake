@@ -59,37 +59,44 @@ auto connection::ping(completion c) -> op_id {
     return impl_->submit_ping(std::move(pl));
 }
 
-// In the stage-3/4 stubs below, the by-value 'completion' parameters are
-// not yet moved anywhere (the real implementations will move them).
+auto connection::alloc(std::uint64_t size, alloc_options options,
+                       void *user_data) -> op_id {
+    require(impl_);
+    internal::event_payload pl;
+    pl.type = op_type::alloc;
+    pl.user_data = user_data;
+    return impl_->submit_alloc(size, options, std::move(pl));
+}
+
+auto connection::alloc(std::uint64_t size, alloc_options options, completion c)
+    -> op_id {
+    require(impl_);
+    internal::event_payload pl;
+    pl.type = op_type::alloc;
+    pl.cont = std::move(c);
+    return impl_->submit_alloc(size, options, std::move(pl));
+}
+
+auto connection::open(token key, open_options options, void *user_data)
+    -> op_id {
+    require(impl_);
+    internal::event_payload pl;
+    pl.type = op_type::open;
+    pl.user_data = user_data;
+    return impl_->submit_open(key, options, std::move(pl));
+}
+
+auto connection::open(token key, open_options options, completion c) -> op_id {
+    require(impl_);
+    internal::event_payload pl;
+    pl.type = op_type::open;
+    pl.cont = std::move(c);
+    return impl_->submit_open(key, options, std::move(pl));
+}
+
+// In the stage-4 stubs below, the by-value 'completion' parameters are not
+// yet moved anywhere (the real implementations will move them).
 // NOLINTBEGIN(performance-unnecessary-value-param)
-
-auto connection::alloc(std::uint64_t /* size */, alloc_options /* options */,
-                       void * /* user_data */) -> op_id {
-    require(impl_);
-    // TODO(stage 3): alloc + objview.
-    std::terminate();
-}
-
-auto connection::alloc(std::uint64_t /* size */, alloc_options /* options */,
-                       completion /* c */) -> op_id {
-    require(impl_);
-    // TODO(stage 3): alloc + objview.
-    std::terminate();
-}
-
-auto connection::open(token /* key */, open_options /* options */,
-                      void * /* user_data */) -> op_id {
-    require(impl_);
-    // TODO(stage 3): open + objview.
-    std::terminate();
-}
-
-auto connection::open(token /* key */, open_options /* options */,
-                      completion /* c */) -> op_id {
-    require(impl_);
-    // TODO(stage 3): open + objview.
-    std::terminate();
-}
 
 auto connection::create_voucher(token /* key */, std::uint32_t /* count */,
                                 void * /* user_data */) -> op_id {

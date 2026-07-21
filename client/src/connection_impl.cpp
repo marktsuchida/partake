@@ -6,6 +6,8 @@
 
 #include "connection_impl.hpp"
 
+#include "objview_impl.hpp"
+
 #include <spdlog/spdlog.h>
 
 #include <cassert>
@@ -30,6 +32,13 @@ namespace {
     if (is_operation_canceled(ec))
         return make_error_code(client_errc::connect_failed);
     return ec;
+}
+
+[[nodiscard]] auto suppressed_close_payload() -> event_payload {
+    event_payload pl;
+    pl.type = op_type::close;
+    pl.suppress = true;
+    return pl;
 }
 
 } // namespace
@@ -64,6 +73,38 @@ void connection_impl::start_connect(std::string socket_path, std::string name,
 
 auto connection_impl::submit_ping(event_payload pl) -> op_id {
     return submit_op(std::move(pl), run_ping);
+}
+
+auto connection_impl::submit_alloc(std::uint64_t size, alloc_options opts,
+                                   event_payload pl) -> op_id {
+    auto const policy = to_protocol_policy(opts.pol);
+    return submit_op(std::move(pl),
+                     [size, policy](std::shared_ptr<connection_impl> self,
+                                    op_id id, event_payload payload) {
+                         return run_alloc(std::move(self), id, size, policy,
+                                          std::move(payload));
+                     });
+}
+
+auto connection_impl::submit_open(token key, open_options opts,
+                                  event_payload pl) -> op_id {
+    auto const policy = to_protocol_policy(opts.pol);
+    auto const wait = opts.wait;
+    return submit_op(std::move(pl),
+                     [key, policy, wait](std::shared_ptr<connection_impl> self,
+                                         op_id id, event_payload payload) {
+                         return run_open(std::move(self), id, key.as_u64(),
+                                         policy, wait, std::move(payload));
+                     });
+}
+
+auto connection_impl::submit_close(token key, std::shared_ptr<objview_impl> ov,
+                                   event_payload pl) -> op_id {
+    return submit_op(std::move(pl), [key, ov = std::move(ov)](
+                                        std::shared_ptr<connection_impl> self,
+                                        op_id id, event_payload payload) {
+        return run_close(std::move(self), id, key, ov, std::move(payload));
+    });
 }
 
 auto connection_impl::submit_shutdown(event_payload pl) -> op_id {
@@ -134,6 +175,109 @@ auto connection_impl::run_ping(std::shared_ptr<connection_impl> self, op_id id,
                 make_error_code(client_errc::disconnected));
         co_await self->request<ping_result>(add_ping_request,
                                             decode_ping_response);
+    } catch (std::system_error const &e) {
+        pl.error = e.code();
+    } catch (...) {
+        pl.error = make_error_code(client_errc::disconnected);
+    }
+    self->finish(id, std::move(pl));
+}
+
+auto connection_impl::run_alloc(std::shared_ptr<connection_impl> self,
+                                op_id id, std::uint64_t size,
+                                protocol::Policy policy, event_payload pl)
+    -> asio::awaitable<void> {
+    try {
+        if (self->state != state_t::ready)
+            throw std::system_error(
+                make_error_code(client_errc::disconnected));
+        auto const r = co_await self->request<alloc_result>(
+            [size, policy](request_builder &rb, std::uint64_t seqno) {
+                add_alloc_request(rb, seqno, size, policy);
+            },
+            decode_alloc_response);
+        try {
+            auto m = co_await self->get_segment_mapping(r.segment);
+            pl.obj = make_objview(std::make_shared<objview_impl>(
+                self, std::move(m), r.offset, r.size, /*writable=*/true,
+                token(r.key)));
+            pl.zeroed = r.zeroed;
+        } catch (...) {
+            // The wire alloc succeeded but we cannot use the object; close
+            // it so it is not leaked on the daemon.
+            (void)self->submit_close(token(r.key), nullptr,
+                                     suppressed_close_payload());
+            throw;
+        }
+    } catch (std::system_error const &e) {
+        pl.error = e.code();
+    } catch (...) {
+        pl.error = make_error_code(client_errc::disconnected);
+    }
+    self->finish(id, std::move(pl));
+}
+
+auto connection_impl::run_open(std::shared_ptr<connection_impl> self, op_id id,
+                               std::uint64_t key, protocol::Policy policy,
+                               bool wait, event_payload pl)
+    -> asio::awaitable<void> {
+    try {
+        if (self->state != state_t::ready)
+            throw std::system_error(
+                make_error_code(client_errc::disconnected));
+        // A deferred response (wait == true, object unshared) just parks
+        // this await until the daemon replies.
+        auto const r = co_await self->request<open_result>(
+            [key, policy, wait](request_builder &rb, std::uint64_t seqno) {
+                add_open_request(rb, seqno, key, policy, wait);
+            },
+            decode_open_response);
+        try {
+            auto m = co_await self->get_segment_mapping(r.segment);
+            pl.obj = make_objview(std::make_shared<objview_impl>(
+                self, std::move(m), r.offset, r.size,
+                policy == protocol::Policy::PRIMITIVE, token(r.key)));
+        } catch (...) {
+            (void)self->submit_close(token(r.key), nullptr,
+                                     suppressed_close_payload());
+            throw;
+        }
+    } catch (std::system_error const &e) {
+        pl.error = e.code();
+    } catch (...) {
+        pl.error = make_error_code(client_errc::disconnected);
+    }
+    self->finish(id, std::move(pl));
+}
+
+auto connection_impl::run_close(std::shared_ptr<connection_impl> self,
+                                op_id id, token key,
+                                std::shared_ptr<objview_impl> ov,
+                                event_payload pl) -> asio::awaitable<void> {
+    try {
+        if (self->state != state_t::ready)
+            throw std::system_error(
+                make_error_code(client_errc::disconnected));
+        if (ov and not ov->begin_close())
+            throw std::system_error(
+                make_error_code(client_errc::object_closed));
+        try {
+            co_await self->request<close_result>(
+                [key](request_builder &rb, std::uint64_t seqno) {
+                    add_close_request(rb, seqno, key.as_u64());
+                },
+                decode_close_response);
+        } catch (...) {
+            // A failed close means the connection is dead or dying (the
+            // daemon reclaims per-connection handles on disconnect); mark
+            // closed anyway so data() stays null and the destructor does not
+            // resubmit.
+            if (ov)
+                ov->mark_closed();
+            throw;
+        }
+        if (ov)
+            ov->mark_closed();
     } catch (std::system_error const &e) {
         pl.error = e.code();
     } catch (...) {
@@ -307,10 +451,15 @@ void connection_impl::finish(op_id id, event_payload pl) {
         ops.erase(it);
     }
     if (detached) {
-        // Stage 3 hook: auto-close objview payloads of detached ops here.
+        // Auto-close an abandoned alloc/open result: dropping the payload's
+        // (only) objview handle triggers ~objview_impl's fire-and-forget
+        // close, posted as a later task.
+        pl.obj = objview();
+        pl.zeroed = false;
         pl.error = make_error_code(client_errc::canceled);
     }
-    qimpl->push(make_event(std::move(pl)));
+    if (not pl.suppress)
+        qimpl->push(make_event(std::move(pl)));
 }
 
 // Every terminal path funnels through here (idempotent). ec is what pending

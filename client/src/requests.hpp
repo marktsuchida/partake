@@ -7,6 +7,7 @@
 #pragma once
 
 #include "partake/errors.hpp"
+#include "partake/types.hpp"
 
 #include "partake_protocol_generated.h"
 #include "request_builder.hpp"
@@ -49,6 +50,26 @@ struct segment_spec {
     std::variant<posix_mmap_spec, sysv_shmem_spec, win32_mapping_spec> spec;
 };
 
+// The decoded, owning forms of the AllocResponse/OpenResponse Mapping (the
+// FlatBuffer struct is valid only during the reader callback). Field types
+// match the wire ('segment' is uint32).
+struct alloc_result {
+    std::uint64_t key = 0;
+    std::uint32_t segment = 0;
+    std::uint64_t offset = 0;
+    std::uint64_t size = 0;
+    bool zeroed = false;
+};
+struct open_result {
+    std::uint64_t key = 0;
+    std::uint32_t segment = 0;
+    std::uint64_t offset = 0;
+    std::uint64_t size = 0;
+};
+struct close_result {};
+
+[[nodiscard]] auto to_protocol_policy(policy pol) noexcept -> protocol::Policy;
+
 [[nodiscard]] auto get_process_id() -> std::uint32_t;
 
 [[nodiscard]] auto
@@ -70,6 +91,12 @@ void add_ping_request(request_builder &rb, std::uint64_t seqno);
 void add_quit_request(request_builder &rb, std::uint64_t seqno);
 void add_get_segment_request(request_builder &rb, std::uint64_t seqno,
                              std::uint32_t segment_no);
+void add_alloc_request(request_builder &rb, std::uint64_t seqno,
+                       std::uint64_t size, protocol::Policy policy);
+void add_open_request(request_builder &rb, std::uint64_t seqno,
+                      std::uint64_t key, protocol::Policy policy, bool wait);
+void add_close_request(request_builder &rb, std::uint64_t seqno,
+                       std::uint64_t key);
 
 // nullopt = wrong or missing union member (a protocol violation).
 [[nodiscard]] auto decode_ping_response(protocol::Response const &resp)
@@ -78,5 +105,11 @@ void add_get_segment_request(request_builder &rb, std::uint64_t seqno,
     -> std::optional<quit_result>;
 [[nodiscard]] auto decode_get_segment_response(protocol::Response const &resp)
     -> std::optional<segment_spec>;
+[[nodiscard]] auto decode_alloc_response(protocol::Response const &resp)
+    -> std::optional<alloc_result>;
+[[nodiscard]] auto decode_open_response(protocol::Response const &resp)
+    -> std::optional<open_result>;
+[[nodiscard]] auto decode_close_response(protocol::Response const &resp)
+    -> std::optional<close_result>;
 
 } // namespace partake::client::internal

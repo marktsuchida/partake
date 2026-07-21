@@ -22,11 +22,13 @@ struct event_payload {
     op_type type = op_type::none;
     std::error_code error;
     void *user_data = nullptr;
-    completion cont;     // One-shot; exchanged to empty by deliver().
-    connection conn;     // connect
-    objview obj;         // alloc, open, share, unshare
-    token key;           // create_voucher, unshare
-    bool zeroed = false; // alloc, unshare
+    completion cont;       // One-shot; exchanged to empty by deliver().
+    connection conn;       // connect
+    objview obj;           // alloc, open, share, unshare
+    token key;             // create_voucher, unshare
+    bool zeroed = false;   // alloc, unshare
+    bool suppress = false; // Internal fire-and-forget op: finish() pushes no
+                           // queue event (the core swallows the completion).
 };
 
 [[nodiscard]] auto make_event(event_payload payload) -> event;

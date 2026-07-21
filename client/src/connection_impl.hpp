@@ -8,6 +8,7 @@
 
 #include "partake/connection.hpp"
 #include "partake/errors.hpp"
+#include "partake/token.hpp"
 #include "partake/types.hpp"
 
 #include "asio.hpp"
@@ -33,6 +34,8 @@
 #include <utility>
 
 namespace partake::client::internal {
+
+class objview_impl;
 
 // The per-connection I/O core. All state is confined to the client's I/O
 // thread; the submit_*() and cancel() members may be called from any thread
@@ -97,6 +100,13 @@ class connection_impl : public std::enable_shared_from_this<connection_impl> {
 
     // Any thread.
     auto submit_ping(event_payload pl) -> op_id;
+    auto submit_alloc(std::uint64_t size, alloc_options opts, event_payload pl)
+        -> op_id;
+    auto submit_open(token key, open_options opts, event_payload pl) -> op_id;
+    // ov is null for the fire-and-forget paths (~objview_impl and the
+    // alloc/open unwind), which carry a suppressed payload.
+    auto submit_close(token key, std::shared_ptr<objview_impl> ov,
+                      event_payload pl) -> op_id;
     auto submit_shutdown(event_payload pl) -> op_id;
     void cancel(op_id id);
 
@@ -182,7 +192,8 @@ class connection_impl : public std::enable_shared_from_this<connection_impl> {
         });
         if (not posted) {
             pl.error = make_error_code(client_errc::disconnected);
-            qimpl->push(make_event(std::move(pl)));
+            if (not pl.suppress)
+                qimpl->push(make_event(std::move(pl)));
         }
         return id;
     }
@@ -192,6 +203,15 @@ class connection_impl : public std::enable_shared_from_this<connection_impl> {
                             event_payload pl) -> asio::awaitable<void>;
     static auto run_ping(std::shared_ptr<connection_impl> self, op_id id,
                          event_payload pl) -> asio::awaitable<void>;
+    static auto run_alloc(std::shared_ptr<connection_impl> self, op_id id,
+                          std::uint64_t size, protocol::Policy policy,
+                          event_payload pl) -> asio::awaitable<void>;
+    static auto run_open(std::shared_ptr<connection_impl> self, op_id id,
+                         std::uint64_t key, protocol::Policy policy, bool wait,
+                         event_payload pl) -> asio::awaitable<void>;
+    static auto run_close(std::shared_ptr<connection_impl> self, op_id id,
+                          token key, std::shared_ptr<objview_impl> ov,
+                          event_payload pl) -> asio::awaitable<void>;
     static auto run_shutdown(std::shared_ptr<connection_impl> self, op_id id,
                              event_payload pl) -> asio::awaitable<void>;
 

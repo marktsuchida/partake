@@ -20,8 +20,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace partake::client {
@@ -42,6 +44,9 @@ class mock_server {
         bool respond_to_quit = true;        // false: close without replying.
         std::size_t segment_size = 16384;   // One page (macOS/Linux default).
         bool respond_to_get_segment = true; // false: NO_SUCH_SEGMENT.
+        bool respond_to_alloc = true;       // false: record and withhold.
+        bool respond_to_open = true;        // false: record and withhold.
+        bool alloc_zeroed = false;          // Value of AllocResponse.zeroed.
     };
 
 #ifdef _WIN32
@@ -74,6 +79,27 @@ class mock_server {
     std::atomic<int> n_pings{0};
     std::atomic<int> n_quits{0};
     std::atomic<int> n_get_segments{0};
+    std::atomic<int> n_allocs{0};
+    std::atomic<int> n_opens{0};
+    std::atomic<int> n_closes{0};
+    // Alloc/open bookkeeping (server thread only): a bump allocator over the
+    // segment (no reuse, no overflow handling -- tests stay well under
+    // segment_size) and the live key -> (offset, size) table.
+    std::uint64_t next_key = 1;
+    std::uint64_t bump_offset = 0;
+    std::map<std::uint64_t, std::pair<std::uint64_t, std::uint64_t>> objects;
+    struct withheld_alloc {
+        std::uint64_t seqno;
+        std::uint64_t key;
+        std::uint64_t offset;
+        std::uint64_t size;
+    };
+    std::vector<withheld_alloc> withheld_allocs;
+    struct withheld_open {
+        std::uint64_t seqno;
+        std::uint64_t key;
+    };
+    std::vector<withheld_open> withheld_opens;
     std::thread server_thread; // Last: started after everything else.
 
   public:
@@ -93,6 +119,9 @@ class mock_server {
     [[nodiscard]] auto get_segments_received() const -> int {
         return n_get_segments;
     }
+    [[nodiscard]] auto allocs_received() const -> int { return n_allocs; }
+    [[nodiscard]] auto opens_received() const -> int { return n_opens; }
+    [[nodiscard]] auto closes_received() const -> int { return n_closes; }
 
     // The real segment served for segment 0.
     [[nodiscard]] auto segment_name() const -> std::string {
@@ -115,6 +144,11 @@ class mock_server {
     void send_error_response(std::uint64_t seqno, protocol::Status status);
     void send_response_to_unknown_seqno();
     void close_connection();
+
+    // Emit the real responses for requests recorded while respond_to_alloc /
+    // respond_to_open was false, with their original seqnos.
+    void release_withheld_alloc_responses();
+    void release_withheld_open_responses();
 
   private:
     auto handle_message(gsl::span<std::uint8_t const> bytes) -> bool;

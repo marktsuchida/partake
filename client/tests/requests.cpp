@@ -11,6 +11,7 @@
 #include "request_builder.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <flatbuffers/flatbuffers.h>
 #include <gsl/span>
@@ -250,6 +251,143 @@ TEST_CASE("requests: decode_get_segment_response") {
         CHECK_FALSE(
             decode_get_segment_response(*single_response(ping)).has_value());
     }
+}
+
+TEST_CASE("requests: to_protocol_policy") {
+    CHECK(to_protocol_policy(policy::default_) == protocol::Policy::DEFAULT);
+    CHECK(to_protocol_policy(policy::primitive) ==
+          protocol::Policy::PRIMITIVE);
+}
+
+TEST_CASE("requests: add_alloc_request") {
+    auto rb = request_builder(1);
+    add_alloc_request(rb, 11, 4096, protocol::Policy::PRIMITIVE);
+    auto buf = rb.release_buffer();
+
+    auto verifier = flatbuffers::Verifier(buf.data(), buf.size());
+    REQUIRE(
+        verifier.VerifySizePrefixedBuffer<protocol::RequestMessage>(nullptr));
+    auto const *msg =
+        flatbuffers::GetSizePrefixedRoot<protocol::RequestMessage>(buf.data());
+    auto const *req = msg->requests()->Get(0);
+    CHECK(req->seqno() == 11);
+    REQUIRE(req->request_type() == protocol::AnyRequest::AllocRequest);
+    auto const *areq = req->request_as_AllocRequest();
+    CHECK(areq->size() == 4096);
+    CHECK(areq->policy() == protocol::Policy::PRIMITIVE);
+}
+
+TEST_CASE("requests: add_open_request") {
+    auto const wait = GENERATE(false, true);
+    auto rb = request_builder(1);
+    add_open_request(rb, 12, 777, protocol::Policy::DEFAULT, wait);
+    auto buf = rb.release_buffer();
+
+    auto verifier = flatbuffers::Verifier(buf.data(), buf.size());
+    REQUIRE(
+        verifier.VerifySizePrefixedBuffer<protocol::RequestMessage>(nullptr));
+    auto const *msg =
+        flatbuffers::GetSizePrefixedRoot<protocol::RequestMessage>(buf.data());
+    auto const *req = msg->requests()->Get(0);
+    CHECK(req->seqno() == 12);
+    REQUIRE(req->request_type() == protocol::AnyRequest::OpenRequest);
+    auto const *oreq = req->request_as_OpenRequest();
+    CHECK(oreq->key() == 777);
+    CHECK(oreq->policy() == protocol::Policy::DEFAULT);
+    CHECK(oreq->wait() == wait);
+}
+
+TEST_CASE("requests: add_close_request") {
+    auto rb = request_builder(1);
+    add_close_request(rb, 13, 888);
+    auto buf = rb.release_buffer();
+
+    auto verifier = flatbuffers::Verifier(buf.data(), buf.size());
+    REQUIRE(
+        verifier.VerifySizePrefixedBuffer<protocol::RequestMessage>(nullptr));
+    auto const *msg =
+        flatbuffers::GetSizePrefixedRoot<protocol::RequestMessage>(buf.data());
+    auto const *req = msg->requests()->Get(0);
+    CHECK(req->seqno() == 13);
+    REQUIRE(req->request_type() == protocol::AnyRequest::CloseRequest);
+    CHECK(req->request_as_CloseRequest()->key() == 888);
+}
+
+TEST_CASE("requests: decode_alloc_response") {
+    SECTION("success") {
+        auto buf = make_single_response_message(
+            protocol::AnyResponse::AllocResponse, [](auto &fbb) {
+                protocol::Mapping const m(123, 7, 4096, 512);
+                return protocol::CreateAllocResponse(fbb, &m, true).Union();
+            });
+        auto decoded = decode_alloc_response(*single_response(buf));
+        REQUIRE(decoded.has_value());
+        CHECK(decoded->key == 123);
+        CHECK(decoded->segment == 7);
+        CHECK(decoded->offset == 4096);
+        CHECK(decoded->size == 512);
+        CHECK(decoded->zeroed);
+    }
+
+    SECTION("wrong union member") {
+        auto ping = make_single_response_message(
+            protocol::AnyResponse::PingResponse, [](auto &fbb) {
+                return protocol::CreatePingResponse(fbb).Union();
+            });
+        CHECK_FALSE(decode_alloc_response(*single_response(ping)).has_value());
+    }
+
+    SECTION("absent object") {
+        auto buf = make_single_response_message(
+            protocol::AnyResponse::AllocResponse, [](auto &fbb) {
+                return protocol::CreateAllocResponse(fbb).Union();
+            });
+        CHECK_FALSE(decode_alloc_response(*single_response(buf)).has_value());
+    }
+}
+
+TEST_CASE("requests: decode_open_response") {
+    SECTION("success") {
+        auto buf = make_single_response_message(
+            protocol::AnyResponse::OpenResponse, [](auto &fbb) {
+                protocol::Mapping const m(124, 8, 128, 64);
+                return protocol::CreateOpenResponse(fbb, &m).Union();
+            });
+        auto decoded = decode_open_response(*single_response(buf));
+        REQUIRE(decoded.has_value());
+        CHECK(decoded->key == 124);
+        CHECK(decoded->segment == 8);
+        CHECK(decoded->offset == 128);
+        CHECK(decoded->size == 64);
+    }
+
+    SECTION("wrong union member") {
+        auto ping = make_single_response_message(
+            protocol::AnyResponse::PingResponse, [](auto &fbb) {
+                return protocol::CreatePingResponse(fbb).Union();
+            });
+        CHECK_FALSE(decode_open_response(*single_response(ping)).has_value());
+    }
+
+    SECTION("absent object") {
+        auto buf = make_single_response_message(
+            protocol::AnyResponse::OpenResponse, [](auto &fbb) {
+                return protocol::CreateOpenResponse(fbb).Union();
+            });
+        CHECK_FALSE(decode_open_response(*single_response(buf)).has_value());
+    }
+}
+
+TEST_CASE("requests: decode_close_response") {
+    auto buf = make_single_response_message(
+        protocol::AnyResponse::CloseResponse,
+        [](auto &fbb) { return protocol::CreateCloseResponse(fbb).Union(); });
+    CHECK(decode_close_response(*single_response(buf)).has_value());
+
+    auto ping = make_single_response_message(
+        protocol::AnyResponse::PingResponse,
+        [](auto &fbb) { return protocol::CreatePingResponse(fbb).Union(); });
+    CHECK_FALSE(decode_close_response(*single_response(ping)).has_value());
 }
 
 TEST_CASE("requests: error_code_for_status") {

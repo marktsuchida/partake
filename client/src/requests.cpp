@@ -6,6 +6,9 @@
 
 #include "requests.hpp"
 
+#include <cassert>
+#include <exception>
+
 #ifdef _WIN32
 #include <process.h>
 #else
@@ -56,6 +59,17 @@ auto error_code_for_status(protocol::Status status) noexcept
     return protocol_errc::unknown_protocol_error;
 }
 
+auto to_protocol_policy(policy pol) noexcept -> protocol::Policy {
+    switch (pol) {
+    case policy::default_:
+        return protocol::Policy::DEFAULT;
+    case policy::primitive:
+        return protocol::Policy::PRIMITIVE;
+    }
+    assert(false);
+    std::terminate();
+}
+
 auto make_client_hello(std::string_view name) -> flatbuffers::DetachedBuffer {
     auto fbb = flatbuffers::FlatBufferBuilder();
     fbb.FinishSizePrefixed(protocol::CreateClientHelloMessage(
@@ -76,6 +90,23 @@ void add_get_segment_request(request_builder &rb, std::uint64_t seqno,
                              std::uint32_t segment_no) {
     rb.add_request(
         seqno, protocol::CreateGetSegmentRequest(rb.fbbuilder(), segment_no));
+}
+
+void add_alloc_request(request_builder &rb, std::uint64_t seqno,
+                       std::uint64_t size, protocol::Policy policy) {
+    rb.add_request(seqno,
+                   protocol::CreateAllocRequest(rb.fbbuilder(), size, policy));
+}
+
+void add_open_request(request_builder &rb, std::uint64_t seqno,
+                      std::uint64_t key, protocol::Policy policy, bool wait) {
+    rb.add_request(
+        seqno, protocol::CreateOpenRequest(rb.fbbuilder(), key, policy, wait));
+}
+
+void add_close_request(request_builder &rb, std::uint64_t seqno,
+                       std::uint64_t key) {
+    rb.add_request(seqno, protocol::CreateCloseRequest(rb.fbbuilder(), key));
 }
 
 auto decode_ping_response(protocol::Response const &resp)
@@ -126,6 +157,35 @@ auto decode_get_segment_response(protocol::Response const &resp)
         break;
     }
     return std::nullopt;
+}
+
+auto decode_alloc_response(protocol::Response const &resp)
+    -> std::optional<alloc_result> {
+    if (resp.response_type() != protocol::AnyResponse::AllocResponse)
+        return std::nullopt;
+    auto const *r = resp.response_as_AllocResponse();
+    auto const *obj = r->object();
+    if (obj == nullptr) // Status was OK, so a null Mapping is a violation.
+        return std::nullopt;
+    return alloc_result{obj->key(), obj->segment(), obj->offset(), obj->size(),
+                        r->zeroed()};
+}
+
+auto decode_open_response(protocol::Response const &resp)
+    -> std::optional<open_result> {
+    if (resp.response_type() != protocol::AnyResponse::OpenResponse)
+        return std::nullopt;
+    auto const *obj = resp.response_as_OpenResponse()->object();
+    if (obj == nullptr)
+        return std::nullopt;
+    return open_result{obj->key(), obj->segment(), obj->offset(), obj->size()};
+}
+
+auto decode_close_response(protocol::Response const &resp)
+    -> std::optional<close_result> {
+    if (resp.response_type() != protocol::AnyResponse::CloseResponse)
+        return std::nullopt;
+    return close_result{};
 }
 
 } // namespace partake::client::internal

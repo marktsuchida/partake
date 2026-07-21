@@ -15,9 +15,16 @@
 
 namespace partake::client {
 
+class objview;
+
 namespace internal {
 
 class objview_impl;
+
+auto make_objview(std::shared_ptr<objview_impl> impl) noexcept -> objview;
+
+auto get_objview_impl(objview const &ov) noexcept
+    -> std::shared_ptr<objview_impl> const &;
 
 } // namespace internal
 
@@ -66,6 +73,13 @@ class objview {
     auto create_voucher(std::uint32_t count, completion c) -> op_id;
 
   private:
+    friend auto internal::make_objview(
+        std::shared_ptr<internal::objview_impl> impl) noexcept -> objview;
+    friend auto internal::get_objview_impl(objview const &ov) noexcept
+        -> std::shared_ptr<internal::objview_impl> const &;
+
+    explicit objview(std::shared_ptr<internal::objview_impl> impl) noexcept;
+
     std::shared_ptr<internal::objview_impl> impl_;
 };
 
