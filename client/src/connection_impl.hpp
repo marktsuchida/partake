@@ -13,10 +13,12 @@
 #include "asio.hpp"
 #include "client_impl.hpp"
 #include "event_impl.hpp"
+#include "mapping.hpp"
 #include "message.hpp"
 #include "queue_impl.hpp"
 #include "request_builder.hpp"
 #include "requests.hpp"
+#include "segment_cache.hpp"
 #include "seqno_map.hpp"
 #include "unique_handler.hpp"
 
@@ -76,6 +78,7 @@ class connection_impl : public std::enable_shared_from_this<connection_impl> {
     state_t state = state_t::connecting;      // I/O thread only.
     std::uint32_t conn_no = 0;
     unique_handler<void(std::error_code)> hello_waiter;
+    segment_cache seg_cache; // I/O thread only.
 
   public:
     connection_impl(std::shared_ptr<client_impl> cl,
@@ -193,6 +196,11 @@ class connection_impl : public std::enable_shared_from_this<connection_impl> {
                              event_payload pl) -> asio::awaitable<void>;
 
     auto wait_server_hello() -> asio::awaitable<void>;
+
+    // Fetch (via GetSegment) and cache the whole-segment mapping for seg_no.
+    // To be consumed by alloc/open coroutines.
+    auto get_segment_mapping(std::uint32_t seg_no)
+        -> asio::awaitable<std::shared_ptr<mapping>>;
 
     auto handle_frame(gsl::span<std::uint8_t const> frame) -> bool;
     auto handle_hello_frame(gsl::span<std::uint8_t const> frame) -> bool;

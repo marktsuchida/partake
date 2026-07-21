@@ -7,8 +7,10 @@
 #include "mock_server.hpp"
 
 #include "framing.hpp"
+#include "request_handler.hpp" // daemon::internal::segment_spec_to_fb
 #include "requests.hpp"
 #include "response_builder.hpp"
+#include "segment.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -22,6 +24,7 @@ namespace partake::client {
 
 mock_server::mock_server(options options)
     : opts(options),
+      segment(daemon::create_posix_mmap_shmem(opts.segment_size)),
       path(testing::unique_path(td.path(), "mock-server").string()),
       unlk(path), guard(asio::make_work_guard(ctx)), acceptor(ctx), sock(ctx),
       writer(sock,
@@ -166,8 +169,24 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
                 }
                 done = true;
                 break;
+            case protocol::AnyRequest::GetSegmentRequest:
+                ++n_get_segments;
+                if (opts.respond_to_get_segment) {
+                    daemon::segment_spec const dspec{
+                        daemon::posix_mmap_segment_spec{segment.name()},
+                        segment.size()};
+                    auto seg = daemon::internal::segment_spec_to_fb(
+                        rb.fbbuilder(), dspec);
+                    rb.add_successful_response(
+                        req->seqno(), protocol::CreateGetSegmentResponse(
+                                          rb.fbbuilder(), seg));
+                } else {
+                    rb.add_error_response(req->seqno(),
+                                          protocol::Status::NO_SUCH_SEGMENT);
+                }
+                break;
             default:
-                break; // Not needed by stage-2 tests.
+                break; // Not needed by these tests.
             }
             if (done)
                 break;
@@ -303,6 +322,64 @@ TEST_CASE("mock_server: hello close-without-reply") {
     std::array<std::uint8_t, 1> byte{};
     (void)asio::read(s, asio::buffer(byte), ec);
     CHECK(ec == asio::error::eof);
+}
+
+namespace {
+
+auto send_get_segment(asio::local::stream_protocol::socket &s,
+                      std::uint64_t seqno, std::uint32_t segment_no) {
+    auto rb = internal::request_builder(1);
+    internal::add_get_segment_request(rb, seqno, segment_no);
+    asio::write(s, asio::buffer(pad_frame(rb.release_buffer())));
+}
+
+} // namespace
+
+TEST_CASE("mock_server: get_segment returns the real segment") {
+    mock_server const srv;
+    asio::io_context ctx;
+    auto s = connect_and_say_hello(ctx, srv);
+    (void)read_frame(s); // ServerHello
+
+    send_get_segment(s, 99, 0);
+    auto const reply = read_frame(s);
+    REQUIRE(internal::verify_response_message(reply));
+    auto const *msg =
+        flatbuffers::GetSizePrefixedRoot<protocol::ResponseMessage>(
+            reply.data());
+    auto const *resp = msg->responses()->Get(0);
+    CHECK(resp->seqno() == 99); // NOLINT(readability-magic-numbers)
+    CHECK(resp->status() == protocol::Status::OK);
+    REQUIRE(resp->response_type() ==
+            protocol::AnyResponse::GetSegmentResponse);
+    auto const *seg = resp->response_as_GetSegmentResponse()->segment();
+    REQUIRE(seg != nullptr);
+    CHECK(seg->size() == srv.segment_bytes());
+    REQUIRE(seg->spec_type() == protocol::SegmentMappingSpec::PosixMmapSpec);
+    auto const *spec = seg->spec_as_PosixMmapSpec();
+    REQUIRE(spec->name() != nullptr);
+    CHECK(spec->name()->str() == srv.segment_name());
+    CHECK(spec->use_shm_open());
+    CHECK(srv.get_segments_received() == 1);
+}
+
+TEST_CASE("mock_server: get_segment can report NO_SUCH_SEGMENT") {
+    mock_server const srv({.respond_to_get_segment = false});
+    asio::io_context ctx;
+    auto s = connect_and_say_hello(ctx, srv);
+    (void)read_frame(s); // ServerHello
+
+    send_get_segment(s, 5, 0);
+    auto const reply = read_frame(s);
+    REQUIRE(internal::verify_response_message(reply));
+    auto const *msg =
+        flatbuffers::GetSizePrefixedRoot<protocol::ResponseMessage>(
+            reply.data());
+    auto const *resp = msg->responses()->Get(0);
+    CHECK(resp->seqno() == 5);
+    CHECK(resp->status() == protocol::Status::NO_SUCH_SEGMENT);
+    CHECK(resp->response_type() == protocol::AnyResponse::NONE);
+    CHECK(srv.get_segments_received() == 1);
 }
 
 } // namespace partake::client

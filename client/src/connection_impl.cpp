@@ -44,7 +44,14 @@ connection_impl::connection_impl(std::shared_ptr<client_impl> cl,
           [this](gsl::span<std::uint8_t const> frame) {
               return handle_frame(frame);
           },
-          [this](std::error_code ec) { handle_read_end(ec); }) {}
+          [this](std::error_code ec) { handle_read_end(ec); }),
+      seg_cache([this](std::uint32_t no) -> asio::awaitable<segment_spec> {
+          co_return co_await request<segment_spec>(
+              [no](request_builder &rb, std::uint64_t seqno) {
+                  add_get_segment_request(rb, seqno, no);
+              },
+              decode_get_segment_response);
+      }) {}
 
 void connection_impl::start_connect(std::string socket_path, std::string name,
                                     event_payload pl) {
@@ -173,6 +180,11 @@ auto connection_impl::wait_server_hello() -> asio::awaitable<void> {
             token);
     if (ec)
         throw std::system_error(ec);
+}
+
+auto connection_impl::get_segment_mapping(std::uint32_t seg_no)
+    -> asio::awaitable<std::shared_ptr<mapping>> {
+    co_return co_await seg_cache.get(seg_no);
 }
 
 auto connection_impl::handle_frame(gsl::span<std::uint8_t const> frame)
@@ -322,6 +334,7 @@ void connection_impl::teardown(std::error_code ec) {
         pending.pop(sc.first);
     for (auto &[seqno, cont] : conts)
         (void)cont(nullptr, ec);
+    seg_cache.clear();
     // May drop the registry's strong reference; every caller holds a
     // keepalive.
     clim->drop_connection(this);

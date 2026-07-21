@@ -20,6 +20,8 @@ client_lib = library(
             'src/objview.cpp',
             'src/queue.cpp',
             'src/requests.cpp',
+            'src/segment_cache.cpp',
+            'src/shmem_attach.cpp',
             'src/token.cpp',
         ]),
         common_sources,
@@ -28,6 +30,7 @@ client_lib = library(
     include_directories: [client_incdir, client_src_incdir, common_incdir],
     dependencies: [
         boost_dep,
+        expected_dep,
         flatbuffers_dep,
         fmt_dep,
         gsl_dep,

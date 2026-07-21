@@ -26,15 +26,35 @@ client_tests_sources = files([
     'queue_impl.cpp',
     'request_builder.cpp',
     'requests.cpp',
+    'segment_cache.cpp',
     'seqno_map.cpp',
+    'shmem_attach.cpp',
     'token.cpp',
     'types.cpp',
     'unique_handler.cpp',
 ])
 
+# Daemon shmem sources, linked into client_tests so the attach and cache tests
+# can create real in-test segments (create_posix_mmap_shmem /
+# create_file_mmap_shmem / create_sysv_shmem). These are C++17-clean and build
+# at the test target's C++20; random.cpp (their other dep) is already in
+# common_sources via client_dep, and daemon_incdir/common_incdir are on the
+# include path.
+client_tests_daemon_shmem_sources = files([
+    '../../daemon/page_size.cpp',
+    '../../daemon/shmem_mmap.cpp',
+    '../../daemon/shmem_sysv.cpp',
+    '../../daemon/sizes.cpp',
+])
+
 client_tests = executable(
     'client_tests',
-    [tests_main, client_tests_sources, protocol_cpp_headers],
+    [
+        tests_main,
+        client_tests_sources,
+        client_tests_daemon_shmem_sources,
+        protocol_cpp_headers,
+    ],
     include_directories: [
         client_incdir,
         client_src_incdir,
@@ -46,6 +66,7 @@ client_tests = executable(
         boost_dep,
         catch2_dep,
         client_dep,
+        expected_dep,
         flatbuffers_dep,
         fmt_dep,
         gsl_dep,

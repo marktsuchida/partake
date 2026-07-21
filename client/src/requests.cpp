@@ -72,6 +72,12 @@ void add_quit_request(request_builder &rb, std::uint64_t seqno) {
     rb.add_request(seqno, protocol::CreateQuitRequest(rb.fbbuilder()));
 }
 
+void add_get_segment_request(request_builder &rb, std::uint64_t seqno,
+                             std::uint32_t segment_no) {
+    rb.add_request(
+        seqno, protocol::CreateGetSegmentRequest(rb.fbbuilder(), segment_no));
+}
+
 auto decode_ping_response(protocol::Response const &resp)
     -> std::optional<ping_result> {
     if (resp.response_type() != protocol::AnyResponse::PingResponse)
@@ -84,6 +90,42 @@ auto decode_quit_response(protocol::Response const &resp)
     if (resp.response_type() != protocol::AnyResponse::QuitResponse)
         return std::nullopt;
     return quit_result{};
+}
+
+auto decode_get_segment_response(protocol::Response const &resp)
+    -> std::optional<segment_spec> {
+    if (resp.response_type() != protocol::AnyResponse::GetSegmentResponse)
+        return std::nullopt;
+    auto const *seg = resp.response_as_GetSegmentResponse()->segment();
+    if (seg == nullptr)
+        return std::nullopt;
+    segment_spec result;
+    result.size = seg->size();
+    switch (seg->spec_type()) {
+    case protocol::SegmentMappingSpec::PosixMmapSpec: {
+        auto const *m = seg->spec_as_PosixMmapSpec();
+        if (m->name() == nullptr)
+            return std::nullopt;
+        result.spec = posix_mmap_spec{m->name()->str(), m->use_shm_open()};
+        return result;
+    }
+    case protocol::SegmentMappingSpec::SystemVSharedMemorySpec: {
+        auto const *m = seg->spec_as_SystemVSharedMemorySpec();
+        result.spec = sysv_shmem_spec{m->shm_id()};
+        return result;
+    }
+    case protocol::SegmentMappingSpec::Win32FileMappingSpec: {
+        auto const *m = seg->spec_as_Win32FileMappingSpec();
+        if (m->name() == nullptr)
+            return std::nullopt;
+        result.spec =
+            win32_mapping_spec{m->name()->str(), m->use_large_pages()};
+        return result;
+    }
+    case protocol::SegmentMappingSpec::NONE:
+        break;
+    }
+    return std::nullopt;
 }
 
 } // namespace partake::client::internal

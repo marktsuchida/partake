@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <string>
 #include <system_error>
+#include <variant>
 #include <vector>
 
 #ifdef _WIN32
@@ -84,6 +85,25 @@ TEST_CASE("requests: add_ping_request and add_quit_request") {
           protocol::AnyRequest::QuitRequest);
 }
 
+TEST_CASE("requests: add_get_segment_request") {
+    auto rb = request_builder(1);
+    add_get_segment_request(rb, 7, 3);
+    auto buf = rb.release_buffer();
+
+    auto verifier = flatbuffers::Verifier(buf.data(), buf.size());
+    REQUIRE(
+        verifier.VerifySizePrefixedBuffer<protocol::RequestMessage>(nullptr));
+    auto const *msg =
+        flatbuffers::GetSizePrefixedRoot<protocol::RequestMessage>(buf.data());
+    auto const *requests = msg->requests();
+    REQUIRE(requests != nullptr);
+    REQUIRE(requests->size() == 1);
+    CHECK(requests->Get(0)->seqno() == 7);
+    CHECK(requests->Get(0)->request_type() ==
+          protocol::AnyRequest::GetSegmentRequest);
+    CHECK(requests->Get(0)->request_as_GetSegmentRequest()->segment() == 3);
+}
+
 namespace {
 
 // A ResponseMessage with a single response of the given union type.
@@ -138,6 +158,98 @@ TEST_CASE("requests: decoders reject a missing union member") {
     REQUIRE(verify_response_message(span_of(buf)));
     CHECK_FALSE(decode_ping_response(*single_response(buf)).has_value());
     CHECK_FALSE(decode_quit_response(*single_response(buf)).has_value());
+}
+
+namespace {
+
+// A GetSegmentResponse-carrying ResponseMessage for one SegmentMappingSpec
+// arm.
+auto make_get_segment_message(std::uint64_t size,
+                              protocol::SegmentMappingSpec spec_type,
+                              flatbuffers::Offset<void> spec_union_builder(
+                                  flatbuffers::FlatBufferBuilder &))
+    -> flatbuffers::DetachedBuffer {
+    return make_single_response_message(
+        protocol::AnyResponse::GetSegmentResponse, [&](auto &fbb) {
+            auto spec = protocol::CreateSegmentSpec(fbb, size, spec_type,
+                                                    spec_union_builder(fbb));
+            return protocol::CreateGetSegmentResponse(fbb, spec).Union();
+        });
+}
+
+} // namespace
+
+TEST_CASE("requests: decode_get_segment_response") {
+    SECTION("posix shm_open") {
+        auto buf = make_get_segment_message(
+            16384, protocol::SegmentMappingSpec::PosixMmapSpec,
+            [](flatbuffers::FlatBufferBuilder &fbb) {
+                return protocol::CreatePosixMmapSpec(
+                           fbb, fbb.CreateString("/myshmem"), true)
+                    .Union();
+            });
+        auto decoded = decode_get_segment_response(*single_response(buf));
+        REQUIRE(decoded.has_value());
+        CHECK(decoded->size == 16384);
+        REQUIRE(std::holds_alternative<posix_mmap_spec>(decoded->spec));
+        auto const &s = std::get<posix_mmap_spec>(decoded->spec);
+        CHECK(s.name == "/myshmem");
+        CHECK(s.use_shm_open);
+    }
+
+    SECTION("posix file-backed") {
+        auto buf = make_get_segment_message(
+            16384, protocol::SegmentMappingSpec::PosixMmapSpec,
+            [](flatbuffers::FlatBufferBuilder &fbb) {
+                return protocol::CreatePosixMmapSpec(
+                           fbb, fbb.CreateString("/tmp/myfile"), false)
+                    .Union();
+            });
+        auto decoded = decode_get_segment_response(*single_response(buf));
+        REQUIRE(decoded.has_value());
+        REQUIRE(std::holds_alternative<posix_mmap_spec>(decoded->spec));
+        auto const &s = std::get<posix_mmap_spec>(decoded->spec);
+        CHECK(s.name == "/tmp/myfile");
+        CHECK_FALSE(s.use_shm_open);
+    }
+
+    SECTION("sysv") {
+        auto buf = make_get_segment_message(
+            16384, protocol::SegmentMappingSpec::SystemVSharedMemorySpec,
+            [](flatbuffers::FlatBufferBuilder &fbb) {
+                return protocol::CreateSystemVSharedMemorySpec(fbb, 1234)
+                    .Union();
+            });
+        auto decoded = decode_get_segment_response(*single_response(buf));
+        REQUIRE(decoded.has_value());
+        REQUIRE(std::holds_alternative<sysv_shmem_spec>(decoded->spec));
+        CHECK(std::get<sysv_shmem_spec>(decoded->spec).shm_id == 1234);
+    }
+
+    SECTION("win32") {
+        auto buf = make_get_segment_message(
+            16384, protocol::SegmentMappingSpec::Win32FileMappingSpec,
+            [](flatbuffers::FlatBufferBuilder &fbb) {
+                return protocol::CreateWin32FileMappingSpec(
+                           fbb, fbb.CreateString("Local\\MyMapping"), true)
+                    .Union();
+            });
+        auto decoded = decode_get_segment_response(*single_response(buf));
+        REQUIRE(decoded.has_value());
+        REQUIRE(std::holds_alternative<win32_mapping_spec>(decoded->spec));
+        auto const &s = std::get<win32_mapping_spec>(decoded->spec);
+        CHECK(s.name == "Local\\MyMapping");
+        CHECK(s.use_large_pages);
+    }
+
+    SECTION("wrong response type") {
+        auto ping = make_single_response_message(
+            protocol::AnyResponse::PingResponse, [](auto &fbb) {
+                return protocol::CreatePingResponse(fbb).Union();
+            });
+        CHECK_FALSE(
+            decode_get_segment_response(*single_response(ping)).has_value());
+    }
 }
 
 TEST_CASE("requests: error_code_for_status") {

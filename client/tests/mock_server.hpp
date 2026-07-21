@@ -10,12 +10,14 @@
 #include "message.hpp"
 #include "partake_protocol_generated.h"
 #include "posix.hpp"
+#include "shmem_mmap.hpp"
 #include "testing.hpp"
 #include "win32.hpp"
 
 #include <gsl/span>
 
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -36,8 +38,10 @@ class mock_server {
     struct options {
         hello_mode hello = hello_mode::accept;
         std::uint32_t conn_no = 42;
-        bool respond_to_ping = true; // false: record and withhold.
-        bool respond_to_quit = true; // false: close without replying.
+        bool respond_to_ping = true;        // false: record and withhold.
+        bool respond_to_quit = true;        // false: close without replying.
+        std::size_t segment_size = 16384;   // One page (macOS/Linux default).
+        bool respond_to_get_segment = true; // false: NO_SUCH_SEGMENT.
     };
 
 #ifdef _WIN32
@@ -50,6 +54,7 @@ class mock_server {
     using socket_type = asio::local::stream_protocol::socket;
 
     options opts;
+    daemon::mmap_shmem segment; // Real shm_open segment served for segment 0.
     testing::tempdir td;
     std::string path;
     unlinkable_type unlk; // Declared after td: unlinked before td removal.
@@ -68,6 +73,7 @@ class mock_server {
     bool close_after_flush = false;
     std::atomic<int> n_pings{0};
     std::atomic<int> n_quits{0};
+    std::atomic<int> n_get_segments{0};
     std::thread server_thread; // Last: started after everything else.
 
   public:
@@ -84,6 +90,20 @@ class mock_server {
 
     [[nodiscard]] auto pings_received() const -> int { return n_pings; }
     [[nodiscard]] auto quits_received() const -> int { return n_quits; }
+    [[nodiscard]] auto get_segments_received() const -> int {
+        return n_get_segments;
+    }
+
+    // The real segment served for segment 0.
+    [[nodiscard]] auto segment_name() const -> std::string {
+        return segment.name();
+    }
+    [[nodiscard]] auto segment_address() const noexcept -> void * {
+        return segment.address();
+    }
+    [[nodiscard]] auto segment_bytes() const noexcept -> std::size_t {
+        return segment.size();
+    }
 
     // Run a task on the server's I/O thread.
     void post(std::function<void()> task);
