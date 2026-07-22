@@ -80,7 +80,7 @@ TEST_CASE("client: op_ids are unique across threads") {
     for (auto const &v : ids)
         unique.insert(v.begin(), v.end());
     CHECK(unique.size() == n_threads * per_thread);
-    CHECK(unique.count(0) == 0);
+    CHECK(not unique.contains(0));
 }
 
 namespace {
@@ -309,13 +309,14 @@ TEST_CASE("client: move transfers the impl") {
     auto const *impl = internal::get_client_impl(c).get();
     REQUIRE(impl != nullptr);
 
-    client c2(std::move(c));
+    client const c2(std::move(c));
     CHECK(internal::get_client_impl(c2).get() == impl);
     // NOLINTNEXTLINE(bugprone-use-after-move)
     CHECK(internal::get_client_impl(c) == nullptr);
 
     {
         // Destroying the moved-from client is safe.
+        // NOLINTNEXTLINE(clang-analyzer-cplusplus.Move)
         client const doomed(std::move(c)); // NOLINT(bugprone-use-after-move)
     }
 
@@ -324,6 +325,9 @@ TEST_CASE("client: move transfers the impl") {
     auto fut = prom.get_future();
     asio::post(internal::get_client_impl(c2)->context(),
                [&prom] { prom.set_value(); });
+    // False positive: get() returns only after the posted handler has run,
+    // and the handler is not used again after that.
+    // NOLINTNEXTLINE(clang-analyzer-core.StackAddressEscape)
     fut.get();
 }
 

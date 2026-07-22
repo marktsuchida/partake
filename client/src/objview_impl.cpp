@@ -19,12 +19,14 @@ performance_mapping_policy const the_mapping_policy;
 
 } // namespace
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 objview_impl::objview_impl(std::shared_ptr<connection_impl> connection,
                            std::shared_ptr<mapping> segment_mapping,
                            std::uint64_t offset, std::uint64_t size,
                            bool writable, token key)
     : conn(std::move(connection)), map(std::move(segment_mapping)),
       offset_(offset), size_(size), writable_(writable), key_(key) {}
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 objview_impl::~objview_impl() {
     if (st.load() != obj_state::open)

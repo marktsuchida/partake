@@ -16,4 +16,6 @@ static_assert(__cplusplus == 201703L);
 #endif
 
 // Anchor symbol so the archive is not empty (silences macOS ranlib).
+// Deliberately non-static: making it internal would trip -Wunused-function.
+// NOLINTNEXTLINE(misc-use-internal-linkage)
 auto partake_client_cxx17_header_check_anchor() -> int { return 0; }

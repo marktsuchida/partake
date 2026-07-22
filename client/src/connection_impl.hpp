@@ -195,11 +195,12 @@ class connection_impl : public std::enable_shared_from_this<connection_impl> {
         auto const id = clim->next_op_id();
         pl.id = id;
         auto self = shared_from_this();
-        bool const posted = clim->try_post([self, id, pl, run]() mutable {
-            self->ops.emplace(id, op_record{});
-            asio::co_spawn(self->clim->context(), run(self, id, std::move(pl)),
-                           asio::detached);
-        });
+        bool const posted =
+            clim->try_post([self, id, pl, run = std::move(run)]() mutable {
+                self->ops.emplace(id, op_record{});
+                asio::co_spawn(self->clim->context(),
+                               run(self, id, std::move(pl)), asio::detached);
+            });
         if (not posted) {
             pl.error = make_error_code(client_errc::disconnected);
             if (not pl.suppress)

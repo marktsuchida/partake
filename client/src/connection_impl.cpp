@@ -61,6 +61,9 @@ connection_impl::connection_impl(std::shared_ptr<client_impl> cl,
               return handle_frame(frame);
           },
           [this](std::error_code ec) { handle_read_end(ec); }),
+      // Safe: the closure lives in seg_cache (a member), and the coroutine
+      // only runs within ops that keep this connection_impl alive.
+      // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
       seg_cache([this](std::uint32_t no) -> asio::awaitable<segment_spec> {
           co_return co_await request<segment_spec>(
               [no](request_builder &rb, std::uint64_t seqno) {
@@ -229,10 +232,12 @@ auto connection_impl::run_ping(std::shared_ptr<connection_impl> self, op_id id,
     self->finish(id, std::move(pl));
 }
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 auto connection_impl::run_alloc(std::shared_ptr<connection_impl> self,
                                 op_id id, std::uint64_t size,
                                 protocol::Policy policy, event_payload pl)
     -> asio::awaitable<void> {
+    // NOLINTEND(bugprone-easily-swappable-parameters)
     try {
         if (self->state != state_t::ready)
             throw std::system_error(
@@ -263,6 +268,7 @@ auto connection_impl::run_alloc(std::shared_ptr<connection_impl> self,
     self->finish(id, std::move(pl));
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 auto connection_impl::run_open(std::shared_ptr<connection_impl> self, op_id id,
                                std::uint64_t key, protocol::Policy policy,
                                bool wait, event_payload pl)

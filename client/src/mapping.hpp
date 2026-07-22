@@ -58,6 +58,7 @@ class performance_mapping_policy final : public mapping_policy {
     [[nodiscard]] auto object_data(mapping const &m,
                                    std::uint64_t offset) const noexcept
         -> void * override {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         return static_cast<char *>(m.base()) + offset;
     }
 };

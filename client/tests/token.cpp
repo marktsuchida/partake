@@ -47,7 +47,7 @@ TEST_CASE("token: usable in unordered containers") {
     s.insert(token(1));
     CHECK(s.size() == 2);
     CHECK(s.count(token(1)) == 1);
-    CHECK(s.count(token(3)) == 0);
+    CHECK(not s.contains(token(3)));
 }
 
 TEST_CASE("token: proquint roundtrip") {

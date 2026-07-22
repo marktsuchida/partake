@@ -221,6 +221,8 @@ auto mock_server::handle_hello(gsl::span<std::uint8_t const> bytes) -> bool {
     return true;
 }
 
+// A long but simple dispatch switch; not worth decomposing.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
     -> bool {
     auto verifier = flatbuffers::Verifier(bytes.data(), bytes.size());
@@ -310,7 +312,7 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
             case protocol::AnyRequest::ShareRequest: {
                 ++n_shares;
                 auto const key = req->request_as_ShareRequest()->key();
-                if (objects.find(key) == objects.end()) {
+                if (not objects.contains(key)) {
                     rb.add_error_response(req->seqno(),
                                           protocol::Status::NO_SUCH_OBJECT);
                 } else if (opts.respond_to_share) {
@@ -360,7 +362,7 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
                 auto const vit = vouchers.find(target);
                 if (vit != vouchers.end())
                     target = vit->second.first;
-                if (objects.find(target) == objects.end()) {
+                if (not objects.contains(target)) {
                     rb.add_error_response(req->seqno(),
                                           protocol::Status::NO_SUCH_OBJECT);
                 } else if (vreq->count() == 0) {
@@ -392,7 +394,7 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
                     rb.add_successful_response(
                         req->seqno(), protocol::CreateDiscardVoucherResponse(
                                           rb.fbbuilder(), target));
-                } else if (objects.find(key) != objects.end()) {
+                } else if (objects.contains(key)) {
                     // Documented no-op on an ordinary object key.
                     rb.add_successful_response(
                         req->seqno(), protocol::CreateDiscardVoucherResponse(

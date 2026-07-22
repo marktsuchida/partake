@@ -34,6 +34,12 @@ auto spec_for(daemon::mmap_shmem const &seg) -> segment_spec {
 
 } // namespace
 
+// The coroutine lambdas below capture stack objects safely: co_spawn keeps
+// the closure alive until the coroutine completes, the fetch lambda lives in
+// the segment_cache for its lifetime, and all captured objects outlive
+// ctx.run(), which completes all spawned work.
+// NOLINTBEGIN(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+
 TEST_CASE("segment_cache: fetches, attaches, and caches") {
     asio::io_context ctx;
     auto seg = daemon::create_posix_mmap_shmem(page);
@@ -54,7 +60,7 @@ TEST_CASE("segment_cache: fetches, attaches, and caches") {
             got1 = co_await cache.get(0);
             got2 = co_await cache.get(0);
         },
-        [&](std::exception_ptr e) { err = e; });
+        [&](std::exception_ptr const &e) { err = e; });
     ctx.run();
 
     REQUIRE_FALSE(err);
@@ -123,7 +129,7 @@ TEST_CASE("segment_cache: failure propagates and leaves the entry retryable") {
             }
             retried = co_await cache.get(0); // Entry was erased; re-fetches.
         },
-        [&](std::exception_ptr e) { err = e; });
+        [&](std::exception_ptr const &e) { err = e; });
     ctx.run();
 
     REQUIRE_FALSE(err);
@@ -131,5 +137,7 @@ TEST_CASE("segment_cache: failure propagates and leaves the entry retryable") {
     CHECK(fetch_count == 2);   // Retried after failure.
     CHECK(retried != nullptr); // Retry succeeded.
 }
+
+// NOLINTEND(cppcoreguidelines-avoid-capturing-lambda-coroutines)
 
 } // namespace partake::client::internal

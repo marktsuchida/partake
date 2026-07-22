@@ -74,8 +74,10 @@ class queue_impl {
         }
         // No pipe2() on macOS, so set the flags separately.
         for (int const fd : fds) {
+            // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
             ::fcntl(fd, F_SETFD, FD_CLOEXEC);
             ::fcntl(fd, F_SETFL, O_NONBLOCK);
+            // NOLINTEND(cppcoreguidelines-pro-type-vararg)
         }
         rd = common::posix::file_descriptor(fds[0]);
         wr = common::posix::file_descriptor(fds[1]);
@@ -224,6 +226,8 @@ class queue_impl {
     void clear_signal() noexcept {
         std::array<char, 16> buf{};
         for (;;) {
+            // Cannot block: 'rd' is O_NONBLOCK (set in the constructor).
+            // NOLINTNEXTLINE(clang-analyzer-unix.BlockInCriticalSection)
             ssize_t const r = ::read(rd.get(), buf.data(), buf.size());
             if (r < 0) {
                 if (errno == EINTR)

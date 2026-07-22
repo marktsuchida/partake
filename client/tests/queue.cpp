@@ -329,7 +329,7 @@ TEST_CASE("queue: racing pushes from multiple threads") {
     for (std::size_t t = 0; t < n_threads; ++t) {
         pushers.emplace_back([&q, t] {
             for (op_id i = 0; i < per_thread; ++i)
-                push(q, make_test_event(t * per_thread + i + 1));
+                push(q, make_test_event((t * per_thread) + i + 1));
         });
     }
 
@@ -341,6 +341,7 @@ TEST_CASE("queue: racing pushes from multiple threads") {
         ids.insert(ev->id());
         auto const n = q.drain(out.data(), out.size());
         for (std::size_t i = 0; i < n; ++i)
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
             ids.insert(out[i].id());
     }
     for (auto &th : pushers)
@@ -378,7 +379,7 @@ TEST_CASE("queue: destroying the handle discards events and drops pushes") {
 
     std::shared_ptr<internal::queue_impl> impl;
     {
-        queue q;
+        queue const q;
         impl = internal::get_queue_impl(q);
         push(q, make_test_event(1, [s = std::move(sentinel_queued)](event &&) {
                  (void)s;
