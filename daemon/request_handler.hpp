@@ -87,6 +87,9 @@ template <typename Session> class request_handler {
     std::function<void()> housekeep;
     std::function<void(std::error_code)> handle_err; // Fatal message errors
 
+    // 'typename' is required when compiled as C++17 (the daemon); only the
+    // C++20 client tests see it as redundant.
+    // NOLINTNEXTLINE(readability-redundant-typename)
     using resource_type = typename Session::object_type::resource_type;
 
   public:

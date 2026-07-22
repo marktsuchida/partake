@@ -131,6 +131,8 @@ namespace {
                 ret.push_back(siz);
         }
     }
+    // Not std::ranges::sort: this file also compiles as C++17 (daemon).
+    // NOLINTNEXTLINE(modernize-use-ranges)
     std::sort(ret.begin(), ret.end());
     return ret;
 }
