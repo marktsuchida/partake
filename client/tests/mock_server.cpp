@@ -272,8 +272,10 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
                         protocol::CreateAllocResponse(rb.fbbuilder(), &mapping,
                                                       opts.alloc_zeroed));
                 } else {
-                    withheld_allocs.push_back(
-                        {req->seqno(), key, offset, areq->size()});
+                    withheld_allocs.push_back({.seqno = req->seqno(),
+                                               .key = key,
+                                               .offset = offset,
+                                               .size = areq->size()});
                 }
                 break;
             }
@@ -300,7 +302,8 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
                                                protocol::CreateOpenResponse(
                                                    rb.fbbuilder(), &mapping));
                 } else {
-                    withheld_opens.push_back({req->seqno(), key});
+                    withheld_opens.push_back(
+                        {.seqno = req->seqno(), .key = key});
                 }
                 break;
             }
@@ -315,7 +318,8 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
                         req->seqno(),
                         protocol::CreateShareResponse(rb.fbbuilder()));
                 } else {
-                    withheld_shares.push_back({req->seqno(), key});
+                    withheld_shares.push_back(
+                        {.seqno = req->seqno(), .key = key});
                 }
                 break;
             }
@@ -336,7 +340,8 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
                             req->seqno(), protocol::CreateUnshareResponse(
                                               rb.fbbuilder(), new_key, false));
                     } else {
-                        withheld_unshares.push_back({req->seqno(), new_key});
+                        withheld_unshares.push_back(
+                            {.seqno = req->seqno(), .new_key = new_key});
                     }
                 }
                 break;
@@ -371,7 +376,7 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
                                 rb.fbbuilder(), vkey));
                     } else {
                         withheld_create_vouchers.push_back(
-                            {req->seqno(), vkey});
+                            {.seqno = req->seqno(), .voucher_key = vkey});
                     }
                 }
                 break;
@@ -402,8 +407,9 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
                 ++n_get_segments;
                 if (opts.respond_to_get_segment) {
                     daemon::segment_spec const dspec{
-                        daemon::posix_mmap_segment_spec{segment.name()},
-                        segment.size()};
+                        .spec =
+                            daemon::posix_mmap_segment_spec{segment.name()},
+                        .size = segment.size()};
                     auto seg = daemon::internal::segment_spec_to_fb(
                         rb.fbbuilder(), dspec);
                     rb.add_successful_response(

@@ -27,7 +27,9 @@ namespace {
 constexpr std::size_t page = 16384;
 
 auto spec_for(daemon::mmap_shmem const &seg) -> segment_spec {
-    return segment_spec{seg.size(), posix_mmap_spec{seg.name(), true}};
+    return segment_spec{
+        .size = seg.size(),
+        .spec = posix_mmap_spec{.name = seg.name(), .use_shm_open = true}};
 }
 
 } // namespace
@@ -100,7 +102,10 @@ TEST_CASE("segment_cache: failure propagates and leaves the entry retryable") {
         if (fetch_count == 1) {
             // First attempt: a bogus name so attach() fails.
             co_return segment_spec{
-                page, posix_mmap_spec{"/partake-nonexistent-shmem-xyz", true}};
+                .size = page,
+                .spec =
+                    posix_mmap_spec{.name = "/partake-nonexistent-shmem-xyz",
+                                    .use_shm_open = true}};
         }
         co_return spec_for(seg);
     });

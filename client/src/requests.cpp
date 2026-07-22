@@ -160,7 +160,8 @@ auto decode_get_segment_response(protocol::Response const &resp)
         auto const *m = seg->spec_as_PosixMmapSpec();
         if (m->name() == nullptr)
             return std::nullopt;
-        result.spec = posix_mmap_spec{m->name()->str(), m->use_shm_open()};
+        result.spec = posix_mmap_spec{.name = m->name()->str(),
+                                      .use_shm_open = m->use_shm_open()};
         return result;
     }
     case protocol::SegmentMappingSpec::SystemVSharedMemorySpec: {
@@ -172,8 +173,8 @@ auto decode_get_segment_response(protocol::Response const &resp)
         auto const *m = seg->spec_as_Win32FileMappingSpec();
         if (m->name() == nullptr)
             return std::nullopt;
-        result.spec =
-            win32_mapping_spec{m->name()->str(), m->use_large_pages()};
+        result.spec = win32_mapping_spec{
+            .name = m->name()->str(), .use_large_pages = m->use_large_pages()};
         return result;
     }
     case protocol::SegmentMappingSpec::NONE:
@@ -190,8 +191,11 @@ auto decode_alloc_response(protocol::Response const &resp)
     auto const *obj = r->object();
     if (obj == nullptr) // Status was OK, so a null Mapping is a violation.
         return std::nullopt;
-    return alloc_result{obj->key(), obj->segment(), obj->offset(), obj->size(),
-                        r->zeroed()};
+    return alloc_result{.key = obj->key(),
+                        .segment = obj->segment(),
+                        .offset = obj->offset(),
+                        .size = obj->size(),
+                        .zeroed = r->zeroed()};
 }
 
 auto decode_open_response(protocol::Response const &resp)
@@ -201,7 +205,10 @@ auto decode_open_response(protocol::Response const &resp)
     auto const *obj = resp.response_as_OpenResponse()->object();
     if (obj == nullptr)
         return std::nullopt;
-    return open_result{obj->key(), obj->segment(), obj->offset(), obj->size()};
+    return open_result{.key = obj->key(),
+                       .segment = obj->segment(),
+                       .offset = obj->offset(),
+                       .size = obj->size()};
 }
 
 auto decode_close_response(protocol::Response const &resp)
@@ -225,7 +232,7 @@ auto decode_unshare_response(protocol::Response const &resp)
     auto const *r = resp.response_as_UnshareResponse();
     if (r->key() == 0) // Status was OK, so a zero key is a violation.
         return std::nullopt;
-    return unshare_result{r->key(), r->zeroed()};
+    return unshare_result{.key = r->key(), .zeroed = r->zeroed()};
 }
 
 auto decode_create_voucher_response(protocol::Response const &resp)

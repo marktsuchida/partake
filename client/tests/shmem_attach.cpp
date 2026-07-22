@@ -45,8 +45,9 @@ TEST_CASE("shmem_attach: posix shm_open round trip") {
     auto seg = daemon::create_posix_mmap_shmem(page);
     REQUIRE(seg.is_valid());
 
-    auto result =
-        attach(segment_spec{seg.size(), posix_mmap_spec{seg.name(), true}});
+    auto result = attach(segment_spec{
+        .size = seg.size(),
+        .spec = posix_mmap_spec{.name = seg.name(), .use_shm_open = true}});
     REQUIRE(result.has_value());
     check_shared(**result, seg.address(), seg.size());
 }
@@ -55,8 +56,9 @@ TEST_CASE("shmem_attach: posix file-backed round trip") {
     auto seg = daemon::create_file_mmap_shmem(page);
     REQUIRE(seg.is_valid());
 
-    auto result =
-        attach(segment_spec{seg.size(), posix_mmap_spec{seg.name(), false}});
+    auto result = attach(segment_spec{
+        .size = seg.size(),
+        .spec = posix_mmap_spec{.name = seg.name(), .use_shm_open = false}});
     REQUIRE(result.has_value());
     check_shared(**result, seg.address(), seg.size());
 }
@@ -70,21 +72,26 @@ TEST_CASE("shmem_attach: sysv round trip") {
         return;
     }
 
-    auto result = attach(segment_spec{seg.size(), sysv_shmem_spec{seg.id()}});
+    auto result = attach(
+        segment_spec{.size = seg.size(), .spec = sysv_shmem_spec{seg.id()}});
     REQUIRE(result.has_value());
     check_shared(**result, seg.address(), seg.size());
 }
 
 TEST_CASE("shmem_attach: bogus posix name fails") {
     auto result = attach(segment_spec{
-        page, posix_mmap_spec{"/partake-nonexistent-shmem-xyz", true}});
+        .size = page,
+        .spec = posix_mmap_spec{.name = "/partake-nonexistent-shmem-xyz",
+                                .use_shm_open = true}});
     REQUIRE_FALSE(result.has_value());
     CHECK(result.error()); // A nonzero (system-category) error.
 }
 
 TEST_CASE("shmem_attach: win32 spec is unsupported") {
     auto result = attach(
-        segment_spec{page, win32_mapping_spec{"Local\\Whatever", false}});
+        segment_spec{.size = page,
+                     .spec = win32_mapping_spec{.name = "Local\\Whatever",
+                                                .use_large_pages = false}});
     REQUIRE_FALSE(result.has_value());
     CHECK(result.error() == make_error_code(client_errc::protocol_violation));
 }
