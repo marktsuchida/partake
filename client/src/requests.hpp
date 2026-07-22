@@ -67,6 +67,11 @@ struct open_result {
     std::uint64_t size = 0;
 };
 struct close_result {};
+struct share_result {};
+struct unshare_result {
+    std::uint64_t key = 0;
+    bool zeroed = false;
+};
 
 [[nodiscard]] auto to_protocol_policy(policy pol) noexcept -> protocol::Policy;
 
@@ -97,6 +102,10 @@ void add_open_request(request_builder &rb, std::uint64_t seqno,
                       std::uint64_t key, protocol::Policy policy, bool wait);
 void add_close_request(request_builder &rb, std::uint64_t seqno,
                        std::uint64_t key);
+void add_share_request(request_builder &rb, std::uint64_t seqno,
+                       std::uint64_t key);
+void add_unshare_request(request_builder &rb, std::uint64_t seqno,
+                         std::uint64_t key, bool wait);
 
 // nullopt = wrong or missing union member (a protocol violation).
 [[nodiscard]] auto decode_ping_response(protocol::Response const &resp)
@@ -111,5 +120,9 @@ void add_close_request(request_builder &rb, std::uint64_t seqno,
     -> std::optional<open_result>;
 [[nodiscard]] auto decode_close_response(protocol::Response const &resp)
     -> std::optional<close_result>;
+[[nodiscard]] auto decode_share_response(protocol::Response const &resp)
+    -> std::optional<share_result>;
+[[nodiscard]] auto decode_unshare_response(protocol::Response const &resp)
+    -> std::optional<unshare_result>;
 
 } // namespace partake::client::internal

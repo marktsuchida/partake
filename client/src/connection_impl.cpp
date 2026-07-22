@@ -107,6 +107,24 @@ auto connection_impl::submit_close(token key, std::shared_ptr<objview_impl> ov,
     });
 }
 
+auto connection_impl::submit_share(std::shared_ptr<objview_impl> ov,
+                                   event_payload pl) -> op_id {
+    return submit_op(std::move(pl), [ov = std::move(ov)](
+                                        std::shared_ptr<connection_impl> self,
+                                        op_id id, event_payload payload) {
+        return run_share(std::move(self), id, ov, std::move(payload));
+    });
+}
+
+auto connection_impl::submit_unshare(std::shared_ptr<objview_impl> ov,
+                                     bool wait, event_payload pl) -> op_id {
+    return submit_op(std::move(pl), [ov = std::move(ov), wait](
+                                        std::shared_ptr<connection_impl> self,
+                                        op_id id, event_payload payload) {
+        return run_unshare(std::move(self), id, ov, wait, std::move(payload));
+    });
+}
+
 auto connection_impl::submit_shutdown(event_payload pl) -> op_id {
     return submit_op(std::move(pl), run_shutdown);
 }
@@ -286,6 +304,81 @@ auto connection_impl::run_close(std::shared_ptr<connection_impl> self,
     self->finish(id, std::move(pl));
 }
 
+auto connection_impl::run_share(std::shared_ptr<connection_impl> self,
+                                op_id id, std::shared_ptr<objview_impl> ov,
+                                event_payload pl) -> asio::awaitable<void> {
+    try {
+        if (self->state != state_t::ready)
+            throw std::system_error(
+                make_error_code(client_errc::disconnected));
+        if (not ov->begin_close())
+            throw std::system_error(
+                make_error_code(client_errc::object_closed));
+        try {
+            auto const key = ov->key();
+            co_await self->request<share_result>(
+                [key](request_builder &rb, std::uint64_t seqno) {
+                    add_share_request(rb, seqno, key.as_u64());
+                },
+                decode_share_response);
+        } catch (...) {
+            // The source view remains usable on failure.
+            ov->revert_close();
+            throw;
+        }
+        // On success our access downgrades to read-only under the same key;
+        // replace the source view with a read-only sibling.
+        ov->mark_closed();
+        pl.obj = make_objview(ov->make_sibling(false, ov->key()));
+    } catch (std::system_error const &e) {
+        pl.error = e.code();
+    } catch (...) {
+        pl.error = make_error_code(client_errc::disconnected);
+    }
+    self->finish(id, std::move(pl));
+}
+
+auto connection_impl::run_unshare(std::shared_ptr<connection_impl> self,
+                                  op_id id, std::shared_ptr<objview_impl> ov,
+                                  bool wait, event_payload pl)
+    -> asio::awaitable<void> {
+    try {
+        if (self->state != state_t::ready)
+            throw std::system_error(
+                make_error_code(client_errc::disconnected));
+        if (not ov->begin_close())
+            throw std::system_error(
+                make_error_code(client_errc::object_closed));
+        unshare_result r;
+        try {
+            auto const key = ov->key();
+            // A deferred response (wait == true, object not exclusively
+            // held) just parks this await until the daemon replies.
+            r = co_await self->request<unshare_result>(
+                [key, wait](request_builder &rb, std::uint64_t seqno) {
+                    add_unshare_request(rb, seqno, key.as_u64(), wait);
+                },
+                decode_unshare_response);
+        } catch (...) {
+            // The source view remains usable on failure (e.g. OBJECT_BUSY
+            // with wait == false, which the caller may retry).
+            ov->revert_close();
+            throw;
+        }
+        // On success the daemon rekeyed the same object in place and
+        // reopened it read+write; only the key changed.
+        ov->mark_closed();
+        pl.obj = make_objview(ov->make_sibling(true, token(r.key)));
+        pl.key = token(r.key);
+        pl.zeroed = r.zeroed;
+    } catch (std::system_error const &e) {
+        pl.error = e.code();
+    } catch (...) {
+        pl.error = make_error_code(client_errc::disconnected);
+    }
+    self->finish(id, std::move(pl));
+}
+
 auto connection_impl::run_shutdown(std::shared_ptr<connection_impl> self,
                                    op_id id, event_payload pl)
     -> asio::awaitable<void> {
@@ -451,10 +544,11 @@ void connection_impl::finish(op_id id, event_payload pl) {
         ops.erase(it);
     }
     if (detached) {
-        // Auto-close an abandoned alloc/open result: dropping the payload's
-        // (only) objview handle triggers ~objview_impl's fire-and-forget
-        // close, posted as a later task.
+        // Auto-close an abandoned alloc/open/unshare result: dropping the
+        // payload's (only) objview handle triggers ~objview_impl's
+        // fire-and-forget close, posted as a later task.
         pl.obj = objview();
+        pl.key = token();
         pl.zeroed = false;
         pl.error = make_error_code(client_errc::canceled);
     }

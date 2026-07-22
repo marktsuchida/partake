@@ -109,6 +109,17 @@ void add_close_request(request_builder &rb, std::uint64_t seqno,
     rb.add_request(seqno, protocol::CreateCloseRequest(rb.fbbuilder(), key));
 }
 
+void add_share_request(request_builder &rb, std::uint64_t seqno,
+                       std::uint64_t key) {
+    rb.add_request(seqno, protocol::CreateShareRequest(rb.fbbuilder(), key));
+}
+
+void add_unshare_request(request_builder &rb, std::uint64_t seqno,
+                         std::uint64_t key, bool wait) {
+    rb.add_request(seqno,
+                   protocol::CreateUnshareRequest(rb.fbbuilder(), key, wait));
+}
+
 auto decode_ping_response(protocol::Response const &resp)
     -> std::optional<ping_result> {
     if (resp.response_type() != protocol::AnyResponse::PingResponse)
@@ -186,6 +197,23 @@ auto decode_close_response(protocol::Response const &resp)
     if (resp.response_type() != protocol::AnyResponse::CloseResponse)
         return std::nullopt;
     return close_result{};
+}
+
+auto decode_share_response(protocol::Response const &resp)
+    -> std::optional<share_result> {
+    if (resp.response_type() != protocol::AnyResponse::ShareResponse)
+        return std::nullopt;
+    return share_result{};
+}
+
+auto decode_unshare_response(protocol::Response const &resp)
+    -> std::optional<unshare_result> {
+    if (resp.response_type() != protocol::AnyResponse::UnshareResponse)
+        return std::nullopt;
+    auto const *r = resp.response_as_UnshareResponse();
+    if (r->key() == 0) // Status was OK, so a zero key is a violation.
+        return std::nullopt;
+    return unshare_result{r->key(), r->zeroed()};
 }
 
 } // namespace partake::client::internal

@@ -140,6 +140,39 @@ void mock_server::release_withheld_open_responses() {
     });
 }
 
+void mock_server::release_withheld_share_responses() {
+    post([this] {
+        for (auto const &w : withheld_shares) {
+            auto rb = daemon::response_builder(
+                [this](flatbuffers::DetachedBuffer const &buf) {
+                    write_frame(buf);
+                },
+                1);
+            rb.add_successful_response(
+                w.seqno, protocol::CreateShareResponse(rb.fbbuilder()));
+            rb.flush();
+        }
+        withheld_shares.clear();
+    });
+}
+
+void mock_server::release_withheld_unshare_responses() {
+    post([this] {
+        for (auto const &w : withheld_unshares) {
+            auto rb = daemon::response_builder(
+                [this](flatbuffers::DetachedBuffer const &buf) {
+                    write_frame(buf);
+                },
+                1);
+            rb.add_successful_response(
+                w.seqno, protocol::CreateUnshareResponse(rb.fbbuilder(),
+                                                         w.new_key, false));
+            rb.flush();
+        }
+        withheld_unshares.clear();
+    });
+}
+
 auto mock_server::handle_message(gsl::span<std::uint8_t const> bytes) -> bool {
     if (not said_hello)
         return handle_hello(bytes);
@@ -242,6 +275,43 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
                                                    rb.fbbuilder(), &mapping));
                 } else {
                     withheld_opens.push_back({req->seqno(), oreq->key()});
+                }
+                break;
+            }
+            case protocol::AnyRequest::ShareRequest: {
+                ++n_shares;
+                auto const key = req->request_as_ShareRequest()->key();
+                if (objects.find(key) == objects.end()) {
+                    rb.add_error_response(req->seqno(),
+                                          protocol::Status::NO_SUCH_OBJECT);
+                } else if (opts.respond_to_share) {
+                    rb.add_successful_response(
+                        req->seqno(),
+                        protocol::CreateShareResponse(rb.fbbuilder()));
+                } else {
+                    withheld_shares.push_back({req->seqno(), key});
+                }
+                break;
+            }
+            case protocol::AnyRequest::UnshareRequest: {
+                ++n_unshares;
+                auto const key = req->request_as_UnshareRequest()->key();
+                auto const it = objects.find(key);
+                if (it == objects.end()) {
+                    rb.add_error_response(req->seqno(),
+                                          protocol::Status::NO_SUCH_OBJECT);
+                } else {
+                    // Rekey in place, as the daemon would.
+                    auto const new_key = next_key++;
+                    objects[new_key] = it->second;
+                    objects.erase(it);
+                    if (opts.respond_to_unshare) {
+                        rb.add_successful_response(
+                            req->seqno(), protocol::CreateUnshareResponse(
+                                              rb.fbbuilder(), new_key, false));
+                    } else {
+                        withheld_unshares.push_back({req->seqno(), new_key});
+                    }
                 }
                 break;
             }

@@ -313,6 +313,41 @@ TEST_CASE("requests: add_close_request") {
     CHECK(req->request_as_CloseRequest()->key() == 888);
 }
 
+TEST_CASE("requests: add_share_request") {
+    auto rb = request_builder(1);
+    add_share_request(rb, 14, 999);
+    auto buf = rb.release_buffer();
+
+    auto verifier = flatbuffers::Verifier(buf.data(), buf.size());
+    REQUIRE(
+        verifier.VerifySizePrefixedBuffer<protocol::RequestMessage>(nullptr));
+    auto const *msg =
+        flatbuffers::GetSizePrefixedRoot<protocol::RequestMessage>(buf.data());
+    auto const *req = msg->requests()->Get(0);
+    CHECK(req->seqno() == 14);
+    REQUIRE(req->request_type() == protocol::AnyRequest::ShareRequest);
+    CHECK(req->request_as_ShareRequest()->key() == 999);
+}
+
+TEST_CASE("requests: add_unshare_request") {
+    auto const wait = GENERATE(false, true);
+    auto rb = request_builder(1);
+    add_unshare_request(rb, 15, 1001, wait);
+    auto buf = rb.release_buffer();
+
+    auto verifier = flatbuffers::Verifier(buf.data(), buf.size());
+    REQUIRE(
+        verifier.VerifySizePrefixedBuffer<protocol::RequestMessage>(nullptr));
+    auto const *msg =
+        flatbuffers::GetSizePrefixedRoot<protocol::RequestMessage>(buf.data());
+    auto const *req = msg->requests()->Get(0);
+    CHECK(req->seqno() == 15);
+    REQUIRE(req->request_type() == protocol::AnyRequest::UnshareRequest);
+    auto const *ureq = req->request_as_UnshareRequest();
+    CHECK(ureq->key() == 1001);
+    CHECK(ureq->wait() == wait);
+}
+
 TEST_CASE("requests: decode_alloc_response") {
     SECTION("success") {
         auto buf = make_single_response_message(
@@ -388,6 +423,49 @@ TEST_CASE("requests: decode_close_response") {
         protocol::AnyResponse::PingResponse,
         [](auto &fbb) { return protocol::CreatePingResponse(fbb).Union(); });
     CHECK_FALSE(decode_close_response(*single_response(ping)).has_value());
+}
+
+TEST_CASE("requests: decode_share_response") {
+    auto buf = make_single_response_message(
+        protocol::AnyResponse::ShareResponse,
+        [](auto &fbb) { return protocol::CreateShareResponse(fbb).Union(); });
+    CHECK(decode_share_response(*single_response(buf)).has_value());
+
+    auto ping = make_single_response_message(
+        protocol::AnyResponse::PingResponse,
+        [](auto &fbb) { return protocol::CreatePingResponse(fbb).Union(); });
+    CHECK_FALSE(decode_share_response(*single_response(ping)).has_value());
+}
+
+TEST_CASE("requests: decode_unshare_response") {
+    SECTION("success") {
+        auto buf = make_single_response_message(
+            protocol::AnyResponse::UnshareResponse, [](auto &fbb) {
+                return protocol::CreateUnshareResponse(fbb, 125, true).Union();
+            });
+        auto decoded = decode_unshare_response(*single_response(buf));
+        REQUIRE(decoded.has_value());
+        CHECK(decoded->key == 125);
+        CHECK(decoded->zeroed);
+    }
+
+    SECTION("wrong union member") {
+        auto ping = make_single_response_message(
+            protocol::AnyResponse::PingResponse, [](auto &fbb) {
+                return protocol::CreatePingResponse(fbb).Union();
+            });
+        CHECK_FALSE(
+            decode_unshare_response(*single_response(ping)).has_value());
+    }
+
+    SECTION("zero key") {
+        auto buf = make_single_response_message(
+            protocol::AnyResponse::UnshareResponse, [](auto &fbb) {
+                return protocol::CreateUnshareResponse(fbb, 0, false).Union();
+            });
+        CHECK_FALSE(
+            decode_unshare_response(*single_response(buf)).has_value());
+    }
 }
 
 TEST_CASE("requests: error_code_for_status") {

@@ -46,6 +46,8 @@ class mock_server {
         bool respond_to_get_segment = true; // false: NO_SUCH_SEGMENT.
         bool respond_to_alloc = true;       // false: record and withhold.
         bool respond_to_open = true;        // false: record and withhold.
+        bool respond_to_share = true;       // false: record and withhold.
+        bool respond_to_unshare = true;     // false: record and withhold.
         bool alloc_zeroed = false;          // Value of AllocResponse.zeroed.
     };
 
@@ -82,6 +84,8 @@ class mock_server {
     std::atomic<int> n_allocs{0};
     std::atomic<int> n_opens{0};
     std::atomic<int> n_closes{0};
+    std::atomic<int> n_shares{0};
+    std::atomic<int> n_unshares{0};
     // Alloc/open bookkeeping (server thread only): a bump allocator over the
     // segment (no reuse, no overflow handling -- tests stay well under
     // segment_size) and the live key -> (offset, size) table.
@@ -100,6 +104,16 @@ class mock_server {
         std::uint64_t key;
     };
     std::vector<withheld_open> withheld_opens;
+    struct withheld_share {
+        std::uint64_t seqno;
+        std::uint64_t key;
+    };
+    std::vector<withheld_share> withheld_shares;
+    struct withheld_unshare {
+        std::uint64_t seqno;
+        std::uint64_t new_key;
+    };
+    std::vector<withheld_unshare> withheld_unshares;
     std::thread server_thread; // Last: started after everything else.
 
   public:
@@ -122,6 +136,8 @@ class mock_server {
     [[nodiscard]] auto allocs_received() const -> int { return n_allocs; }
     [[nodiscard]] auto opens_received() const -> int { return n_opens; }
     [[nodiscard]] auto closes_received() const -> int { return n_closes; }
+    [[nodiscard]] auto shares_received() const -> int { return n_shares; }
+    [[nodiscard]] auto unshares_received() const -> int { return n_unshares; }
 
     // The real segment served for segment 0.
     [[nodiscard]] auto segment_name() const -> std::string {
@@ -146,9 +162,12 @@ class mock_server {
     void close_connection();
 
     // Emit the real responses for requests recorded while respond_to_alloc /
-    // respond_to_open was false, with their original seqnos.
+    // respond_to_open / respond_to_share / respond_to_unshare was false,
+    // with their original seqnos.
     void release_withheld_alloc_responses();
     void release_withheld_open_responses();
+    void release_withheld_share_responses();
+    void release_withheld_unshare_responses();
 
   private:
     auto handle_message(gsl::span<std::uint8_t const> bytes) -> bool;

@@ -45,11 +45,27 @@ auto objview_impl::submit_close(event_payload pl) -> op_id {
     return conn->submit_close(key_, shared_from_this(), std::move(pl));
 }
 
+auto objview_impl::submit_share(event_payload pl) -> op_id {
+    return conn->submit_share(shared_from_this(), std::move(pl));
+}
+
+auto objview_impl::submit_unshare(bool wait, event_payload pl) -> op_id {
+    return conn->submit_unshare(shared_from_this(), wait, std::move(pl));
+}
+
+auto objview_impl::make_sibling(bool writable, token new_key)
+    -> std::shared_ptr<objview_impl> {
+    return std::make_shared<objview_impl>(conn, map, offset_, size_, writable,
+                                          new_key);
+}
+
 auto objview_impl::begin_close() -> bool {
     auto expected = obj_state::open;
     return st.compare_exchange_strong(expected, obj_state::closing);
 }
 
 void objview_impl::mark_closed() { st.store(obj_state::closed); }
+
+void objview_impl::revert_close() { st.store(obj_state::open); }
 
 } // namespace partake::client::internal

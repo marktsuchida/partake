@@ -73,28 +73,36 @@ auto objview::close(completion c) -> op_id {
     return impl_->submit_close(std::move(pl));
 }
 
-auto objview::share(void * /* user_data */) -> op_id {
+auto objview::share(void *user_data) -> op_id {
     require(impl_);
-    // TODO(stage 4): share.
-    std::terminate();
+    internal::event_payload pl;
+    pl.type = op_type::share;
+    pl.user_data = user_data;
+    return impl_->submit_share(std::move(pl));
 }
 
-auto objview::share(completion /* c */) -> op_id {
+auto objview::share(completion c) -> op_id {
     require(impl_);
-    // TODO(stage 4): share.
-    std::terminate();
+    internal::event_payload pl;
+    pl.type = op_type::share;
+    pl.cont = std::move(c);
+    return impl_->submit_share(std::move(pl));
 }
 
-auto objview::unshare(bool /* wait */, void * /* user_data */) -> op_id {
+auto objview::unshare(bool wait, void *user_data) -> op_id {
     require(impl_);
-    // TODO(stage 4): unshare.
-    std::terminate();
+    internal::event_payload pl;
+    pl.type = op_type::unshare;
+    pl.user_data = user_data;
+    return impl_->submit_unshare(wait, std::move(pl));
 }
 
-auto objview::unshare(bool /* wait */, completion /* c */) -> op_id {
+auto objview::unshare(bool wait, completion c) -> op_id {
     require(impl_);
-    // TODO(stage 4): unshare.
-    std::terminate();
+    internal::event_payload pl;
+    pl.type = op_type::unshare;
+    pl.cont = std::move(c);
+    return impl_->submit_unshare(wait, std::move(pl));
 }
 
 auto objview::create_voucher(std::uint32_t /* count */, void * /* user_data */)

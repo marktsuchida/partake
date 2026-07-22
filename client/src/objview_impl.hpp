@@ -24,7 +24,8 @@ class connection_impl;
 // The state behind a (shared) public objview handle. All fields are
 // immutable after construction except st, which is atomic because the
 // destructor and data() may run on any thread (all state transitions happen
-// on the I/O thread, in connection_impl::run_close).
+// on the I/O thread, in connection_impl::run_close, run_share, and
+// run_unshare).
 class objview_impl : public std::enable_shared_from_this<objview_impl> {
   public:
     enum class obj_state { open, closing, closed };
@@ -61,10 +62,19 @@ class objview_impl : public std::enable_shared_from_this<objview_impl> {
     [[nodiscard]] auto data() const noexcept -> void *;
 
     auto submit_close(event_payload pl) -> op_id;
+    auto submit_share(event_payload pl) -> op_id;
+    auto submit_unshare(bool wait, event_payload pl) -> op_id;
 
-    // I/O thread only, called by connection_impl::run_close:
+    // A sibling views the same bytes (same connection, mapping, offset,
+    // size) under a new writability and key; used by share/unshare, whose
+    // success closes the source view.
+    [[nodiscard]] auto make_sibling(bool writable, token new_key)
+        -> std::shared_ptr<objview_impl>;
+
+    // I/O thread only, called by the connection_impl run coroutines:
     auto begin_close() -> bool; // CAS open -> closing; false if lost.
     void mark_closed();
+    void revert_close(); // closing -> open (failed share/unshare).
 };
 
 } // namespace partake::client::internal
