@@ -17,6 +17,8 @@
 
 #include <cerrno>
 
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #ifdef __linux__
@@ -189,6 +191,25 @@ TEST_CASE("mmap_mapping") {
                 REQUIRE(mm.unmap());
                 CHECK(mm.unmap()); // Idempotent
             }
+        }
+    }
+
+    GIVEN("a write-only regular-file fd") {
+        testing::tempdir const td;
+        auto path = testing::unique_path(
+            td.path(), testing::make_test_filename(__FILE__, __LINE__));
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
+        auto fd = common::posix::file_descriptor(::open(
+            path.string().c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR));
+        REQUIRE(fd.is_valid());
+        auto unlk = common::posix::unlinkable(path.string());
+
+        SECTION("mmap failure leaves mapping empty") {
+            auto mm = mmap_mapping(16384, fd);
+            CHECK_FALSE(mm.is_valid());
+            CHECK(mm.size() == 0);
+            CHECK(mm.address() == nullptr);
+            CHECK(mm.unmap()); // No-op on empty mapping.
         }
     }
 }

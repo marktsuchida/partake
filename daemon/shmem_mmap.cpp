@@ -89,8 +89,7 @@ auto create_regular_file(std::string const &path, bool force)
 }
 
 mmap_mapping::mmap_mapping(std::size_t size,
-                           common::posix::file_descriptor const &fd)
-    : siz(size) {
+                           common::posix::file_descriptor const &fd) {
     if (not fd.is_valid())
         return;
 
@@ -106,16 +105,18 @@ mmap_mapping::mmap_mapping(std::size_t size,
 
     if (size > 0) {
         errno = 0;
-        addr = ::mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                      fd.get(), 0);
-        if (addr == nullptr) {
+        void *a = ::mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED,
+                         fd.get(), 0);
+        if (a == MAP_FAILED) { // NOLINT(performance-no-int-to-ptr)
             int err = errno;
             auto msg = common::posix::strerror(err);
             spdlog::error("mmap: fd {}, size {}: {} ({})", fd.get(), size, msg,
                           err);
         } else {
             spdlog::info("mmap: fd {}, size {}: success; addr {}", fd.get(),
-                         size, addr);
+                         size, a);
+            addr = a;
+            siz = size;
         }
     }
 }
