@@ -58,6 +58,10 @@ class objview {
     auto close(void *user_data) -> op_id;
     auto close(completion c) -> op_id;
 
+    // While a share or unshare is in flight (including a deferred
+    // wait=true unshare), this objview reads as closed (data() == nullptr);
+    // it reverts to open if the operation fails.
+
     // default_-policy, written object -> immutable/shareable.
     // Event: object() = new read-only objview; this objview -> closed.
     auto share(void *user_data) -> op_id;
@@ -68,7 +72,9 @@ class objview {
     auto unshare(bool wait, void *user_data) -> op_id;
     auto unshare(bool wait, completion c) -> op_id;
 
-    // Event: key() = voucher token.
+    // count = the allowed number of redemptions (open or discard_voucher);
+    // this objview is unaffected.
+    // Event: key() = the voucher key.
     auto create_voucher(std::uint32_t count, void *user_data) -> op_id;
     auto create_voucher(std::uint32_t count, completion c) -> op_id;
 

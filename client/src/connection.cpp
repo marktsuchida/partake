@@ -94,39 +94,39 @@ auto connection::open(token key, open_options options, completion c) -> op_id {
     return impl_->submit_open(key, options, std::move(pl));
 }
 
-// In the stage-4 stubs below, the by-value 'completion' parameters are not
-// yet moved anywhere (the real implementations will move them).
-// NOLINTBEGIN(performance-unnecessary-value-param)
-
-auto connection::create_voucher(token /* key */, std::uint32_t /* count */,
-                                void * /* user_data */) -> op_id {
+auto connection::create_voucher(token key, std::uint32_t count,
+                                void *user_data) -> op_id {
     require(impl_);
-    // TODO(stage 4): vouchers.
-    std::terminate();
+    internal::event_payload pl;
+    pl.type = op_type::create_voucher;
+    pl.user_data = user_data;
+    return impl_->submit_create_voucher(key, count, nullptr, std::move(pl));
 }
 
-auto connection::create_voucher(token /* key */, std::uint32_t /* count */,
-                                completion /* c */) -> op_id {
-    require(impl_);
-    // TODO(stage 4): vouchers.
-    std::terminate();
-}
-
-auto connection::discard_voucher(token /* key */, void * /* user_data */)
+auto connection::create_voucher(token key, std::uint32_t count, completion c)
     -> op_id {
     require(impl_);
-    // TODO(stage 4): vouchers.
-    std::terminate();
+    internal::event_payload pl;
+    pl.type = op_type::create_voucher;
+    pl.cont = std::move(c);
+    return impl_->submit_create_voucher(key, count, nullptr, std::move(pl));
 }
 
-auto connection::discard_voucher(token /* key */, completion /* c */)
-    -> op_id {
+auto connection::discard_voucher(token key, void *user_data) -> op_id {
     require(impl_);
-    // TODO(stage 4): vouchers.
-    std::terminate();
+    internal::event_payload pl;
+    pl.type = op_type::discard_voucher;
+    pl.user_data = user_data;
+    return impl_->submit_discard_voucher(key, std::move(pl));
 }
 
-// NOLINTEND(performance-unnecessary-value-param)
+auto connection::discard_voucher(token key, completion c) -> op_id {
+    require(impl_);
+    internal::event_payload pl;
+    pl.type = op_type::discard_voucher;
+    pl.cont = std::move(c);
+    return impl_->submit_discard_voucher(key, std::move(pl));
+}
 
 auto connection::shutdown(void *user_data) -> op_id {
     require(impl_);

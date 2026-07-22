@@ -53,6 +53,12 @@ auto objview_impl::submit_unshare(bool wait, event_payload pl) -> op_id {
     return conn->submit_unshare(shared_from_this(), wait, std::move(pl));
 }
 
+auto objview_impl::submit_create_voucher(std::uint32_t count, event_payload pl)
+    -> op_id {
+    return conn->submit_create_voucher(key_, count, shared_from_this(),
+                                       std::move(pl));
+}
+
 auto objview_impl::make_sibling(bool writable, token new_key)
     -> std::shared_ptr<objview_impl> {
     return std::make_shared<objview_impl>(conn, map, offset_, size_, writable,

@@ -111,6 +111,12 @@ class connection_impl : public std::enable_shared_from_this<connection_impl> {
         -> op_id;
     auto submit_unshare(std::shared_ptr<objview_impl> ov, bool wait,
                         event_payload pl) -> op_id;
+    // ov (may be null) is only checked to fail early if already closed;
+    // create_voucher does not transition objview state.
+    auto submit_create_voucher(token key, std::uint32_t count,
+                               std::shared_ptr<objview_impl> ov,
+                               event_payload pl) -> op_id;
+    auto submit_discard_voucher(token key, event_payload pl) -> op_id;
     auto submit_shutdown(event_payload pl) -> op_id;
     void cancel(op_id id);
 
@@ -222,6 +228,13 @@ class connection_impl : public std::enable_shared_from_this<connection_impl> {
     static auto run_unshare(std::shared_ptr<connection_impl> self, op_id id,
                             std::shared_ptr<objview_impl> ov, bool wait,
                             event_payload pl) -> asio::awaitable<void>;
+    static auto run_create_voucher(std::shared_ptr<connection_impl> self,
+                                   op_id id, token key, std::uint32_t count,
+                                   std::shared_ptr<objview_impl> ov,
+                                   event_payload pl) -> asio::awaitable<void>;
+    static auto run_discard_voucher(std::shared_ptr<connection_impl> self,
+                                    op_id id, token key, event_payload pl)
+        -> asio::awaitable<void>;
     static auto run_shutdown(std::shared_ptr<connection_impl> self, op_id id,
                              event_payload pl) -> asio::awaitable<void>;
 

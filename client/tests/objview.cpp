@@ -529,6 +529,49 @@ TEST_CASE("objview: share and unshare after shutdown fail with "
     CHECK(ev->error() == client_errc::disconnected);
 }
 
+TEST_CASE("objview: create_voucher") {
+    mock_server const srv;
+    client c;
+    queue q;
+    auto conn = connect_or_fail(c, srv, q);
+    auto obj = alloc_or_fail(conn, q, 16);
+
+    int cookie = 0;
+    auto const id = obj.create_voucher(3, &cookie);
+    auto ev = q.wait_one(event_timeout);
+    REQUIRE(ev.has_value());
+    CHECK(ev->id() == id);
+    CHECK(ev->type() == op_type::create_voucher);
+    REQUIRE_FALSE(ev->error());
+    CHECK(ev->user_data() == &cookie);
+    CHECK(ev->key().is_valid());
+    CHECK(ev->key() != obj.key());
+    CHECK(srv.create_vouchers_received() == 1);
+    CHECK(obj.data() != nullptr); // Source view unaffected.
+}
+
+TEST_CASE("objview: create_voucher after close reports object_closed") {
+    mock_server const srv;
+    client c;
+    queue q;
+    auto conn = connect_or_fail(c, srv, q);
+    auto obj = alloc_or_fail(conn, q, 16);
+
+    (void)obj.close(nullptr);
+    auto ev = q.wait_one(event_timeout);
+    REQUIRE(ev.has_value());
+    CHECK_FALSE(ev->error());
+
+    auto const id = obj.create_voucher(1, nullptr);
+    ev = q.wait_one(event_timeout);
+    REQUIRE(ev.has_value());
+    CHECK(ev->id() == id);
+    CHECK(ev->type() == op_type::create_voucher);
+    CHECK(ev->error() == client_errc::object_closed);
+    CHECK_FALSE(ev->key().is_valid());
+    CHECK(srv.create_vouchers_received() == 0);
+}
+
 TEST_CASE("objview: concurrent allocs each get exactly one event") {
     mock_server const srv;
     client c;

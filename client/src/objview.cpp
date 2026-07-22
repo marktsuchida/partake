@@ -105,18 +105,20 @@ auto objview::unshare(bool wait, completion c) -> op_id {
     return impl_->submit_unshare(wait, std::move(pl));
 }
 
-auto objview::create_voucher(std::uint32_t /* count */, void * /* user_data */)
-    -> op_id {
+auto objview::create_voucher(std::uint32_t count, void *user_data) -> op_id {
     require(impl_);
-    // TODO(stage 4): vouchers.
-    std::terminate();
+    internal::event_payload pl;
+    pl.type = op_type::create_voucher;
+    pl.user_data = user_data;
+    return impl_->submit_create_voucher(count, std::move(pl));
 }
 
-auto objview::create_voucher(std::uint32_t /* count */, completion /* c */)
-    -> op_id {
+auto objview::create_voucher(std::uint32_t count, completion c) -> op_id {
     require(impl_);
-    // TODO(stage 4): vouchers.
-    std::terminate();
+    internal::event_payload pl;
+    pl.type = op_type::create_voucher;
+    pl.cont = std::move(c);
+    return impl_->submit_create_voucher(count, std::move(pl));
 }
 
 namespace internal {

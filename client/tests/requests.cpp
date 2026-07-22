@@ -348,6 +348,42 @@ TEST_CASE("requests: add_unshare_request") {
     CHECK(ureq->wait() == wait);
 }
 
+TEST_CASE("requests: add_create_voucher_request") {
+    auto const count = GENERATE(std::uint32_t(1), std::uint32_t(5));
+    auto rb = request_builder(1);
+    add_create_voucher_request(rb, 16, 1002, count);
+    auto buf = rb.release_buffer();
+
+    auto verifier = flatbuffers::Verifier(buf.data(), buf.size());
+    REQUIRE(
+        verifier.VerifySizePrefixedBuffer<protocol::RequestMessage>(nullptr));
+    auto const *msg =
+        flatbuffers::GetSizePrefixedRoot<protocol::RequestMessage>(buf.data());
+    auto const *req = msg->requests()->Get(0);
+    CHECK(req->seqno() == 16);
+    REQUIRE(req->request_type() == protocol::AnyRequest::CreateVoucherRequest);
+    auto const *vreq = req->request_as_CreateVoucherRequest();
+    CHECK(vreq->key() == 1002);
+    CHECK(vreq->count() == count);
+}
+
+TEST_CASE("requests: add_discard_voucher_request") {
+    auto rb = request_builder(1);
+    add_discard_voucher_request(rb, 17, 1003);
+    auto buf = rb.release_buffer();
+
+    auto verifier = flatbuffers::Verifier(buf.data(), buf.size());
+    REQUIRE(
+        verifier.VerifySizePrefixedBuffer<protocol::RequestMessage>(nullptr));
+    auto const *msg =
+        flatbuffers::GetSizePrefixedRoot<protocol::RequestMessage>(buf.data());
+    auto const *req = msg->requests()->Get(0);
+    CHECK(req->seqno() == 17);
+    REQUIRE(req->request_type() ==
+            protocol::AnyRequest::DiscardVoucherRequest);
+    CHECK(req->request_as_DiscardVoucherRequest()->key() == 1003);
+}
+
 TEST_CASE("requests: decode_alloc_response") {
     SECTION("success") {
         auto buf = make_single_response_message(
@@ -465,6 +501,67 @@ TEST_CASE("requests: decode_unshare_response") {
             });
         CHECK_FALSE(
             decode_unshare_response(*single_response(buf)).has_value());
+    }
+}
+
+TEST_CASE("requests: decode_create_voucher_response") {
+    SECTION("success") {
+        auto buf = make_single_response_message(
+            protocol::AnyResponse::CreateVoucherResponse, [](auto &fbb) {
+                return protocol::CreateCreateVoucherResponse(fbb, 126).Union();
+            });
+        auto decoded = decode_create_voucher_response(*single_response(buf));
+        REQUIRE(decoded.has_value());
+        CHECK(decoded->key == 126);
+    }
+
+    SECTION("wrong union member") {
+        auto ping = make_single_response_message(
+            protocol::AnyResponse::PingResponse, [](auto &fbb) {
+                return protocol::CreatePingResponse(fbb).Union();
+            });
+        CHECK_FALSE(decode_create_voucher_response(*single_response(ping))
+                        .has_value());
+    }
+
+    SECTION("zero key") {
+        auto buf = make_single_response_message(
+            protocol::AnyResponse::CreateVoucherResponse, [](auto &fbb) {
+                return protocol::CreateCreateVoucherResponse(fbb, 0).Union();
+            });
+        CHECK_FALSE(
+            decode_create_voucher_response(*single_response(buf)).has_value());
+    }
+}
+
+TEST_CASE("requests: decode_discard_voucher_response") {
+    SECTION("success") {
+        auto buf = make_single_response_message(
+            protocol::AnyResponse::DiscardVoucherResponse, [](auto &fbb) {
+                return protocol::CreateDiscardVoucherResponse(fbb, 127)
+                    .Union();
+            });
+        auto decoded = decode_discard_voucher_response(*single_response(buf));
+        REQUIRE(decoded.has_value());
+        CHECK(decoded->key == 127);
+    }
+
+    SECTION("wrong union member") {
+        auto ping = make_single_response_message(
+            protocol::AnyResponse::PingResponse, [](auto &fbb) {
+                return protocol::CreatePingResponse(fbb).Union();
+            });
+        CHECK_FALSE(decode_discard_voucher_response(*single_response(ping))
+                        .has_value());
+    }
+
+    SECTION("zero key") {
+        auto buf = make_single_response_message(
+            protocol::AnyResponse::DiscardVoucherResponse, [](auto &fbb) {
+                return protocol::CreateDiscardVoucherResponse(fbb, 0).Union();
+            });
+        CHECK_FALSE(decode_discard_voucher_response(*single_response(buf))
+                        .has_value());
     }
 }
 

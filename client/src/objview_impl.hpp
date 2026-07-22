@@ -60,10 +60,14 @@ class objview_impl : public std::enable_shared_from_this<objview_impl> {
     [[nodiscard]] auto size() const noexcept -> std::uint64_t { return size_; }
     [[nodiscard]] auto writable() const noexcept -> bool { return writable_; }
     [[nodiscard]] auto data() const noexcept -> void *;
+    [[nodiscard]] auto is_open() const noexcept -> bool {
+        return st.load() == obj_state::open;
+    }
 
     auto submit_close(event_payload pl) -> op_id;
     auto submit_share(event_payload pl) -> op_id;
     auto submit_unshare(bool wait, event_payload pl) -> op_id;
+    auto submit_create_voucher(std::uint32_t count, event_payload pl) -> op_id;
 
     // A sibling views the same bytes (same connection, mapping, offset,
     // size) under a new writability and key; used by share/unshare, whose

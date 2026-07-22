@@ -173,6 +173,23 @@ void mock_server::release_withheld_unshare_responses() {
     });
 }
 
+void mock_server::release_withheld_create_voucher_responses() {
+    post([this] {
+        for (auto const &w : withheld_create_vouchers) {
+            auto rb = daemon::response_builder(
+                [this](flatbuffers::DetachedBuffer const &buf) {
+                    write_frame(buf);
+                },
+                1);
+            rb.add_successful_response(
+                w.seqno, protocol::CreateCreateVoucherResponse(rb.fbbuilder(),
+                                                               w.voucher_key));
+            rb.flush();
+        }
+        withheld_create_vouchers.clear();
+    });
+}
+
 auto mock_server::handle_message(gsl::span<std::uint8_t const> bytes) -> bool {
     if (not said_hello)
         return handle_hello(bytes);
@@ -263,18 +280,27 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
             case protocol::AnyRequest::OpenRequest: {
                 ++n_opens;
                 auto const *oreq = req->request_as_OpenRequest();
-                auto const it = objects.find(oreq->key());
+                auto key = oreq->key();
+                // A voucher key resolves to its target, consuming one
+                // redemption; Mapping.key is always the object key.
+                auto const vit = vouchers.find(key);
+                if (vit != vouchers.end()) {
+                    key = vit->second.first;
+                    if (--vit->second.second == 0)
+                        vouchers.erase(vit);
+                }
+                auto const it = objects.find(key);
                 if (it == objects.end()) {
                     rb.add_error_response(req->seqno(),
                                           protocol::Status::NO_SUCH_OBJECT);
                 } else if (opts.respond_to_open) {
-                    protocol::Mapping const mapping(
-                        oreq->key(), 0, it->second.first, it->second.second);
+                    protocol::Mapping const mapping(key, 0, it->second.first,
+                                                    it->second.second);
                     rb.add_successful_response(req->seqno(),
                                                protocol::CreateOpenResponse(
                                                    rb.fbbuilder(), &mapping));
                 } else {
-                    withheld_opens.push_back({req->seqno(), oreq->key()});
+                    withheld_opens.push_back({req->seqno(), key});
                 }
                 break;
             }
@@ -322,6 +348,56 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
                     req->seqno(),
                     protocol::CreateCloseResponse(rb.fbbuilder()));
                 break;
+            case protocol::AnyRequest::CreateVoucherRequest: {
+                ++n_create_vouchers;
+                auto const *vreq = req->request_as_CreateVoucherRequest();
+                auto target = vreq->key();
+                auto const vit = vouchers.find(target);
+                if (vit != vouchers.end())
+                    target = vit->second.first;
+                if (objects.find(target) == objects.end()) {
+                    rb.add_error_response(req->seqno(),
+                                          protocol::Status::NO_SUCH_OBJECT);
+                } else if (vreq->count() == 0) {
+                    rb.add_error_response(req->seqno(),
+                                          protocol::Status::INVALID_REQUEST);
+                } else {
+                    auto const vkey = next_key++;
+                    vouchers[vkey] = {target, vreq->count()};
+                    if (opts.respond_to_create_voucher) {
+                        rb.add_successful_response(
+                            req->seqno(),
+                            protocol::CreateCreateVoucherResponse(
+                                rb.fbbuilder(), vkey));
+                    } else {
+                        withheld_create_vouchers.push_back(
+                            {req->seqno(), vkey});
+                    }
+                }
+                break;
+            }
+            case protocol::AnyRequest::DiscardVoucherRequest: {
+                ++n_discard_vouchers;
+                auto const key =
+                    req->request_as_DiscardVoucherRequest()->key();
+                auto const vit = vouchers.find(key);
+                if (vit != vouchers.end()) {
+                    auto const target = vit->second.first;
+                    vouchers.erase(vit);
+                    rb.add_successful_response(
+                        req->seqno(), protocol::CreateDiscardVoucherResponse(
+                                          rb.fbbuilder(), target));
+                } else if (objects.find(key) != objects.end()) {
+                    // Documented no-op on an ordinary object key.
+                    rb.add_successful_response(
+                        req->seqno(), protocol::CreateDiscardVoucherResponse(
+                                          rb.fbbuilder(), key));
+                } else {
+                    rb.add_error_response(req->seqno(),
+                                          protocol::Status::NO_SUCH_OBJECT);
+                }
+                break;
+            }
             case protocol::AnyRequest::GetSegmentRequest:
                 ++n_get_segments;
                 if (opts.respond_to_get_segment) {

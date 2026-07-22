@@ -41,6 +41,13 @@ namespace {
     return pl;
 }
 
+[[nodiscard]] auto suppressed_discard_voucher_payload() -> event_payload {
+    event_payload pl;
+    pl.type = op_type::discard_voucher;
+    pl.suppress = true;
+    return pl;
+}
+
 } // namespace
 
 connection_impl::connection_impl(std::shared_ptr<client_impl> cl,
@@ -123,6 +130,27 @@ auto connection_impl::submit_unshare(std::shared_ptr<objview_impl> ov,
                                         op_id id, event_payload payload) {
         return run_unshare(std::move(self), id, ov, wait, std::move(payload));
     });
+}
+
+auto connection_impl::submit_create_voucher(token key, std::uint32_t count,
+                                            std::shared_ptr<objview_impl> ov,
+                                            event_payload pl) -> op_id {
+    return submit_op(std::move(pl), [key, count, ov = std::move(ov)](
+                                        std::shared_ptr<connection_impl> self,
+                                        op_id id, event_payload payload) {
+        return run_create_voucher(std::move(self), id, key, count, ov,
+                                  std::move(payload));
+    });
+}
+
+auto connection_impl::submit_discard_voucher(token key, event_payload pl)
+    -> op_id {
+    return submit_op(std::move(pl),
+                     [key](std::shared_ptr<connection_impl> self, op_id id,
+                           event_payload payload) {
+                         return run_discard_voucher(std::move(self), id, key,
+                                                    std::move(payload));
+                     });
 }
 
 auto connection_impl::submit_shutdown(event_payload pl) -> op_id {
@@ -379,6 +407,55 @@ auto connection_impl::run_unshare(std::shared_ptr<connection_impl> self,
     self->finish(id, std::move(pl));
 }
 
+auto connection_impl::run_create_voucher(std::shared_ptr<connection_impl> self,
+                                         op_id id, token key,
+                                         std::uint32_t count,
+                                         std::shared_ptr<objview_impl> ov,
+                                         event_payload pl)
+    -> asio::awaitable<void> {
+    try {
+        if (self->state != state_t::ready)
+            throw std::system_error(
+                make_error_code(client_errc::disconnected));
+        // ov is null when invoked with a bare key rather than an objview.
+        if (ov and not ov->is_open())
+            throw std::system_error(
+                make_error_code(client_errc::object_closed));
+        auto const r = co_await self->request<create_voucher_result>(
+            [key, count](request_builder &rb, std::uint64_t seqno) {
+                add_create_voucher_request(rb, seqno, key.as_u64(), count);
+            },
+            decode_create_voucher_response);
+        pl.key = token(r.key);
+    } catch (std::system_error const &e) {
+        pl.error = e.code();
+    } catch (...) {
+        pl.error = make_error_code(client_errc::disconnected);
+    }
+    self->finish(id, std::move(pl));
+}
+
+auto connection_impl::run_discard_voucher(
+    std::shared_ptr<connection_impl> self, op_id id, token key,
+    event_payload pl) -> asio::awaitable<void> {
+    try {
+        if (self->state != state_t::ready)
+            throw std::system_error(
+                make_error_code(client_errc::disconnected));
+        auto const r = co_await self->request<discard_voucher_result>(
+            [key](request_builder &rb, std::uint64_t seqno) {
+                add_discard_voucher_request(rb, seqno, key.as_u64());
+            },
+            decode_discard_voucher_response);
+        pl.key = token(r.key); // The object key, for diagnostics only.
+    } catch (std::system_error const &e) {
+        pl.error = e.code();
+    } catch (...) {
+        pl.error = make_error_code(client_errc::disconnected);
+    }
+    self->finish(id, std::move(pl));
+}
+
 auto connection_impl::run_shutdown(std::shared_ptr<connection_impl> self,
                                    op_id id, event_payload pl)
     -> asio::awaitable<void> {
@@ -544,6 +621,11 @@ void connection_impl::finish(op_id id, event_payload pl) {
         ops.erase(it);
     }
     if (detached) {
+        // Auto-discard an abandoned voucher, so it does not linger until
+        // its TTL (the voucher analogue of the auto-close below).
+        if (pl.type == op_type::create_voucher and pl.key.is_valid())
+            (void)submit_discard_voucher(pl.key,
+                                         suppressed_discard_voucher_payload());
         // Auto-close an abandoned alloc/open/unshare result: dropping the
         // payload's (only) objview handle triggers ~objview_impl's
         // fire-and-forget close, posted as a later task.

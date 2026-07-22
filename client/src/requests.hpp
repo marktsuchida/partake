@@ -72,6 +72,12 @@ struct unshare_result {
     std::uint64_t key = 0;
     bool zeroed = false;
 };
+struct create_voucher_result {
+    std::uint64_t key = 0;
+};
+struct discard_voucher_result {
+    std::uint64_t key = 0;
+};
 
 [[nodiscard]] auto to_protocol_policy(policy pol) noexcept -> protocol::Policy;
 
@@ -106,6 +112,10 @@ void add_share_request(request_builder &rb, std::uint64_t seqno,
                        std::uint64_t key);
 void add_unshare_request(request_builder &rb, std::uint64_t seqno,
                          std::uint64_t key, bool wait);
+void add_create_voucher_request(request_builder &rb, std::uint64_t seqno,
+                                std::uint64_t key, std::uint32_t count);
+void add_discard_voucher_request(request_builder &rb, std::uint64_t seqno,
+                                 std::uint64_t key);
 
 // nullopt = wrong or missing union member (a protocol violation).
 [[nodiscard]] auto decode_ping_response(protocol::Response const &resp)
@@ -124,5 +134,11 @@ void add_unshare_request(request_builder &rb, std::uint64_t seqno,
     -> std::optional<share_result>;
 [[nodiscard]] auto decode_unshare_response(protocol::Response const &resp)
     -> std::optional<unshare_result>;
+[[nodiscard]] auto
+decode_create_voucher_response(protocol::Response const &resp)
+    -> std::optional<create_voucher_result>;
+[[nodiscard]] auto
+decode_discard_voucher_response(protocol::Response const &resp)
+    -> std::optional<discard_voucher_result>;
 
 } // namespace partake::client::internal

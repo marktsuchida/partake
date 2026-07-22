@@ -52,7 +52,10 @@ class event {
                                                         // unshare
     [[nodiscard]] auto key() const noexcept -> token;   // create_voucher (the
                                                         // voucher), unshare
-                                                        // (the new key)
+                                                        // (the new key),
+                                                        // discard_voucher
+                                                        // (the object key,
+                                                        // diagnostic only)
     [[nodiscard]] auto zeroed() const noexcept -> bool; // alloc, unshare
 
     // Invoke the continuation stored at submit time, if any, consuming it.

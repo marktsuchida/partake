@@ -10,13 +10,16 @@
 #include "partake/client.hpp"
 #include "partake/errors.hpp"
 #include "partake/event.hpp"
+#include "partake/objview.hpp"
 #include "partake/queue.hpp"
+#include "partake/token.hpp"
 #include "partake/types.hpp"
 #include "test_helpers.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
+#include <cstring>
 #include <map>
 #include <memory>
 #include <optional>
@@ -283,6 +286,183 @@ TEST_CASE("connection: daemon-reported error status maps to protocol_errc") {
     REQUIRE(ev.has_value());
     CHECK(ev->id() == id);
     CHECK(ev->error() == protocol_errc::object_busy);
+}
+
+namespace {
+
+// Alloc and return the objview from the completion event (which is dropped,
+// leaving the returned handle as the only one).
+auto alloc_or_fail(connection &conn, queue &q, std::uint64_t size) -> objview {
+    (void)conn.alloc(size, {}, nullptr);
+    auto ev = q.wait_one(event_timeout);
+    REQUIRE(ev.has_value());
+    REQUIRE_FALSE(ev->error());
+    auto obj = ev->object();
+    REQUIRE(obj);
+    return obj;
+}
+
+} // namespace
+
+TEST_CASE("connection: create_voucher, then open via the voucher key") {
+    mock_server const srv;
+    client c;
+    queue q;
+    auto conn = connect_or_fail(c, srv, q);
+    auto obj = alloc_or_fail(conn, q, 32);
+    std::memset(obj.data(), 0x66, 32);
+
+    int cookie = 0;
+    auto const id = conn.create_voucher(obj.key(), 2, &cookie);
+    auto ev = q.wait_one(event_timeout);
+    REQUIRE(ev.has_value());
+    CHECK(ev->id() == id);
+    CHECK(ev->type() == op_type::create_voucher);
+    REQUIRE_FALSE(ev->error());
+    CHECK(ev->user_data() == &cookie);
+    auto const vkey = ev->key();
+    CHECK(vkey.is_valid());
+    CHECK(vkey != obj.key());
+    CHECK(srv.create_vouchers_received() == 1);
+    CHECK(obj.data() != nullptr); // Source view unaffected.
+
+    (void)conn.open(vkey, {}, nullptr);
+    ev = q.wait_one(event_timeout);
+    REQUIRE(ev.has_value());
+    REQUIRE_FALSE(ev->error());
+    auto opened = ev->object();
+    REQUIRE(opened);
+    CHECK(opened.key() == obj.key()); // The object key, not the voucher.
+    REQUIRE(opened.data() != nullptr);
+    CHECK(opened.data() == obj.data());
+    CHECK(static_cast<unsigned char const *>(opened.data())[0] == 0x66);
+}
+
+TEST_CASE("connection: discard_voucher") {
+    mock_server const srv;
+    client c;
+    queue q;
+    auto conn = connect_or_fail(c, srv, q);
+    auto obj = alloc_or_fail(conn, q, 16);
+
+    SECTION("a voucher key expires; the event carries the object key") {
+        (void)conn.create_voucher(obj.key(), 1, nullptr);
+        auto ev = q.wait_one(event_timeout);
+        REQUIRE(ev.has_value());
+        REQUIRE_FALSE(ev->error());
+        auto const vkey = ev->key();
+
+        auto const id = conn.discard_voucher(vkey, nullptr);
+        ev = q.wait_one(event_timeout);
+        REQUIRE(ev.has_value());
+        CHECK(ev->id() == id);
+        CHECK(ev->type() == op_type::discard_voucher);
+        CHECK_FALSE(ev->error());
+        CHECK(ev->key() == obj.key());
+        CHECK(srv.discard_vouchers_received() == 1);
+    }
+
+    SECTION("an ordinary object key is a no-op success") {
+        auto const id = conn.discard_voucher(obj.key(), nullptr);
+        auto ev = q.wait_one(event_timeout);
+        REQUIRE(ev.has_value());
+        CHECK(ev->id() == id);
+        CHECK(ev->type() == op_type::discard_voucher);
+        CHECK_FALSE(ev->error());
+        CHECK(ev->key() == obj.key());
+        CHECK(srv.discard_vouchers_received() == 1);
+    }
+
+    SECTION("an unknown key reports no_such_object") {
+        auto const id = conn.discard_voucher(token(99999), nullptr);
+        auto ev = q.wait_one(event_timeout);
+        REQUIRE(ev.has_value());
+        CHECK(ev->id() == id);
+        CHECK(ev->type() == op_type::discard_voucher);
+        CHECK(ev->error() == protocol_errc::no_such_object);
+        CHECK_FALSE(ev->key().is_valid());
+    }
+}
+
+TEST_CASE("connection: create_voucher with count 0 reports invalid_request") {
+    mock_server const srv;
+    client c;
+    queue q;
+    auto conn = connect_or_fail(c, srv, q);
+    auto obj = alloc_or_fail(conn, q, 16);
+
+    auto const id = conn.create_voucher(obj.key(), 0, nullptr);
+    auto ev = q.wait_one(event_timeout);
+    REQUIRE(ev.has_value());
+    CHECK(ev->id() == id);
+    CHECK(ev->type() == op_type::create_voucher);
+    CHECK(ev->error() == protocol_errc::invalid_request);
+    CHECK_FALSE(ev->key().is_valid());
+}
+
+TEST_CASE("connection: create_voucher on an unknown key reports "
+          "no_such_object") {
+    mock_server const srv;
+    client c;
+    queue q;
+    auto conn = connect_or_fail(c, srv, q);
+
+    auto const id = conn.create_voucher(token(12345), 1, nullptr);
+    auto ev = q.wait_one(event_timeout);
+    REQUIRE(ev.has_value());
+    CHECK(ev->id() == id);
+    CHECK(ev->type() == op_type::create_voucher);
+    CHECK(ev->error() == protocol_errc::no_such_object);
+    CHECK_FALSE(ev->key().is_valid());
+}
+
+TEST_CASE("connection: canceled create_voucher discards the voucher") {
+    mock_server srv({.respond_to_create_voucher = false});
+    client c;
+    queue q;
+    auto conn = connect_or_fail(c, srv, q);
+    auto obj = alloc_or_fail(conn, q, 16);
+
+    auto const id = conn.create_voucher(obj.key(), 1, nullptr);
+    spin_until([&srv] { return srv.create_vouchers_received() == 1; });
+    conn.cancel(id);
+    srv.release_withheld_create_voucher_responses();
+
+    auto ev = q.wait_one(event_timeout);
+    REQUIRE(ev.has_value());
+    CHECK(ev->id() == id);
+    CHECK(ev->type() == op_type::create_voucher);
+    CHECK(ev->error() == client_errc::canceled);
+    CHECK_FALSE(ev->key().is_valid());
+    spin_until([&srv] { return srv.discard_vouchers_received() == 1; });
+    CHECK_FALSE(q.wait_one(std::chrono::milliseconds(100)).has_value());
+}
+
+TEST_CASE("connection: create_voucher and discard_voucher after shutdown "
+          "fail with disconnected") {
+    mock_server const srv;
+    client c;
+    queue q;
+    auto conn = connect_or_fail(c, srv, q);
+
+    (void)conn.shutdown(nullptr);
+    auto ev = q.wait_one(event_timeout);
+    REQUIRE(ev.has_value());
+    CHECK_FALSE(ev->error());
+
+    auto const cv_id = conn.create_voucher(token(123), 1, nullptr);
+    ev = q.wait_one(event_timeout);
+    REQUIRE(ev.has_value());
+    CHECK(ev->id() == cv_id);
+    CHECK(ev->type() == op_type::create_voucher);
+    CHECK(ev->error() == client_errc::disconnected);
+
+    auto const dv_id = conn.discard_voucher(token(123), nullptr);
+    ev = q.wait_one(event_timeout);
+    REQUIRE(ev.has_value());
+    CHECK(ev->id() == dv_id);
+    CHECK(ev->type() == op_type::discard_voucher);
+    CHECK(ev->error() == client_errc::disconnected);
 }
 
 TEST_CASE("connection: ~client fails a pending op; no hang") {

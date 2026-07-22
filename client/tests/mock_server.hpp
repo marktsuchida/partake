@@ -48,7 +48,8 @@ class mock_server {
         bool respond_to_open = true;        // false: record and withhold.
         bool respond_to_share = true;       // false: record and withhold.
         bool respond_to_unshare = true;     // false: record and withhold.
-        bool alloc_zeroed = false;          // Value of AllocResponse.zeroed.
+        bool respond_to_create_voucher = true; // false: record and withhold.
+        bool alloc_zeroed = false; // Value of AllocResponse.zeroed.
     };
 
 #ifdef _WIN32
@@ -86,12 +87,16 @@ class mock_server {
     std::atomic<int> n_closes{0};
     std::atomic<int> n_shares{0};
     std::atomic<int> n_unshares{0};
+    std::atomic<int> n_create_vouchers{0};
+    std::atomic<int> n_discard_vouchers{0};
     // Alloc/open bookkeeping (server thread only): a bump allocator over the
     // segment (no reuse, no overflow handling -- tests stay well under
     // segment_size) and the live key -> (offset, size) table.
     std::uint64_t next_key = 1;
     std::uint64_t bump_offset = 0;
     std::map<std::uint64_t, std::pair<std::uint64_t, std::uint64_t>> objects;
+    // Live voucher key -> (target object key, remaining count).
+    std::map<std::uint64_t, std::pair<std::uint64_t, std::uint32_t>> vouchers;
     struct withheld_alloc {
         std::uint64_t seqno;
         std::uint64_t key;
@@ -114,6 +119,11 @@ class mock_server {
         std::uint64_t new_key;
     };
     std::vector<withheld_unshare> withheld_unshares;
+    struct withheld_create_voucher {
+        std::uint64_t seqno;
+        std::uint64_t voucher_key;
+    };
+    std::vector<withheld_create_voucher> withheld_create_vouchers;
     std::thread server_thread; // Last: started after everything else.
 
   public:
@@ -138,6 +148,12 @@ class mock_server {
     [[nodiscard]] auto closes_received() const -> int { return n_closes; }
     [[nodiscard]] auto shares_received() const -> int { return n_shares; }
     [[nodiscard]] auto unshares_received() const -> int { return n_unshares; }
+    [[nodiscard]] auto create_vouchers_received() const -> int {
+        return n_create_vouchers;
+    }
+    [[nodiscard]] auto discard_vouchers_received() const -> int {
+        return n_discard_vouchers;
+    }
 
     // The real segment served for segment 0.
     [[nodiscard]] auto segment_name() const -> std::string {
@@ -168,6 +184,7 @@ class mock_server {
     void release_withheld_open_responses();
     void release_withheld_share_responses();
     void release_withheld_unshare_responses();
+    void release_withheld_create_voucher_responses();
 
   private:
     auto handle_message(gsl::span<std::uint8_t const> bytes) -> bool;

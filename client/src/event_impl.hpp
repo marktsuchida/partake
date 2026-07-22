@@ -25,7 +25,7 @@ struct event_payload {
     completion cont;       // One-shot; exchanged to empty by deliver().
     connection conn;       // connect
     objview obj;           // alloc, open, share, unshare
-    token key;             // create_voucher, unshare
+    token key;             // create_voucher, unshare, discard_voucher
     bool zeroed = false;   // alloc, unshare
     bool suppress = false; // Internal fire-and-forget op: finish() pushes no
                            // queue event (the core swallows the completion).

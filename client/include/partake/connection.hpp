@@ -72,11 +72,15 @@ class connection {
     auto open(token key, open_options options, void *user_data) -> op_id;
     auto open(token key, open_options options, completion c) -> op_id;
 
-    // Event: key() = voucher token.
+    // key may itself be a voucher (resolved to its target); count = the
+    // allowed number of redemptions (open or discard_voucher).
+    // Event: key() = the voucher key.
     auto create_voucher(token key, std::uint32_t count, void *user_data)
         -> op_id;
     auto create_voucher(token key, std::uint32_t count, completion c) -> op_id;
 
+    // Expires the voucher; an ordinary object key is a no-op success.
+    // Event: key() = the object key (diagnostic use only).
     auto discard_voucher(token key, void *user_data) -> op_id;
     auto discard_voucher(token key, completion c) -> op_id;
 
@@ -85,8 +89,10 @@ class connection {
     auto shutdown(void *user_data) -> op_id;
     auto shutdown(completion c) -> op_id;
 
-    // Detach interest in the op; it still potentially runs to completion and
-    // delivers exactly one terminal event, with error client_errc::canceled.
+    // Detach interest in the op; it still potentially runs to completion
+    // and delivers exactly one terminal event, with error
+    // client_errc::canceled and no payload (a would-be alloc/open/unshare
+    // result is auto-closed; a would-be voucher is auto-discarded).
     void cancel(op_id id);
 
   private:

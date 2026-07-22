@@ -120,6 +120,18 @@ void add_unshare_request(request_builder &rb, std::uint64_t seqno,
                    protocol::CreateUnshareRequest(rb.fbbuilder(), key, wait));
 }
 
+void add_create_voucher_request(request_builder &rb, std::uint64_t seqno,
+                                std::uint64_t key, std::uint32_t count) {
+    rb.add_request(seqno, protocol::CreateCreateVoucherRequest(rb.fbbuilder(),
+                                                               key, count));
+}
+
+void add_discard_voucher_request(request_builder &rb, std::uint64_t seqno,
+                                 std::uint64_t key) {
+    rb.add_request(seqno,
+                   protocol::CreateDiscardVoucherRequest(rb.fbbuilder(), key));
+}
+
 auto decode_ping_response(protocol::Response const &resp)
     -> std::optional<ping_result> {
     if (resp.response_type() != protocol::AnyResponse::PingResponse)
@@ -214,6 +226,26 @@ auto decode_unshare_response(protocol::Response const &resp)
     if (r->key() == 0) // Status was OK, so a zero key is a violation.
         return std::nullopt;
     return unshare_result{r->key(), r->zeroed()};
+}
+
+auto decode_create_voucher_response(protocol::Response const &resp)
+    -> std::optional<create_voucher_result> {
+    if (resp.response_type() != protocol::AnyResponse::CreateVoucherResponse)
+        return std::nullopt;
+    auto const *r = resp.response_as_CreateVoucherResponse();
+    if (r->key() == 0) // Status was OK, so a zero key is a violation.
+        return std::nullopt;
+    return create_voucher_result{r->key()};
+}
+
+auto decode_discard_voucher_response(protocol::Response const &resp)
+    -> std::optional<discard_voucher_result> {
+    if (resp.response_type() != protocol::AnyResponse::DiscardVoucherResponse)
+        return std::nullopt;
+    auto const *r = resp.response_as_DiscardVoucherResponse();
+    if (r->key() == 0) // Status was OK, so a zero key is a violation.
+        return std::nullopt;
+    return discard_voucher_result{r->key()};
 }
 
 } // namespace partake::client::internal
