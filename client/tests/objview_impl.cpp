@@ -36,8 +36,6 @@ auto make_fake_mapping(void *base, std::size_t size)
 
 } // namespace
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 TEST_CASE("objview_impl: accessors, close transitions, handle access pair") {
     auto conn = std::make_shared<connection_impl>(
         std::make_shared<client_impl>(), std::make_shared<queue_impl>());
@@ -62,7 +60,5 @@ TEST_CASE("objview_impl: accessors, close transitions, handle access pair") {
     CHECK_FALSE(ov->begin_close());
     // st == closed, so destruction does not submit a close.
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::client::internal

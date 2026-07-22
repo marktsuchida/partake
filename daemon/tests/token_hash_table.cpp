@@ -21,8 +21,6 @@ struct elem : token_hash_table<elem>::hook {
 
 } // namespace
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 TEST_CASE("token_hash_table") {
     using common::token;
     token_hash_table<elem> t;
@@ -72,7 +70,5 @@ TEST_CASE("token_hash_table: rehash") {
         t.rehash_if_appropriate(true);
     }
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::daemon

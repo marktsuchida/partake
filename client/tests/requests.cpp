@@ -39,8 +39,6 @@ auto span_of(flatbuffers::DetachedBuffer const &buf)
 
 } // namespace
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 TEST_CASE("requests: get_process_id") {
 #ifdef _WIN32
     CHECK(get_process_id() == static_cast<std::uint32_t>(_getpid()));
@@ -581,7 +579,6 @@ TEST_CASE("requests: error_code_for_status") {
           protocol_errc::object_reserved);
     // Deliberate out-of-range value (well-defined: Status has a fixed
     // underlying type).
-    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
     CHECK(error_code_for_status(static_cast<s>(1000)) ==
           protocol_errc::unknown_protocol_error);
 
@@ -609,7 +606,5 @@ TEST_CASE("requests: verify functions") {
     CHECK_FALSE(verify_server_hello_message({}));
     CHECK_FALSE(verify_response_message({}));
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::client::internal

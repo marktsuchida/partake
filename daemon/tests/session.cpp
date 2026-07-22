@@ -61,8 +61,6 @@ struct mock_voucher_queue {
 
 } // namespace
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 TEST_CASE("session: global ops") {
     using session_type = session<
         mock_allocator,
@@ -1399,7 +1397,5 @@ TEST_CASE("session: object ops") {
     sess1.drop_pending_requests();
     sess2.drop_pending_requests();
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::daemon

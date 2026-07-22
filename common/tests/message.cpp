@@ -40,7 +40,6 @@ TEST_CASE("round_size_up_to_message_frame_alignment") {
 namespace internal {
 
 TEST_CASE("read_message_frame_size") {
-    // NOLINTBEGIN(readability-magic-numbers)
     std::array<std::uint8_t, 5> bytes{};
     auto s = gsl::make_span(bytes);
     CHECK(read_message_frame_size(s) == 4); // Prefix size only
@@ -49,7 +48,6 @@ TEST_CASE("read_message_frame_size") {
     CHECK(read_message_frame_size(s.subspan(0, 0)) == 0);
     bytes[1] = 1; // Prefix set to 256 (FlatBuffers is little endian)
     CHECK(read_message_frame_size(s) == 260);
-    // NOLINTEND(readability-magic-numbers)
 }
 
 } // namespace internal
@@ -95,8 +93,6 @@ TEST_CASE("Unix domain socket stream finishes with asio::error::eof") {
 
     asio::io_context ctx;
     bool test_finished = false;
-
-    // NOLINTBEGIN(readability-magic-numbers)
 
     // Server accepts 1 connection, reads, and closes.
     asio::local::stream_protocol::acceptor server(ctx);
@@ -146,8 +142,6 @@ TEST_CASE("Unix domain socket stream finishes with asio::error::eof") {
 
     ctx.run();
     CHECK(test_finished);
-
-    // NOLINTEND(readability-magic-numbers)
 }
 
 TEST_CASE("async_message_reader: keepalive held until handlers drain") {
@@ -174,7 +168,6 @@ TEST_CASE("async_message_reader: keepalive held until handlers drain") {
     asio::local::stream_protocol::socket sock(ctx);
     server.accept(sock);
 
-    // NOLINTNEXTLINE(readability-magic-numbers)
     auto keepalive = std::make_shared<int>(42);
     std::weak_ptr<int> const observer = keepalive;
     bool ended = false;
@@ -212,10 +205,8 @@ writable_asio_stream_for_file(asio::io_context &ctx,
                                  asio::stream_file::create |
                                  asio::stream_file::exclusive);
 #else
-    // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
     auto fd =
         ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
-    // NOLINTEND(cppcoreguidelines-pro-type-vararg)
     return asio::posix::stream_descriptor(ctx, fd);
 #endif
 }
@@ -239,7 +230,6 @@ readable_asio_stream_for_file(asio::io_context &ctx,
 #ifdef _WIN32
     return asio::stream_file(ctx, path.string(), asio::stream_file::read_only);
 #else
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
     return asio::posix::stream_descriptor(ctx, ::open(path.c_str(), O_RDONLY));
 #endif
 }
@@ -270,8 +260,6 @@ TEST_CASE("async_message_writer") {
         auto data = get_file_contents(path);
         CHECK(data.empty());
     }
-
-    // NOLINTBEGIN(readability-magic-numbers)
 
     SECTION("unaligned-7") {
         // Prefix 3; the writer pads to 8 and patches the prefix to 4.
@@ -322,8 +310,6 @@ TEST_CASE("async_message_writer") {
         CHECK(data ==
               std::vector<std::uint8_t>{4, 0, 0, 0, 'e', 'f', 'g', 'h'});
     }
-
-    // NOLINTEND(readability-magic-numbers)
 }
 
 TEST_CASE("async_message_writer: messages queued behind an in-flight write "
@@ -342,7 +328,6 @@ TEST_CASE("async_message_writer: messages queued behind an in-flight write "
             ++completions;
         });
 
-    // NOLINTBEGIN(readability-magic-numbers)
     // The first message starts a write batch; the other two queue up behind
     // it and are flushed by a second batch.
     for (int i = 0; i < 3; ++i)
@@ -350,7 +335,6 @@ TEST_CASE("async_message_writer: messages queued behind an in-flight write "
             std::vector<std::uint8_t>{4, 0, 0, 0, 0, 0, 0, 0}, {});
     ctx.run();
     CHECK(completions == 3);
-    // NOLINTEND(readability-magic-numbers)
 }
 
 TEST_CASE("async_message_writer: write error fails the in-flight message "
@@ -369,7 +353,6 @@ TEST_CASE("async_message_writer: write error fails the in-flight message "
             ++error_completions;
         });
 
-    // NOLINTBEGIN(readability-magic-numbers)
     // First message is in flight (fails); second is queued behind it and is
     // canceled by the error.
     for (int i = 0; i < 2; ++i)
@@ -377,7 +360,6 @@ TEST_CASE("async_message_writer: write error fails the in-flight message "
             std::vector<std::uint8_t>{4, 0, 0, 0, 0, 0, 0, 0}, {});
     ctx.run();
     CHECK(error_completions == 2);
-    // NOLINTEND(readability-magic-numbers)
 }
 
 TEST_CASE("async_message_writer: a write enqueued by a completion callback "
@@ -389,7 +371,6 @@ TEST_CASE("async_message_writer: a write enqueued by a completion callback "
     auto s = writable_asio_stream_for_file(ctx, path);
     testing::auto_delete_file const adf(path);
 
-    // NOLINTBEGIN(readability-magic-numbers)
     unsigned completions = 0;
     std::function<void()> write_more;
     async_message_writer<decltype(s), std::vector<std::uint8_t>> writer(
@@ -407,7 +388,6 @@ TEST_CASE("async_message_writer: a write enqueued by a completion callback "
         std::vector<std::uint8_t>{4, 0, 0, 0, 0, 0, 0, 0}, {});
     ctx.run();
     CHECK(completions == 2);
-    // NOLINTEND(readability-magic-numbers)
 }
 
 TEST_CASE("async_message_writer: write error with re-entrant enqueue "
@@ -419,7 +399,6 @@ TEST_CASE("async_message_writer: write error with re-entrant enqueue "
     asio::io_context ctx;
     auto s = readable_asio_stream_for_file(ctx, f.path());
 
-    // NOLINTBEGIN(readability-magic-numbers)
     std::vector<std::error_code> completions;
     std::function<void()> write_more;
     async_message_writer<decltype(s), std::vector<std::uint8_t>> writer(
@@ -449,7 +428,6 @@ TEST_CASE("async_message_writer: write error with re-entrant enqueue "
     CHECK(completions[1] == canceled);
     CHECK(completions[2]);
     CHECK(completions[2] != canceled);
-    // NOLINTEND(readability-magic-numbers)
 }
 
 TEST_CASE("async_message_reader: empty stream") {
@@ -503,7 +481,6 @@ TEST_CASE("async_message_reader: single empty message") {
 }
 
 TEST_CASE("async_message_reader: large message") {
-    // NOLINTBEGIN(readability-magic-numbers)
     std::vector<std::uint8_t> v{0xfc, 0x7f, 0, 0}; // 32764 in little-endian
     v.resize(32768);
     v[32767] = 42;
@@ -528,7 +505,6 @@ TEST_CASE("async_message_reader: large message") {
     r.start({});
     ctx.run();
     CHECK(received);
-    // NOLINTEND(readability-magic-numbers)
 }
 
 TEST_CASE("async_message_reader: quit by handler") {
@@ -560,7 +536,6 @@ TEST_CASE("async_message_reader: message too long") {
     // Max message frame is 32k (including size prefix and padding).
     // Use size prefix 32772 (0x8004) so the frame (32776) is a multiple of 8
     // but exceeds the limit.
-    // NOLINTNEXTLINE(readability-magic-numbers)
     std::vector<std::uint8_t> v{0x04, 0x80, 0, 0}; // Little-endian
 
     testing::tempdir const td;
@@ -590,7 +565,6 @@ TEST_CASE("async_message_reader: message too long") {
 TEST_CASE("async_message_reader: misaligned frame") {
     // Size prefix 32765 makes the frame 32769, not a multiple of 8; a
     // conforming sender never produces this.
-    // NOLINTNEXTLINE(readability-magic-numbers)
     std::vector<std::uint8_t> v{0xfd, 0x7f, 0, 0}; // Little-endian
 
     testing::tempdir const td;
@@ -621,7 +595,6 @@ TEST_CASE("async_message_reader: eof in message") {
     // Use size prefix 32764 (one less than that which triggers
     // message-too-long) so that we also confirm that the maximum size works.
     // 32764 = 0x7ffc.
-    // NOLINTNEXTLINE(readability-magic-numbers)
     std::vector<std::uint8_t> v{0xfc, 0x7f, 0, 0}; // Little-endian
 
     testing::tempdir const td;
@@ -654,8 +627,6 @@ TEST_CASE("writer-reader round trip of FlatBuffer needing padding") {
     // by flatbuffers::Verifier::VerifySizePrefixedBuffer: the size prefix
     // must equal the frame length minus 4 exactly.
 
-    // NOLINTBEGIN(readability-magic-numbers)
-
     // A table containing an empty vector of offsets (no schema needed);
     // finishes at 28 bytes.
     flatbuffers::FlatBufferBuilder b;
@@ -681,12 +652,10 @@ TEST_CASE("writer-reader round trip of FlatBuffer needing padding") {
                 written = true;
                 s.close();
             });
-        // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         writer.async_write_message(
             std::vector<std::uint8_t>(b.GetBufferPointer(),
                                       b.GetBufferPointer() + b.GetSize()),
             {});
-        // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         ctx.run();
         CHECK(written);
     }
@@ -721,8 +690,6 @@ TEST_CASE("writer-reader round trip of FlatBuffer needing padding") {
     r.start({});
     ctx.run();
     CHECK(received);
-
-    // NOLINTEND(readability-magic-numbers)
 }
 
 } // namespace partake::common

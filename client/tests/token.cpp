@@ -18,8 +18,6 @@
 
 namespace partake::client {
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 TEST_CASE("token: default-constructed is invalid") {
     token const t;
     CHECK(not t.is_valid());
@@ -88,7 +86,5 @@ TEST_CASE("token: from_proquint rejects malformed input") {
     auto truncated = good.substr(0, good.size() - 1);
     CHECK(not token::from_proquint(truncated).is_valid());
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::client

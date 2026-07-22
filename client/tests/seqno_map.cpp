@@ -14,8 +14,6 @@
 
 namespace partake::client::internal {
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 TEST_CASE("seqno_map") {
     struct entry {
         int v = 0;
@@ -103,7 +101,5 @@ TEST_CASE("seqno_map for_each") {
     CHECK(seqnos == std::vector<std::uint64_t>{0, 2});
     CHECK(entries == std::vector{42, 44});
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::client::internal

@@ -41,8 +41,6 @@ TEST_CASE("connection: default-constructed is empty") {
     CHECK(not copy);
 }
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 TEST_CASE("connection: copies share the impl") {
     mock_server const srv;
     client c;
@@ -526,7 +524,5 @@ TEST_CASE("connection: submit on a surviving handle after ~client") {
     CHECK(ev->type() == op_type::ping);
     CHECK(ev->error() == client_errc::disconnected);
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::client

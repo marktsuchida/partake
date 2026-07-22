@@ -35,8 +35,6 @@ TEST_CASE("objview: default-constructed is empty") {
     CHECK(not copy);
 }
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 namespace {
 
 // Alloc and return the objview from the completion event (which is dropped,
@@ -623,7 +621,5 @@ TEST_CASE("objview: submits after shutdown fail with disconnected") {
     CHECK(ev->type() == op_type::close);
     CHECK(ev->error() == client_errc::disconnected);
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::client

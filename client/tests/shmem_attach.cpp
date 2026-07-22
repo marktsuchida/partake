@@ -41,8 +41,6 @@ void check_shared(mapping const &m, void *daemon_addr, std::size_t size) {
 
 } // namespace
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 TEST_CASE("shmem_attach: posix shm_open round trip") {
     auto seg = daemon::create_posix_mmap_shmem(page);
     REQUIRE(seg.is_valid());
@@ -90,7 +88,5 @@ TEST_CASE("shmem_attach: win32 spec is unsupported") {
     REQUIRE_FALSE(result.has_value());
     CHECK(result.error() == make_error_code(client_errc::protocol_violation));
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::client::internal

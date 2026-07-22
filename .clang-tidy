@@ -18,6 +18,8 @@ Checks: >-
     readability-*,
     -bugprone-exception-escape,
     -bugprone-macro-parentheses,
+    -clang-analyzer-core.CallAndMessage,
+    -clang-analyzer-core.NullDereference,
     -cppcoreguidelines-avoid-magic-numbers,
     -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
     -misc-include-cleaner,
@@ -38,6 +40,11 @@ Checks: >-
 # bugprone-macro-parentheses
 #   This check does not report the location of the macro in question, so hard
 #   to fix. (Using --fix did not reveal anything useful.) As of LLVM 16.
+# clang-analyzer-core.CallAndMessage, clang-analyzer-core.NullDereference
+#   False positives inside Boost asio's awaitable.hpp in every TU that uses
+#   coroutines. Impossible to suppress selectively: analyzer diagnostics
+#   ignore the header filter, and NOLINT cannot be added to third-party
+#   headers.
 # cppcoreguidelines-avoid-magic-numbers
 #   Duplicate of readability-magic-numbers.
 # cppcoreguidelines-pro-bounds-avoid-unchecked-container-access

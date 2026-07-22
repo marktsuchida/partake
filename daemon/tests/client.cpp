@@ -158,7 +158,6 @@ TEST_CASE("client: destroyed after normal disconnect") {
 }
 
 TEST_CASE("client: request/response round trip, then disconnect") {
-    // NOLINTBEGIN(readability-magic-numbers)
     client_fixture fx;
 
     unsigned requests_received = 0;
@@ -186,7 +185,6 @@ TEST_CASE("client: request/response round trip, then disconnect") {
     CHECK(received == response);
     CHECK(fx.close_count == 1);
     CHECK(fx.observer.expired());
-    // NOLINTEND(readability-magic-numbers)
 }
 
 TEST_CASE("client: quit with read in flight") {

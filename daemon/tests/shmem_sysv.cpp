@@ -19,7 +19,6 @@ namespace partake::daemon {
 namespace internal {
 
 TEST_CASE("sysv_shmem_id") {
-    // NOLINTBEGIN(readability-magic-numbers)
 
     SECTION("default instance") {
         sysv_shmem_id shmid;
@@ -118,8 +117,6 @@ TEST_CASE("sysv_shmem_id") {
             CHECK(shmid.remove()); // Idempotent
         }
     }
-
-    // NOLINTEND(readability-magic-numbers)
 }
 
 TEST_CASE("sysv_shmem_attachment") {
@@ -180,7 +177,6 @@ TEST_CASE("sysv_shmem_attachment") {
 } // namespace internal
 
 TEST_CASE("create_sysv_shmem") {
-    // NOLINTNEXTLINE(readability-magic-numbers)
     auto shm = create_sysv_shmem(100);
     CHECK(shm.is_valid());
     CHECK(shm.id() >= 0);

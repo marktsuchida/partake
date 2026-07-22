@@ -54,8 +54,6 @@ void push(queue const &q, event ev) {
 
 } // namespace
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 TEST_CASE("queue: fresh queue is empty and unsignaled") {
     queue q;
     CHECK(q.wakeup() >= 0);
@@ -396,7 +394,5 @@ TEST_CASE("queue: destroying the handle discards events and drops pushes") {
     CHECK(late.expired());
     CHECK(not fd_readable(impl->wakeup()));
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::client

@@ -46,7 +46,6 @@ TEST_CASE("auto_delete_file") {
 }
 
 TEST_CASE("unique_file_with_data") {
-    // NOLINTBEGIN(readability-magic-numbers)
 
     std::vector<std::uint8_t> data{'a', 'b', 'c'};
     tempdir const td;
@@ -62,8 +61,6 @@ TEST_CASE("unique_file_with_data") {
         CHECK(buf[1] == 'b');
         CHECK(buf[2] == 'c');
     }
-
-    // NOLINTEND(readability-magic-numbers)
 }
 
 } // namespace partake::testing

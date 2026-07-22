@@ -1,0 +1,33 @@
+# This file is part of the partake project
+# Copyright 2020-2023 Board of Regents of the University of Wisconsin System
+# SPDX-License-Identifier: MIT
+---
+InheritParentConfig: true
+Checks: >-
+    -bugprone-unchecked-optional-access,
+    -clang-analyzer-optin.core.EnumCastOutOfRange,
+    -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+    -cppcoreguidelines-pro-type-vararg,
+    -cppcoreguidelines-rvalue-reference-param-not-moved,
+    -readability-magic-numbers,
+
+# Reasons for checks disabled in test code (in addition to those disabled in
+# the root .clang-tidy):
+# bugprone-unchecked-optional-access
+#   Cannot see through Catch2's REQUIRE/CHECK macros, so the idiomatic
+#   'REQUIRE(o.has_value()); CHECK(o->x());' flags every access (hundreds of
+#   false positives).
+# clang-analyzer-optin.core.EnumCastOutOfRange
+#   Fires inside Catch2 headers (analyzer diagnostics bypass the header
+#   filter) and on deliberate out-of-range casts in error-code tests.
+# cppcoreguidelines-pro-bounds-pointer-arithmetic
+#   Inherent to shared-memory and message-framing test fixtures that poke at
+#   raw buffers.
+# cppcoreguidelines-pro-type-vararg
+#   Vararg syscalls (fcntl, etc.) are needed in fixtures exercising fds.
+# cppcoreguidelines-rvalue-reference-param-not-moved
+#   Test lambdas take rvalue references to match continuation signatures but
+#   often only inspect the argument.
+# readability-magic-numbers
+#   Literal values are normal in test data and expectations.
+...

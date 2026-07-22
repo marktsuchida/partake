@@ -17,8 +17,6 @@
 
 namespace partake::client {
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 TEST_CASE("event: empty event is benignly queryable") {
     event ev;
     CHECK(ev.id() == 0);
@@ -85,7 +83,5 @@ TEST_CASE("event: continuation may drop its argument") {
     CHECK(ev.id() == 6);
     CHECK(not ev.deliver()); // Consumed.
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::client

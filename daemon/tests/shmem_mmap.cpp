@@ -198,7 +198,6 @@ TEST_CASE("mmap_mapping") {
         testing::tempdir const td;
         auto path = testing::unique_path(
             td.path(), testing::make_test_filename(__FILE__, __LINE__));
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
         auto fd = common::posix::file_descriptor(::open(
             path.string().c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR));
         REQUIRE(fd.is_valid());
@@ -231,7 +230,6 @@ TEST_CASE("generate_filename") {
 } // namespace internal
 
 TEST_CASE("create_posix_mmap_shmem") {
-    // NOLINTNEXTLINE(readability-magic-numbers)
     auto shm = create_posix_mmap_shmem(100);
     CHECK(shm.is_valid());
     CHECK_FALSE(shm.name().empty());
@@ -242,7 +240,6 @@ TEST_CASE("create_posix_mmap_shmem") {
 }
 
 TEST_CASE("create_posix_file_shmem") {
-    // NOLINTNEXTLINE(readability-magic-numbers)
     auto shm = create_file_mmap_shmem(100);
     CHECK(shm.is_valid());
     CHECK_FALSE(shm.name().empty());

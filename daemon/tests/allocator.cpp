@@ -120,7 +120,6 @@ class mock_arena {
 };
 
 TEST_CASE("allocator") {
-    // NOLINTBEGIN(readability-magic-numbers)
 
     basic_allocator<mock_arena> a(9, 1);
     CHECK(a.arena().size() == 4);
@@ -147,8 +146,6 @@ TEST_CASE("allocator") {
         auto alloc = a.allocate(200);
         CHECK_FALSE(alloc);
     }
-
-    // NOLINTEND(readability-magic-numbers)
 }
 
 } // namespace

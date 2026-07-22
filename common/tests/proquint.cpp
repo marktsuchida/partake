@@ -24,8 +24,6 @@ namespace {
 using u32 = std::uint32_t;
 using u64 = std::uint64_t;
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 // Aborting on allocation failure at test startup is acceptable.
 // NOLINTNEXTLINE(bugprone-throwing-static-initialization)
 std::vector<std::pair<u64, std::string_view>> const pq_test_data{
@@ -101,7 +99,5 @@ TEST_CASE("proquint64 equality") {
     CHECK(proquint64(123) == proquint64(123));
     CHECK(proquint64(123) != proquint64(124));
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::common::internal

@@ -51,8 +51,6 @@ TEST_CASE("response_builder: flush with no responses emits nothing") {
     CHECK(bc.buffers.empty());
 }
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 TEST_CASE("response_builder: successful response") {
     buffer_collector bc;
     response_builder rb(bc.sink());
@@ -153,7 +151,5 @@ TEST_CASE("response_builder: usable after flush") {
         CHECK(root->responses()->Get(0)->seqno() == i + 1);
     }
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::daemon

@@ -89,8 +89,6 @@ constexpr auto event_timeout = std::chrono::milliseconds(5000);
 
 } // namespace
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 TEST_CASE("client: connect success delivers the connection via the event") {
     mock_server const srv;
     client c;
@@ -305,8 +303,6 @@ TEST_CASE("client: dispatch returns despite a resubmitting completion on a "
     CHECK(ev->type() == op_type::ping);
     CHECK(ev->error() == client_errc::disconnected);
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 TEST_CASE("client: move transfers the impl") {
     client c;

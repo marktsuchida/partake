@@ -36,7 +36,6 @@ TEST_CASE("file_descriptor") {
     testing::tempdir const td;
     auto path = testing::unique_path(
         td.path(), testing::make_test_filename(__FILE__, __LINE__));
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
     int const fd = ::open(path.string().data(), O_CREAT | O_EXCL, 0600);
     REQUIRE(fd >= 0);
     testing::auto_delete_file const adf(path);

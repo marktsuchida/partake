@@ -430,7 +430,6 @@ auto mock_server::handle_requests(gsl::span<std::uint8_t const> bytes)
 void mock_server::write_frame(flatbuffers::DetachedBuffer const &buf) {
     ++outstanding_writes;
     writer.async_write_message(
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         std::vector<std::uint8_t>(buf.data(), buf.data() + buf.size()), {});
 }
 
@@ -465,7 +464,6 @@ namespace {
 // common::async_message_writer would.
 auto pad_frame(flatbuffers::DetachedBuffer const &buf)
     -> std::vector<std::uint8_t> {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     std::vector<std::uint8_t> frame(buf.data(), buf.data() + buf.size());
     auto const padded =
         common::round_size_up_to_message_frame_alignment(frame.size());
@@ -486,7 +484,6 @@ auto read_frame(asio::local::stream_protocol::socket &s)
     asio::read(s, asio::buffer(frame));
     auto const len = flatbuffers::GetPrefixedSize(frame.data());
     frame.resize(sizeof(flatbuffers::uoffset_t) + len);
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     asio::read(
         s, asio::buffer(frame.data() + sizeof(flatbuffers::uoffset_t), len));
     return frame;
@@ -519,7 +516,7 @@ TEST_CASE("mock_server: hello accept round trip") {
         flatbuffers::GetSizePrefixedRoot<protocol::ServerHelloMessage>(
             reply.data());
     CHECK(hello->result() == protocol::HelloResult::OK);
-    CHECK(hello->conn_no() == 42); // NOLINT(readability-magic-numbers)
+    CHECK(hello->conn_no() == 42);
 }
 
 TEST_CASE("mock_server: hello reject round trip, then close") {
@@ -577,7 +574,7 @@ TEST_CASE("mock_server: get_segment returns the real segment") {
         flatbuffers::GetSizePrefixedRoot<protocol::ResponseMessage>(
             reply.data());
     auto const *resp = msg->responses()->Get(0);
-    CHECK(resp->seqno() == 99); // NOLINT(readability-magic-numbers)
+    CHECK(resp->seqno() == 99);
     CHECK(resp->status() == protocol::Status::OK);
     REQUIRE(resp->response_type() ==
             protocol::AnyResponse::GetSegmentResponse);

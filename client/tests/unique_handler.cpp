@@ -13,8 +13,6 @@
 
 namespace partake::client::internal {
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 TEST_CASE("unique_handler: default-constructed is falsy") {
     unique_handler<void()> const h;
     CHECK_FALSE(h);
@@ -54,7 +52,5 @@ TEST_CASE("unique_handler: arguments and return value propagate") {
     unique_handler<int(int, int)> h([](int a, int b) { return a + b; });
     CHECK(h(3, 4) == 7);
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::client::internal

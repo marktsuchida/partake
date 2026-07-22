@@ -84,8 +84,6 @@ struct mock_error_handler {
 
 } // namespace
 
-// NOLINTBEGIN(readability-magic-numbers)
-
 TEST_CASE("request_handler: invalid request message") {
     mock_session sess;
     mock_writer write;
@@ -140,10 +138,8 @@ TEST_CASE("request_handler: padded frame") {
 
     // Construct the frame the way common::async_message_writer does: append
     // zero padding and round the size prefix up to cover it.
-    // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     std::vector<std::uint8_t> frame(b.GetBufferPointer(),
                                     b.GetBufferPointer() + b.GetSize());
-    // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     frame.resize(frame.size() + 4);
     flatbuffers::WriteScalar(
         frame.data(), static_cast<flatbuffers::uoffset_t>(
@@ -1263,7 +1259,5 @@ TEST_CASE("request_handler: oversized response batch is split") {
     for (std::uint64_t seqno = 0; seqno < n_requests; ++seqno)
         CHECK(seqnos[seqno] == seqno);
 }
-
-// NOLINTEND(readability-magic-numbers)
 
 } // namespace partake::daemon
