@@ -1,0 +1,9 @@
+version = 1
+
+# The wraps for microsoft-gsl and spdlog are (temporarily) local versions, not
+# pulled from wrapdb, because we need patched versions on Windows.
+
+[[annotations]]
+path = ["microsoft-gsl/**", "spdlog/**"]
+SPDX-FileCopyrightText = "2021 The Meson development team"
+SPDX-License-Identifier = "MIT"
