@@ -26,14 +26,14 @@ namespace partake::daemon {
 namespace internal {
 
 auto add_lock_memory_privilege() -> bool {
-    win32::win32_handle const h_token(
+    common::win32::win32_handle const h_token(
         [] {
             HANDLE h = INVALID_HANDLE_VALUE;
             if (OpenProcessToken(GetCurrentProcess(),
                                  TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES,
                                  &h) == 0) {
                 auto err = GetLastError();
-                auto msg = win32::strerror(err);
+                auto msg = common::win32::strerror(err);
                 spdlog::error("OpenProcessToken: {} ({})", msg, err);
                 return INVALID_HANDLE_VALUE;
             }
@@ -47,7 +47,7 @@ auto add_lock_memory_privilege() -> bool {
     if (LookupPrivilegeValueA(nullptr, SE_LOCK_MEMORY_NAME, &lock_mem_luid) ==
         0) {
         auto err = GetLastError();
-        auto msg = win32::strerror(err);
+        auto msg = common::win32::strerror(err);
         spdlog::error("LookupPrivilegeValue: {} ({})", msg, err);
         return false;
     }
@@ -62,7 +62,7 @@ auto add_lock_memory_privilege() -> bool {
     // ERROR_NOT_ALL_ASSIGNED (only) may be returned even if ok is true.
     auto err = GetLastError();
     if (not ok || err == ERROR_NOT_ALL_ASSIGNED) {
-        auto msg = win32::strerror(err);
+        auto msg = common::win32::strerror(err);
         spdlog::error("AdjustTokenPrivileges: {}: {} ({})",
                       SE_LOCK_MEMORY_NAME, msg, err);
         return false;
@@ -72,8 +72,8 @@ auto add_lock_memory_privilege() -> bool {
 }
 
 auto create_autodeleted_file(std::filesystem::path const &path, bool force)
-    -> win32::win32_handle {
-    auto h_file = win32::win32_handle(
+    -> common::win32::win32_handle {
+    auto h_file = common::win32::win32_handle(
         CreateFileA(path.string().c_str(), GENERIC_READ | GENERIC_WRITE, 0,
                     nullptr, force ? CREATE_ALWAYS : CREATE_NEW,
                     FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE,
@@ -81,7 +81,7 @@ auto create_autodeleted_file(std::filesystem::path const &path, bool force)
         spdlog::default_logger());
     if (not h_file.is_valid()) {
         auto err = GetLastError();
-        auto msg = win32::strerror(err);
+        auto msg = common::win32::strerror(err);
         spdlog::error("CreateFile: {}: {} ({})", path.string(), msg, err);
     } else {
         spdlog::info("CreateFile: {}: success, handle {}", path.string(),
@@ -90,9 +90,9 @@ auto create_autodeleted_file(std::filesystem::path const &path, bool force)
     return h_file;
 }
 
-auto create_file_mapping(win32::win32_handle const &file_handle,
+auto create_file_mapping(common::win32::win32_handle const &file_handle,
                          std::string const &name, std::size_t size,
-                         bool use_large_pages) -> win32::win32_handle {
+                         bool use_large_pages) -> common::win32::win32_handle {
     if (name.empty() || size == 0)
         return {};
     if (use_large_pages)
@@ -103,15 +103,15 @@ auto create_file_mapping(win32::win32_handle const &file_handle,
         sizeof(std::size_t) > 4 ? size >> 32 : 0, size & UINT_MAX,
         name.c_str());
     // Docs say return value is NULL (not INVALID_HANDLE_VALUE) on failure.
-    auto h_mapping =
-        raw_handle == nullptr
-            ? win32::win32_handle()
-            : win32::win32_handle(raw_handle, spdlog::default_logger());
+    auto h_mapping = raw_handle == nullptr
+                         ? common::win32::win32_handle()
+                         : common::win32::win32_handle(
+                               raw_handle, spdlog::default_logger());
     // Return value does not indicate failure when the mapping already exists,
     // but GetLastError() does.
     auto err = GetLastError();
     if (not h_mapping.is_valid() || err == ERROR_ALREADY_EXISTS) {
-        auto msg = win32::strerror(err);
+        auto msg = common::win32::strerror(err);
         spdlog::error("CreateFileMapping: {}: {} ({})", name, msg, err);
         return {};
     }
@@ -120,7 +120,7 @@ auto create_file_mapping(win32::win32_handle const &file_handle,
     return h_mapping;
 }
 
-win32_map_view::win32_map_view(win32::win32_handle const &h_mapping,
+win32_map_view::win32_map_view(common::win32::win32_handle const &h_mapping,
                                std::size_t size, bool use_large_pages)
     : addr(
           h_mapping.is_valid()
@@ -132,7 +132,7 @@ win32_map_view::win32_map_view(win32::win32_handle const &h_mapping,
       siz(size) {
     if (h_mapping.is_valid() && addr == nullptr) {
         auto err = GetLastError();
-        auto msg = win32::strerror(err);
+        auto msg = common::win32::strerror(err);
         spdlog::error("MapViewOfFile: {}: {} ({})", h_mapping.get(), msg, err);
     } else {
         spdlog::info("MapViewOfFile: {}: success; addr {}", h_mapping.get(),
@@ -144,7 +144,7 @@ void win32_map_view::unmap() {
     if (addr != nullptr) {
         if (UnmapViewOfFile(addr) == 0) {
             auto err = GetLastError();
-            auto msg = win32::strerror(err);
+            auto msg = common::win32::strerror(err);
             spdlog::error("UnmapViewOfFile: addr {}: {} ({})", addr, msg, err);
         } else {
             spdlog::info("UnmapViewOfFile: addr {}: success", addr);

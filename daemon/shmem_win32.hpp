@@ -24,11 +24,12 @@ namespace internal {
 auto add_lock_memory_privilege() -> bool;
 
 auto create_autodeleted_file(std::filesystem::path const &path, bool force)
-    -> win32::win32_handle;
+    -> common::win32::win32_handle;
 
-auto create_file_mapping(win32::win32_handle const &file_handle,
+auto create_file_mapping(common::win32::win32_handle const &file_handle,
                          std::string const &name, std::size_t size,
-                         bool use_large_pages = false) -> win32::win32_handle;
+                         bool use_large_pages = false)
+    -> common::win32::win32_handle;
 
 // RAII for MapViewOfFile() - UnmapViewOfFile()
 class win32_map_view {
@@ -38,7 +39,7 @@ class win32_map_view {
   public:
     win32_map_view() noexcept = default;
 
-    explicit win32_map_view(win32::win32_handle const &h_mapping,
+    explicit win32_map_view(common::win32::win32_handle const &h_mapping,
                             std::size_t size, bool use_large_pages = false);
 
     ~win32_map_view() { unmap(); }
@@ -71,15 +72,15 @@ class win32_map_view {
 } // namespace internal
 
 class win32_shmem {
-    win32::win32_handle h_file;
-    win32::win32_handle h_mapping;
+    common::win32::win32_handle h_file;
+    common::win32::win32_handle h_mapping;
     internal::win32_map_view view;
 
   public:
     win32_shmem() noexcept = default;
 
-    explicit win32_shmem(win32::win32_handle &&file_handle,
-                         win32::win32_handle &&mapping_handle,
+    explicit win32_shmem(common::win32::win32_handle &&file_handle,
+                         common::win32::win32_handle &&mapping_handle,
                          std::size_t size, bool use_large_pages)
         : h_file(std::move(file_handle)), h_mapping(std::move(mapping_handle)),
           view(h_mapping, size, use_large_pages) {}
@@ -98,7 +99,7 @@ class win32_shmem {
 };
 
 inline auto generate_win32_file_mapping_name() -> std::string {
-    return "Local\\partake-" + random_string(24);
+    return "Local\\partake-" + common::random_string(24);
 }
 
 auto create_win32_shmem(std::string const &mapping_name, std::size_t size,

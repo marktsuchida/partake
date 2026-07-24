@@ -64,7 +64,7 @@ TEST_CASE("create_autodeleted_file") {
 }
 
 TEST_CASE("create_file_mapping") {
-    auto const name = "Local\\partake-test-" + random_string(10);
+    auto const name = "Local\\partake-test-" + common::random_string(10);
 
     GIVEN("a file handle") {
         testing::tempdir const td;
@@ -110,7 +110,7 @@ TEST_CASE("win32_map_view") {
     }
 
     GIVEN("a file mapping") {
-        auto const name = "Local\\partake-test-" + random_string(10);
+        auto const name = "Local\\partake-test-" + common::random_string(10);
         auto h_mapping = create_file_mapping({}, name, 4096);
         CHECK(h_mapping.is_valid());
 

@@ -33,7 +33,7 @@ TEST_CASE("segment: invalid on Win32") {
 
 TEST_CASE("segment: win32 system paging file") {
     GIVEN("unique mapping name") {
-        auto const name = "Local\\partake-test-" + random_string(10);
+        auto const name = "Local\\partake-test-" + common::random_string(10);
 
         SECTION("create, no-force") {
             auto const conf =
